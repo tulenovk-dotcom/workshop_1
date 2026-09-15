@@ -73,7 +73,7 @@
       </span>
       <span class="switch-label">Только доказательные методы</span>
     </label>
-    <p class="hint">Скрыть тех, кто предлагает методы без доказательств при РАС.</p>
+    <p class="hint">Без методов без доказательств.</p>
   </div>
 
   <div class="filter-actions">
@@ -95,11 +95,12 @@
     <article class="card provider-card">
       <div class="pc-media">
         {{ ui.logo(p, 'xl') }}
-        <p class="pc-name"><a href="/providers/{{ p.id }}">{{ p.name }}</a></p>
         {{ ui.rating(p.rating_avg, p.reviews_count) }}
       </div>
 
       <div class="pc-main">
+        <h2 class="pc-name"><a href="/providers/{{ p.id }}">{{ p.name }}</a></h2>
+
         <div class="badges">
           {% for m in methods_map.get(p.id, []) %}
             <span class="badge {{ EVIDENCE_LEVELS[m.evidence_level].css }}"
