@@ -11,10 +11,6 @@
   </p>
 </section>
 
-<div class="catalog-layout">
-<aside class="catalog-sidebar">
-<details class="filters-box" id="filters-box" open>
-<summary class="filters-summary">Поиск и фильтры</summary>
 <form class="filters" method="get" action="/">
   <div class="field field-wide">
     <label for="q">Поиск по названию или ФИО</label>
@@ -68,19 +64,10 @@
            value="{{ raw.age }}" placeholder="лет">
   </div>
 
-  <div class="field field-wheel">
-    <label id="max-price-label">Цена до, ₸</label>
-    <input type="hidden" id="max_price" name="max_price" value="{{ raw.max_price }}">
-    <div class="wheel" data-wheel-for="max_price">
-      <div class="wheel-band" aria-hidden="true"></div>
-      <ul class="wheel-list" tabindex="0" role="listbox" aria-labelledby="max-price-label">
-        {% for step in PRICE_STEPS %}
-          <li class="wheel-item" role="option" data-value="{{ step or '' }}"
-              aria-selected="{{ 'true' if raw.max_price == (step|string if step else '') else 'false' }}">
-            {{ step|price if step else 'Любая' }}</li>
-        {% endfor %}
-      </ul>
-    </div>
+  <div class="field">
+    <label for="max_price">Цена до, ₸</label>
+    <input type="number" id="max_price" name="max_price" min="0" step="500"
+           value="{{ raw.max_price }}" placeholder="например 10000">
   </div>
 
   <div class="field">
@@ -110,10 +97,7 @@
     <a class="btn btn-ghost" href="/">Сбросить</a>
   </div>
 </form>
-</details>
-</aside>
 
-<div class="catalog-results">
 <p class="results-count">
   Найдено: {{ providers|length }}
 </p>
@@ -127,12 +111,11 @@
     <article class="card provider-card">
       <div class="pc-media">
         {{ ui.logo(p, 'xl') }}
+        <p class="pc-name"><a href="/providers/{{ p.id }}">{{ p.name }}</a></p>
         {{ ui.rating(p.rating_avg, p.reviews_count) }}
       </div>
 
       <div class="pc-main">
-        <h2 class="pc-name"><a href="/providers/{{ p.id }}">{{ p.name }}</a></h2>
-
         <div class="badges">
           {% for m in methods_map.get(p.id, []) %}
             <span class="badge {{ EVIDENCE_LEVELS[m.evidence_level].css }}"
@@ -181,6 +164,4 @@
   <span class="badge ev-limited">Ограниченные данные</span>
   <span class="badge ev-none">Без доказательств при РАС</span>
 </p>
-</div>
-</div>
 {% endblock %}

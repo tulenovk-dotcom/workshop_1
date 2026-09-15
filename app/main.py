@@ -118,10 +118,7 @@ templates.env.filters["hue"] = name_hue
 templates.env.filters["wa_link"] = wa_link
 templates.env.filters["site_link"] = site_link
 templates.env.filters["instagram_link"] = instagram_link
-PRICE_STEPS = [None, 5000, 7500, 10000, 12500, 15000, 20000, 25000, 30000]
-
 templates.env.globals.update(
-    PRICE_STEPS=PRICE_STEPS,
     PROVIDER_TYPES=PROVIDER_TYPES,
     EVIDENCE_LEVELS=EVIDENCE_LEVELS,
     PRICING=PRICING,
