@@ -146,13 +146,53 @@ h3 { font-size: 1.05rem; margin: 20px 0 8px; }
 .filters {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  align-items: start;
   gap: 14px;
-  padding: 18px;
   margin: 20px 0;
+}
+
+/* Поля фильтров — белые «таблетки» с подписью внутри. */
+.filters .field {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 16px;
+  padding: 10px 16px;
+  box-shadow: 0 1px 2px rgba(16, 32, 56, 0.04);
 }
+
+.filters .field label {
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.filters .field input,
+.filters .field select {
+  padding: 2px 0;
+  font-size: 1rem;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.filters .field input:focus,
+.filters .field select:focus {
+  outline: none;
+  border-color: transparent;
+}
+
+.filters .field:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(36, 91, 143, 0.12);
+}
+
+.filters .field-check {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+}
+
+.filters .field-check .hint { font-size: 0.82rem; }
 
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .field-wide { grid-column: 1 / -1; }
@@ -196,6 +236,63 @@ input:focus, select:focus, textarea:focus {
 
 .checkbox input { width: 18px; height: 18px; flex: none; }
 
+/* --- Переключатель в стиле iOS --- */
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font-weight: 400;
+}
+
+.switch { position: relative; flex: none; width: 51px; height: 31px; }
+
+.switch input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.switch-track {
+  position: absolute;
+  inset: 0;
+  background: #e4e7ec;
+  border-radius: 999px;
+  transition: background 0.25s ease;
+  pointer-events: none;
+}
+
+.switch-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(16, 32, 56, 0.22);
+  transition: transform 0.25s cubic-bezier(0.4, 0.1, 0.2, 1);
+}
+
+.switch input:checked + .switch-track { background: var(--accent); }
+.switch input:checked + .switch-track::after { transform: translateX(20px); }
+
+.switch input:focus-visible + .switch-track {
+  box-shadow: 0 0 0 3px rgba(36, 91, 143, 0.28);
+}
+
+.switch-label { font-size: 0.95rem; color: var(--text); font-weight: 500; }
+
+@media (prefers-reduced-motion: reduce) {
+  .switch-track, .switch-track::after { transition: none; }
+}
+
 .filter-actions {
   grid-column: 1 / -1;
   display: flex;
@@ -236,10 +333,79 @@ input:focus, select:focus, textarea:focus {
 /* --- Карточки провайдеров --- */
 
 .cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 16px;
 }
+
+/* --- Карточка провайдера в списке --- */
+
+.card.provider-card {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) 230px;
+  gap: 24px;
+  padding: 22px;
+  border-radius: 18px;
+  align-items: start;
+}
+
+.pc-media {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.pc-name { margin: 2px 0 0; font-weight: 600; line-height: 1.3; }
+.pc-name a { text-decoration: none; }
+.pc-name a:hover { text-decoration: underline; }
+.pc-media .rating { margin-left: 0; }
+
+.pc-main { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+.pc-line { margin: 0; font-size: 0.96rem; }
+.pc-key { color: var(--muted); }
+.pc-line-accent { color: var(--green); font-weight: 600; }
+.pc-description { margin: 2px 0 0; color: var(--muted); }
+
+.pc-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding-left: 24px;
+  border-left: 1px solid var(--line);
+  text-align: center;
+}
+
+.pc-city { margin: 0; font-weight: 600; }
+.pc-city span { display: block; font-weight: 400; font-size: 0.85rem; color: var(--muted); }
+
+.pc-price {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+}
+
+.btn-cta {
+  width: 100%;
+  padding: 14px 18px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 0.97rem;
+  line-height: 1.25;
+}
+
+.btn-cta:hover { background: var(--accent-dark); }
+
+.pc-hint { margin: 0; font-size: 0.85rem; color: var(--green); }
+
+.pc-more { margin-top: auto; font-size: 0.92rem; font-weight: 600; text-decoration: none; }
+.pc-more:hover { text-decoration: underline; }
 
 .card, .provider, .method-card, .login-box, .admin-form, .review-form, .placeholder {
   background: var(--surface);
@@ -277,6 +443,7 @@ input:focus, select:focus, textarea:focus {
 .logo-sm { width: 56px; height: 56px; font-size: 1.05rem; }
 .logo-md { width: 72px; height: 72px; font-size: 1.3rem; }
 .logo-lg { width: 92px; height: 92px; font-size: 1.7rem; border-radius: 16px; }
+.logo-xl { width: 100%; max-width: 168px; aspect-ratio: 1; height: auto; font-size: 2.2rem; border-radius: 16px; }
 
 .card-top { display: flex; gap: 12px; align-items: flex-start; }
 .card-heading { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -495,14 +662,39 @@ input:focus, select:focus, textarea:focus {
 
 /* --- Телефоны --- */
 
+@media (max-width: 900px) {
+  .card.provider-card { grid-template-columns: 140px minmax(0, 1fr); gap: 18px; }
+  .pc-side {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px 16px;
+    padding: 16px 0 0;
+    border-left: none;
+    border-top: 1px solid var(--line);
+    text-align: left;
+  }
+  .pc-city span { display: inline; }
+  .btn-cta { width: auto; flex: 1 1 220px; }
+  .pc-more { margin: 0 0 0 auto; }
+}
+
 @media (max-width: 640px) {
   body { font-size: 15px; }
   h1 { font-size: 1.35rem; }
-  .filters, .card, .provider, .admin-form { padding: 14px; }
+  .card, .provider, .admin-form { padding: 14px; }
   .filters { grid-template-columns: 1fr; }
-  .cards, .method-cards, .admin-form, .review-form, .methods-picker,
+  .method-cards, .admin-form, .review-form, .methods-picker,
   .info-grid { grid-template-columns: 1fr; }
+  .card.provider-card { grid-template-columns: 1fr; padding: 16px; }
+  .pc-media { flex-direction: row; align-items: center; text-align: left; gap: 12px; }
+  .pc-media .logo-xl { max-width: 84px; font-size: 1.5rem; }
+  .pc-name { margin: 0; }
   .rating { margin-left: 0; }
   .actions .btn, .filter-actions .btn { flex: 1 1 auto; }
+  .btn-cta { width: 100%; }
+  .pc-more { margin: 0; }
   .site-nav { font-size: 0.9rem; }
 }

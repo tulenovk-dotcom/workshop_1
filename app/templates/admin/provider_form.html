@@ -114,15 +114,21 @@
   </div>
 
   <div class="field field-check">
-    <label class="checkbox">
-      <input type="checkbox" name="has_state_funding" value="1"
-             {% if provider and provider.has_state_funding %}checked{% endif %}>
-      Есть гос. финансирование
+    <label class="switch-row">
+      <span class="switch">
+        <input type="checkbox" name="has_state_funding" value="1"
+               {% if provider and provider.has_state_funding %}checked{% endif %}>
+        <span class="switch-track"></span>
+      </span>
+      <span class="switch-label">Есть гос. финансирование</span>
     </label>
-    <label class="checkbox">
-      <input type="checkbox" name="is_test" value="1"
-             {% if provider and provider.is_test %}checked{% endif %}>
-      Тестовая запись
+    <label class="switch-row">
+      <span class="switch">
+        <input type="checkbox" name="is_test" value="1"
+               {% if provider and provider.is_test %}checked{% endif %}>
+        <span class="switch-track"></span>
+      </span>
+      <span class="switch-label">Тестовая запись</span>
     </label>
   </div>
 
@@ -135,9 +141,12 @@
         <p class="hint">PNG, JPEG, WebP или GIF, до 2 МБ. Если не выбирать файл,
           текущее изображение останется. Без изображения показываются инициалы.</p>
         {% if provider and provider.logo_path %}
-          <label class="checkbox">
-            <input type="checkbox" name="remove_logo" value="1">
-            Удалить текущее изображение
+          <label class="switch-row">
+            <span class="switch">
+              <input type="checkbox" name="remove_logo" value="1">
+              <span class="switch-track"></span>
+            </span>
+            <span class="switch-label">Удалить текущее изображение</span>
           </label>
         {% endif %}
       </div>

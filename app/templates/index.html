@@ -81,15 +81,15 @@
   </div>
 
   <div class="field field-check">
-    <label class="checkbox">
-      <input type="checkbox" name="proven_only" value="1"
-             {% if raw.proven_only %}checked{% endif %}>
-      Только доказательные методы
+    <label class="switch-row">
+      <span class="switch">
+        <input type="checkbox" name="proven_only" value="1"
+               {% if raw.proven_only %}checked{% endif %}>
+        <span class="switch-track"></span>
+      </span>
+      <span class="switch-label">Только доказательные методы</span>
     </label>
-    <p class="hint">
-      Показывать тех, кто работает методами с доказанной эффективностью и не
-      предлагает методы без доказательств при РАС.
-    </p>
+    <p class="hint">Скрыть тех, кто предлагает методы без доказательств при РАС.</p>
   </div>
 
   <div class="filter-actions">
@@ -108,40 +108,52 @@
 
 <div class="cards">
   {% for p in providers %}
-    <article class="card">
-      <div class="card-head">
-        <span class="chip">{{ PROVIDER_TYPES.get(p.provider_type, p.provider_type) }}</span>
-        {% if p.is_test %}<span class="chip chip-test">Тестовая запись</span>{% endif %}
+    <article class="card provider-card">
+      <div class="pc-media">
+        {{ ui.logo(p, 'xl') }}
+        <p class="pc-name"><a href="/providers/{{ p.id }}">{{ p.name }}</a></p>
         {{ ui.rating(p.rating_avg, p.reviews_count) }}
       </div>
 
-      <div class="card-top">
-        {{ ui.logo(p, 'sm') }}
-        <div class="card-heading">
-          <h2 class="card-title">
-            <a href="/providers/{{ p.id }}">{{ p.name }}</a>
-          </h2>
-          {% if p.specialty %}<p class="card-specialty">{{ p.specialty }}</p>{% endif %}
-          <p class="card-meta">
-            {{ p.city }}{% if p.district %}, {{ p.district }}{% endif %}
-          </p>
+      <div class="pc-main">
+        <div class="badges">
+          {% for m in methods_map.get(p.id, []) %}
+            <span class="badge {{ EVIDENCE_LEVELS[m.evidence_level].css }}"
+                  title="{{ EVIDENCE_LEVELS[m.evidence_level].label }}">{{ m.name }}</span>
+          {% endfor %}
         </div>
+
+        <p class="pc-line">
+          <span class="pc-key">Тип:</span>
+          {{ PROVIDER_TYPES.get(p.provider_type, p.provider_type) }}{% if p.specialty %}, {{ p.specialty }}{% endif %}
+          {% if p.is_test %}<span class="chip chip-test">тестовая запись</span>{% endif %}
+        </p>
+        <p class="pc-line"><span class="pc-key">Возраст детей:</span> {{ ui.age_line(p) }}</p>
+        {% if p.has_state_funding %}
+          <p class="pc-line pc-line-accent">Есть гос. финансирование</p>
+        {% endif %}
+
+        {% if p.description %}
+          <p class="pc-description">{{ p.description|truncate(230) }}</p>
+        {% endif %}
       </div>
 
-      <ul class="card-facts">
-        <li>Возраст: {{ ui.age_line(p) }}</li>
-        <li>{{ ui.price_line(p) }}</li>
-        {% if p.has_state_funding %}<li class="fact-accent">Есть гос. финансирование</li>{% endif %}
-      </ul>
+      <div class="pc-side">
+        <p class="pc-city">{{ p.city }}{% if p.district %}<span>{{ p.district }}</span>{% endif %}</p>
+        <p class="pc-price">{{ ui.price_line(p) }}</p>
 
-      <div class="badges">
-        {% for m in methods_map.get(p.id, []) %}
-          <span class="badge {{ EVIDENCE_LEVELS[m.evidence_level].css }}"
-                title="{{ EVIDENCE_LEVELS[m.evidence_level].label }}">{{ m.name }}</span>
-        {% endfor %}
+        {% if p.whatsapp %}
+          <a class="btn btn-cta" href="{{ p.whatsapp|wa_link }}" target="_blank" rel="noopener">
+            Написать в WhatsApp</a>
+        {% elif p.phone %}
+          <a class="btn btn-cta" href="tel:{{ p.phone|replace(' ', '') }}">Позвонить</a>
+        {% else %}
+          <a class="btn btn-cta" href="/providers/{{ p.id }}">Открыть карточку</a>
+        {% endif %}
+
+        {% if p.pricing == 'free' %}<p class="pc-hint">занятия бесплатные</p>{% endif %}
+        <a class="pc-more" href="/providers/{{ p.id }}">Подробнее ›</a>
       </div>
-
-      <a class="card-link" href="/providers/{{ p.id }}">Подробнее →</a>
     </article>
   {% endfor %}
 </div>
