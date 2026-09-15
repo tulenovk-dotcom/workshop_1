@@ -23,8 +23,21 @@ from .seed import seed_if_empty
 BASE_DIR = Path(__file__).resolve().parent
 ADMIN_LOGIN = os.environ.get("ADMIN_LOGIN", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin")
-SECRET_KEY = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 REDIRECT = 303
+
+
+def load_secret_key() -> str:
+    """Ключ хранится между запусками, иначе uvicorn --reload на каждой
+    перезагрузке обнуляет сессию администратора."""
+    if key := os.environ.get("SECRET_KEY"):
+        return key
+    key_file = BASE_DIR.parent / ".secret_key"
+    if not key_file.exists():
+        key_file.write_text(secrets.token_hex(32))
+    return key_file.read_text().strip()
+
+
+SECRET_KEY = load_secret_key()
 
 app = FastAPI(title="Каталог помощи детям с РАС в Казахстане")
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
