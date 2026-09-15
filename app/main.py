@@ -21,7 +21,8 @@ from .reference import (
 from .seed import seed_if_empty
 
 BASE_DIR = Path(__file__).resolve().parent
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
+ADMIN_LOGIN = os.environ.get("ADMIN_LOGIN", "admin")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin")
 SECRET_KEY = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 REDIRECT = 303
 
@@ -230,8 +231,10 @@ def admin_login_form(request: Request, error: str = ""):
 
 
 @app.post("/admin/login")
-def admin_login(request: Request, password: str = Form("")):
-    if secrets.compare_digest(password, ADMIN_PASSWORD):
+def admin_login(request: Request, login: str = Form(""), password: str = Form("")):
+    login_ok = secrets.compare_digest(login.strip(), ADMIN_LOGIN)
+    password_ok = secrets.compare_digest(password, ADMIN_PASSWORD)
+    if login_ok and password_ok:
         request.session["admin"] = True
         return RedirectResponse("/admin", status_code=REDIRECT)
     return RedirectResponse("/admin/login?error=1", status_code=REDIRECT)
