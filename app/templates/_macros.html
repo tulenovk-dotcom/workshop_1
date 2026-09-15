@@ -1,0 +1,37 @@
+{% macro evidence_badge(level) %}
+  {% set info = EVIDENCE_LEVELS.get(level, EVIDENCE_LEVELS['limited']) %}
+  <span class="badge {{ info.css }}">{{ info.label }}</span>
+{% endmacro %}
+
+{% macro rating(value, count) %}
+  {% if count %}
+    <span class="rating"><span class="star">★</span>{{ '%.1f'|format(value) }}
+      <span class="rating-count">({{ count }})</span></span>
+  {% else %}
+    <span class="rating rating-empty">Нет отзывов</span>
+  {% endif %}
+{% endmacro %}
+
+{% macro price_line(provider) %}
+  {% if provider.pricing == 'free' %}
+    Бесплатно
+  {% elif provider.price_from and provider.price_to and provider.price_from != provider.price_to %}
+    {{ provider.price_from|price }}–{{ provider.price_to|price }} ₸ за занятие
+  {% elif provider.price_from or provider.price_to %}
+    {{ (provider.price_from or provider.price_to)|price }} ₸ за занятие
+  {% else %}
+    Цена не указана
+  {% endif %}
+{% endmacro %}
+
+{% macro age_line(provider) %}
+  {% if provider.age_from is not none and provider.age_to is not none %}
+    {{ provider.age_from }}–{{ provider.age_to }} лет
+  {% elif provider.age_from is not none %}
+    от {{ provider.age_from }} лет
+  {% elif provider.age_to is not none %}
+    до {{ provider.age_to }} лет
+  {% else %}
+    Возраст не указан
+  {% endif %}
+{% endmacro %}

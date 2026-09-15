@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Методы помощи — каталог помощи детям с РАС{% endblock %}
+
+{% block content %}
+<section class="intro">
+  <h1>Методы помощи простым языком</h1>
+  <p>
+    Здесь коротко о том, что делают специалисты на занятиях и насколько метод
+    изучен при РАС. Уровень доказательности помогает понять, на что опираться
+    в программе помощи ребёнку, а что рассматривать только как дополнение.
+  </p>
+</section>
+
+{% for level, info in EVIDENCE_LEVELS.items() %}
+  {% set items = grouped.get(level, []) %}
+  {% if items %}
+    <section class="level-block">
+      <h2>
+        <span class="badge {{ info.css }}">{{ info.label }}</span>
+      </h2>
+      {% if info.note %}<p class="level-note">{{ info.note }}</p>{% endif %}
+
+      <div class="method-cards">
+        {% for m in items %}
+          <article class="method-card">
+            <h3>{{ m.name }}</h3>
+            <p>{{ m.description }}</p>
+            <p class="method-links">
+              <a href="/?method={{ m.code }}">Найти провайдеров с этим методом →</a>
+            </p>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+{% endfor %}
+
+<p class="footer-note">
+  Уровень доказательности отражает состояние исследований, а не качество
+  работы конкретного специалиста. Решения о программе помощи ребёнку
+  обсуждайте с врачом и специалистами, которые его наблюдают.
+</p>
+{% endblock %}

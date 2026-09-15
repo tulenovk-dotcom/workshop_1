@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui %}
+
+{% block title %}{{ provider.name }} — каталог помощи детям с РАС{% endblock %}
+
+{% block content %}
+<p class="breadcrumbs"><a href="/">← Вернуться к каталогу</a></p>
+
+<article class="provider">
+  <div class="card-head">
+    <span class="chip">{{ PROVIDER_TYPES.get(provider.provider_type, provider.provider_type) }}</span>
+    {% if provider.is_test %}<span class="chip chip-test">Тестовая запись</span>{% endif %}
+    {{ ui.rating(provider.rating_avg, provider.reviews_count) }}
+  </div>
+
+  <h1>{{ provider.name }}</h1>
+  {% if provider.specialty %}<p class="provider-specialty">{{ provider.specialty }}</p>{% endif %}
+
+  {% if provider.description %}
+    <p class="provider-description">{{ provider.description }}</p>
+  {% endif %}
+
+  <div class="actions">
+    {% if provider.phone %}
+      <a class="btn btn-primary" href="tel:{{ provider.phone|replace(' ', '') }}">Позвонить</a>
+    {% endif %}
+    {% if provider.whatsapp %}
+      <a class="btn btn-whatsapp" href="{{ provider.whatsapp|wa_link }}"
+         target="_blank" rel="noopener">Написать в WhatsApp</a>
+    {% endif %}
+  </div>
+
+  <h2>Информация</h2>
+  <dl class="info-grid">
+    <div><dt>Город</dt><dd>{{ provider.city }}</dd></div>
+    {% if provider.district %}<div><dt>Район</dt><dd>{{ provider.district }}</dd></div>{% endif %}
+    {% if provider.address %}<div><dt>Адрес</dt><dd>{{ provider.address }}</dd></div>{% endif %}
+    {% if provider.phone %}<div><dt>Телефон</dt><dd>{{ provider.phone }}</dd></div>{% endif %}
+    {% if provider.whatsapp %}<div><dt>WhatsApp</dt><dd>{{ provider.whatsapp }}</dd></div>{% endif %}
+    {% if provider.website %}
+      <div><dt>Сайт</dt><dd>
+        <a href="{{ provider.website|site_link }}" target="_blank" rel="noopener">{{ provider.website }}</a>
+      </dd></div>
+    {% endif %}
+    {% if provider.instagram %}
+      <div><dt>Instagram</dt><dd>
+        <a href="{{ provider.instagram|instagram_link }}" target="_blank" rel="noopener">{{ provider.instagram }}</a>
+      </dd></div>
+    {% endif %}
+    <div><dt>Возраст детей</dt><dd>{{ ui.age_line(provider) }}</dd></div>
+    <div><dt>Оплата</dt><dd>{{ ui.price_line(provider) }}</dd></div>
+    <div><dt>Гос. финансирование</dt>
+      <dd>{{ 'Есть' if provider.has_state_funding else 'Нет данных' }}</dd></div>
+  </dl>
+
+  <h2>Методы</h2>
+  {% if methods %}
+    <ul class="method-list">
+      {% for m in methods %}
+        {% set info = EVIDENCE_LEVELS[m.evidence_level] %}
+        <li>
+          <div class="method-head">
+            <strong>{{ m.name }}</strong>
+            <span class="badge {{ info.css }}">{{ info.label }}</span>
+          </div>
+          {% if info.note %}<p class="method-note">{{ info.note }}</p>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty">Методы не указаны.</p>
+  {% endif %}
+
+  <h2 id="reviews">Отзывы</h2>
+
+  {% if review_status == 'ok' %}
+    <p class="notice notice-ok">Спасибо! Отзыв отправлен на модерацию и появится после проверки.</p>
+  {% elif review_status == 'limit' %}
+    <p class="notice notice-warn">С одного устройства можно оставить один отзыв о провайдере в сутки.</p>
+  {% elif review_status == 'invalid' %}
+    <p class="notice notice-warn">Заполните имя, оценку и текст отзыва.</p>
+  {% endif %}
+
+  {% if reviews %}
+    <ul class="reviews">
+      {% for r in reviews %}
+        <li class="review">
+          <div class="review-head">
+            <strong>{{ r.author_name }}</strong>
+            <span class="review-rating">{{ '★' * r.rating }}{{ '☆' * (5 - r.rating) }}</span>
+            <span class="review-date">{{ r.created_at[:10] }}</span>
+          </div>
+          <p>{{ r.text }}</p>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty">Опубликованных отзывов пока нет.</p>
+  {% endif %}
+
+  <h3>Оставить отзыв</h3>
+  <form class="review-form" method="post" action="/providers/{{ provider.id }}/reviews">
+    <div class="field">
+      <label for="author_name">Ваше имя</label>
+      <input type="text" id="author_name" name="author_name" maxlength="80" required>
+    </div>
+    <div class="field">
+      <label for="rating">Оценка</label>
+      <select id="rating" name="rating" required>
+        <option value="5">5 — отлично</option>
+        <option value="4">4 — хорошо</option>
+        <option value="3">3 — нормально</option>
+        <option value="2">2 — плохо</option>
+        <option value="1">1 — очень плохо</option>
+      </select>
+    </div>
+    <div class="field field-wide">
+      <label for="text">Текст отзыва</label>
+      <textarea id="text" name="text" rows="5" maxlength="2000" required
+                placeholder="Расскажите о занятиях, специалистах и результатах"></textarea>
+    </div>
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-primary">Отправить на модерацию</button>
+    </div>
+    <p class="hint">
+      Отзывы публикуются после проверки модератором. Не оставляйте медицинские
+      диагнозы и персональные данные других людей.
+    </p>
+  </form>
+</article>
+{% endblock %}

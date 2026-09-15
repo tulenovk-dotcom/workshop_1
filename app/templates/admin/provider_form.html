@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+{% include "admin/_nav.html" %}
+
+{% set action = '/admin/providers/' ~ provider.id ~ '/edit' if provider else '/admin/providers/new' %}
+
+<form class="admin-form" method="post" action="{{ action }}">
+  <div class="field">
+    <label for="provider_type">Тип провайдера</label>
+    <select id="provider_type" name="provider_type">
+      {% for code, label in PROVIDER_TYPES.items() %}
+        <option value="{{ code }}"
+          {% if provider and provider.provider_type == code %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="field">
+    <label for="specialty">Специальность (для врачей и специалистов)</label>
+    <select id="specialty" name="specialty">
+      <option value="">Не указана</option>
+      {% for s in SPECIALTIES %}
+        <option value="{{ s }}" {% if provider and provider.specialty == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="field field-wide">
+    <label for="name">Название или ФИО *</label>
+    <input type="text" id="name" name="name" required
+           value="{{ provider.name if provider else '' }}">
+  </div>
+
+  <div class="field">
+    <label for="city">Город *</label>
+    <input type="text" id="city" name="city" required
+           value="{{ provider.city if provider else '' }}">
+  </div>
+
+  <div class="field">
+    <label for="district">Район</label>
+    <input type="text" id="district" name="district"
+           value="{{ provider.district if provider else '' }}">
+  </div>
+
+  <div class="field field-wide">
+    <label for="address">Адрес</label>
+    <input type="text" id="address" name="address"
+           value="{{ provider.address if provider else '' }}">
+  </div>
+
+  <div class="field">
+    <label for="phone">Телефон</label>
+    <input type="text" id="phone" name="phone" placeholder="+7 7xx xxx xx xx"
+           value="{{ provider.phone if provider else '' }}">
+  </div>
+
+  <div class="field">
+    <label for="whatsapp">WhatsApp</label>
+    <input type="text" id="whatsapp" name="whatsapp" placeholder="+7 7xx xxx xx xx"
+           value="{{ provider.whatsapp if provider else '' }}">
+  </div>
+
+  <div class="field">
+    <label for="website">Сайт</label>
+    <input type="text" id="website" name="website" placeholder="example.kz"
+           value="{{ provider.website if provider else '' }}">
+  </div>
+
+  <div class="field">
+    <label for="instagram">Instagram</label>
+    <input type="text" id="instagram" name="instagram" placeholder="@account"
+           value="{{ provider.instagram if provider else '' }}">
+  </div>
+
+  <div class="field">
+    <label for="age_from">Возраст детей от</label>
+    <input type="number" id="age_from" name="age_from" min="0" max="18"
+           value="{{ provider.age_from if provider and provider.age_from is not none else '' }}">
+  </div>
+
+  <div class="field">
+    <label for="age_to">Возраст детей до</label>
+    <input type="number" id="age_to" name="age_to" min="0" max="18"
+           value="{{ provider.age_to if provider and provider.age_to is not none else '' }}">
+  </div>
+
+  <div class="field">
+    <label for="price_from">Цена за занятие от, ₸</label>
+    <input type="number" id="price_from" name="price_from" min="0" step="500"
+           value="{{ provider.price_from if provider and provider.price_from is not none else '' }}">
+  </div>
+
+  <div class="field">
+    <label for="price_to">Цена за занятие до, ₸</label>
+    <input type="number" id="price_to" name="price_to" min="0" step="500"
+           value="{{ provider.price_to if provider and provider.price_to is not none else '' }}">
+  </div>
+
+  <div class="field">
+    <label for="pricing">Оплата</label>
+    <select id="pricing" name="pricing">
+      {% for code, label in PRICING.items() %}
+        <option value="{{ code }}"
+          {% if provider and provider.pricing == code %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="field field-check">
+    <label class="checkbox">
+      <input type="checkbox" name="has_state_funding" value="1"
+             {% if provider and provider.has_state_funding %}checked{% endif %}>
+      Есть гос. финансирование
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="is_test" value="1"
+             {% if provider and provider.is_test %}checked{% endif %}>
+      Тестовая запись
+    </label>
+  </div>
+
+  <div class="field field-wide">
+    <label for="description">Описание</label>
+    <textarea id="description" name="description" rows="5">{{ provider.description if provider else '' }}</textarea>
+  </div>
+
+  <fieldset class="field field-wide methods-picker">
+    <legend>Методы</legend>
+    {% for m in methods %}
+      <label class="checkbox">
+        <input type="checkbox" name="methods" value="{{ m.id }}"
+               {% if m.id in selected_methods %}checked{% endif %}>
+        {{ m.name }}
+        <span class="badge {{ EVIDENCE_LEVELS[m.evidence_level].css }}">{{ EVIDENCE_LEVELS[m.evidence_level].label }}</span>
+      </label>
+    {% endfor %}
+  </fieldset>
+
+  <div class="filter-actions">
+    <button type="submit" class="btn btn-primary">Сохранить</button>
+    <a class="btn btn-ghost" href="/admin">Отмена</a>
+  </div>
+</form>
+{% endblock %}

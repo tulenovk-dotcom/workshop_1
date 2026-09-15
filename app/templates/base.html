@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Каталог помощи детям с РАС в Казахстане{% endblock %}</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="logo" href="/">Каталог помощи детям с РАС<span>Казахстан</span></a>
+    <nav class="site-nav">
+      <a href="/">Каталог</a>
+      <a href="/methods">Методы помощи</a>
+      <a href="/free-help">Помощь бесплатно</a>
+      <a href="/admin">Админка</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <p class="disclaimer">
+      Сайт носит информационный характер и не заменяет консультацию врача.
+    </p>
+    <p class="footer-note">
+      Данные о провайдерах и отзывы размещают пользователи. Уточняйте
+      актуальные цены, возраст детей и программу занятий напрямую у провайдера.
+    </p>
+  </div>
+</footer>
+</body>
+</html>

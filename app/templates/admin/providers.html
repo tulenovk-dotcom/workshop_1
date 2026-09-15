@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui %}
+
+{% block title %}Админка — провайдеры{% endblock %}
+
+{% block content %}
+<h1>Провайдеры</h1>
+{% include "admin/_nav.html" %}
+
+<p class="admin-summary">
+  Всего записей: {{ providers|length }} · Отзывов на модерации:
+  <a href="/admin/reviews">{{ pending_count }}</a> · Методов в справочнике:
+  <a href="/admin/methods">{{ methods_count }}</a>
+</p>
+
+<p><a class="btn btn-primary" href="/admin/providers/new">Добавить провайдера</a></p>
+
+<div class="table-wrap">
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>Название</th>
+        <th>Тип</th>
+        <th>Город</th>
+        <th>Оплата</th>
+        <th>Оценка</th>
+        <th>Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in providers %}
+        <tr>
+          <td>
+            <a href="/providers/{{ p.id }}">{{ p.name }}</a>
+            {% if p.is_test %}<span class="chip chip-test">тест</span>{% endif %}
+            {% if p.specialty %}<div class="muted">{{ p.specialty }}</div>{% endif %}
+          </td>
+          <td>{{ PROVIDER_TYPES.get(p.provider_type, p.provider_type) }}</td>
+          <td>{{ p.city }}</td>
+          <td>{{ PRICING.get(p.pricing, p.pricing) }}</td>
+          <td>{{ ui.rating(p.rating_avg, p.reviews_count) }}</td>
+          <td class="row-actions">
+            <a class="btn btn-small" href="/admin/providers/{{ p.id }}/edit">Изменить</a>
+            <form method="post" action="/admin/providers/{{ p.id }}/delete"
+                  onsubmit="return confirm('Удалить провайдера «{{ p.name }}»? Вместе с ним удалятся его отзывы.');">
+              <button type="submit" class="btn btn-small btn-danger">Удалить</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

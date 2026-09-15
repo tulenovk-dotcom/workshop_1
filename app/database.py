@@ -1,0 +1,81 @@
+import sqlite3
+from contextlib import contextmanager
+from pathlib import Path
+
+DB_PATH = Path(__file__).resolve().parent.parent / "catalog.db"
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS methods (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    evidence_level TEXT NOT NULL DEFAULT 'limited',
+    sort_order INTEGER NOT NULL DEFAULT 100
+);
+
+CREATE TABLE IF NOT EXISTS providers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    provider_type TEXT NOT NULL,
+    name TEXT NOT NULL,
+    specialty TEXT,
+    city TEXT NOT NULL,
+    district TEXT,
+    address TEXT,
+    phone TEXT,
+    whatsapp TEXT,
+    website TEXT,
+    instagram TEXT,
+    age_from INTEGER,
+    age_to INTEGER,
+    price_from INTEGER,
+    price_to INTEGER,
+    pricing TEXT NOT NULL DEFAULT 'paid',
+    has_state_funding INTEGER NOT NULL DEFAULT 0,
+    description TEXT NOT NULL DEFAULT '',
+    is_test INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS provider_methods (
+    provider_id INTEGER NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
+    method_id INTEGER NOT NULL REFERENCES methods(id) ON DELETE CASCADE,
+    PRIMARY KEY (provider_id, method_id)
+);
+
+CREATE TABLE IF NOT EXISTS reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    provider_id INTEGER NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
+    author_name TEXT NOT NULL,
+    rating INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    author_ip TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_reviews_provider ON reviews(provider_id, status);
+CREATE INDEX IF NOT EXISTS idx_reviews_ip ON reviews(provider_id, author_ip, created_at);
+"""
+
+
+def get_connection() -> sqlite3.Connection:
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn
+
+
+@contextmanager
+def db_session():
+    conn = get_connection()
+    try:
+        yield conn
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def init_db() -> None:
+    with db_session() as conn:
+        conn.executescript(SCHEMA)

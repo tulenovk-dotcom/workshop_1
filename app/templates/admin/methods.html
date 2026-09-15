@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Админка — справочник методов{% endblock %}
+
+{% block content %}
+<h1>Справочник методов</h1>
+{% include "admin/_nav.html" %}
+
+<div class="table-wrap">
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>Порядок</th>
+        <th>Код</th>
+        <th>Название</th>
+        <th>Уровень доказательности</th>
+        <th>Действия</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in methods %}
+        <tr>
+          <td>{{ m.sort_order }}</td>
+          <td><code>{{ m.code }}</code></td>
+          <td>{{ m.name }}<div class="muted">{{ m.description|truncate(120) }}</div></td>
+          <td><span class="badge {{ EVIDENCE_LEVELS[m.evidence_level].css }}">{{ EVIDENCE_LEVELS[m.evidence_level].label }}</span></td>
+          <td class="row-actions">
+            <a class="btn btn-small" href="/admin/methods/{{ m.id }}/edit">Изменить</a>
+            <form method="post" action="/admin/methods/{{ m.id }}/delete"
+                  onsubmit="return confirm('Удалить метод «{{ m.name }}» из справочника?');">
+              <button type="submit" class="btn btn-small btn-danger">Удалить</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h2>{{ 'Изменить метод' if method else 'Добавить метод' }}</h2>
+
+{% set action = '/admin/methods/' ~ method.id ~ '/edit' if method else '/admin/methods/new' %}
+<form class="admin-form" method="post" action="{{ action }}">
+  <div class="field">
+    <label for="code">Код *</label>
+    <input type="text" id="code" name="code" required
+           value="{{ method.code if method else '' }}" placeholder="например aba">
+  </div>
+
+  <div class="field">
+    <label for="name">Название *</label>
+    <input type="text" id="name" name="name" required
+           value="{{ method.name if method else '' }}">
+  </div>
+
+  <div class="field">
+    <label for="evidence_level">Уровень доказательности</label>
+    <select id="evidence_level" name="evidence_level">
+      {% for code, info in EVIDENCE_LEVELS.items() %}
+        <option value="{{ code }}"
+          {% if method and method.evidence_level == code %}selected{% endif %}>{{ info.label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="field">
+    <label for="sort_order">Порядок вывода</label>
+    <input type="number" id="sort_order" name="sort_order" min="1"
+           value="{{ method.sort_order if method else 100 }}">
+  </div>
+
+  <div class="field field-wide">
+    <label for="description">Описание простым языком</label>
+    <textarea id="description" name="description" rows="4">{{ method.description if method else '' }}</textarea>
+  </div>
+
+  <div class="filter-actions">
+    <button type="submit" class="btn btn-primary">Сохранить</button>
+    {% if method %}<a class="btn btn-ghost" href="/admin/methods">Отмена</a>{% endif %}
+  </div>
+</form>
+{% endblock %}
