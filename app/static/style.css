@@ -74,6 +74,27 @@ a { color: var(--accent); }
   font-size: 0.95rem;
 }
 
+.header-auth {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-link {
+  padding: 7px 15px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--accent);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.auth-link:hover { background: #eef2f7; }
+
+.auth-link-quiet { color: var(--muted); border-color: transparent; }
+
 .site-footer {
   margin-top: 48px;
   padding: 24px 0 32px;

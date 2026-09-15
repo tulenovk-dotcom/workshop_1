@@ -16,6 +16,14 @@
       <a href="/methods">Методы помощи</a>
       <a href="/free-help">Помощь бесплатно</a>
     </nav>
+    <div class="header-auth">
+      {% if request.session.get('admin') %}
+        <a class="auth-link" href="/admin">Админка</a>
+        <a class="auth-link auth-link-quiet" href="/admin/logout">Выйти</a>
+      {% else %}
+        <a class="auth-link" href="/admin/login">Вход</a>
+      {% endif %}
+    </div>
   </div>
 </header>
 
