@@ -63,6 +63,11 @@ def get_connection() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    # Встроенный LOWER() в SQLite понижает регистр только у латиницы,
+    # поэтому поиск по названиям использует питоновский str.lower.
+    conn.create_function(
+        "lower_ru", 1, lambda value: value.lower() if value else value, deterministic=True
+    )
     return conn
 
 

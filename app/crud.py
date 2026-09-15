@@ -125,8 +125,8 @@ def search_providers(conn: sqlite3.Connection, f: dict) -> list[sqlite3.Row]:
     params: list = []
 
     if f.get("q"):
-        sql.append("AND p.name LIKE ?")
-        params.append(f"%{f['q']}%")
+        sql.append("AND lower_ru(p.name) LIKE ?")
+        params.append(f"%{f['q'].lower()}%")
     if f.get("city"):
         sql.append("AND p.city = ?")
         params.append(f["city"])
