@@ -152,11 +152,6 @@ def search_providers(conn: sqlite3.Connection, f: dict) -> list[sqlite3.Row]:
     if f.get("pricing"):
         sql.append("AND p.pricing = ?")
         params.append(f["pricing"])
-    if f.get("max_price") is not None:
-        sql.append(
-            "AND (p.pricing = 'free' OR p.price_from IS NULL OR p.price_from <= ?)"
-        )
-        params.append(f["max_price"])
     if f.get("proven_only"):
         # Провайдер работает доказательными методами и не предлагает методы
         # без подтверждённой эффективности.

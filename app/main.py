@@ -160,7 +160,6 @@ def index(
     method: str = "",
     specialty: str = "",
     age: str = "",
-    max_price: str = "",
     pricing: str = "",
     proven_only: str = "",
 ):
@@ -171,7 +170,6 @@ def index(
         "method": method,
         "specialty": specialty,
         "age": parse_int(age),
-        "max_price": parse_int(max_price),
         "pricing": pricing if pricing in PRICING else "",
         "proven_only": bool(proven_only),
     }
@@ -192,7 +190,6 @@ def index(
                 "method": method,
                 "specialty": specialty,
                 "age": age,
-                "max_price": max_price,
                 "pricing": pricing,
                 "proven_only": bool(proven_only),
             },
