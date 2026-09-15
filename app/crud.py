@@ -19,6 +19,7 @@ PROVIDER_FIELDS = (
     "pricing",
     "has_state_funding",
     "description",
+    "logo_path",
     "is_test",
 )
 

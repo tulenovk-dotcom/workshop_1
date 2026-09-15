@@ -115,15 +115,18 @@
         {{ ui.rating(p.rating_avg, p.reviews_count) }}
       </div>
 
-      <h2 class="card-title">
-        <a href="/providers/{{ p.id }}">{{ p.name }}</a>
-      </h2>
-
-      {% if p.specialty %}<p class="card-specialty">{{ p.specialty }}</p>{% endif %}
-
-      <p class="card-meta">
-        {{ p.city }}{% if p.district %}, {{ p.district }}{% endif %}
-      </p>
+      <div class="card-top">
+        {{ ui.logo(p, 'sm') }}
+        <div class="card-heading">
+          <h2 class="card-title">
+            <a href="/providers/{{ p.id }}">{{ p.name }}</a>
+          </h2>
+          {% if p.specialty %}<p class="card-specialty">{{ p.specialty }}</p>{% endif %}
+          <p class="card-meta">
+            {{ p.city }}{% if p.district %}, {{ p.district }}{% endif %}
+          </p>
+        </div>
+      </div>
 
       <ul class="card-facts">
         <li>Возраст: {{ ui.age_line(p) }}</li>

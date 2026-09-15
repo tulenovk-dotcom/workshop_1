@@ -26,6 +26,7 @@ TEST_PROVIDERS = [
         "description": "Коррекционный центр с программой на основе ABA. Занятия "
         "индивидуальные и в малых группах, есть сопровождение семьи и обучение "
         "родителей.",
+        "logo_path": "/static/demo/demo-center.png",
         "methods": ["aba", "speech", "parent", "pecs"],
     },
     {
@@ -111,6 +112,7 @@ TEST_PROVIDERS = [
         "has_state_funding": 0,
         "description": "Детский невролог. Консультация, наблюдение, "
         "рекомендации по программе помощи и сопровождению ребёнка.",
+        "logo_path": "/static/demo/demo-specialist.png",
         "methods": ["parent"],
     },
     {
@@ -312,6 +314,7 @@ def seed_if_empty() -> None:
         for item in TEST_PROVIDERS:
             data = {key: value for key, value in item.items() if key != "methods"}
             data["is_test"] = 1
+            data.setdefault("logo_path", "")
             crud.create_provider(
                 conn,
                 data,

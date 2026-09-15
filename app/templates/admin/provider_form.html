@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros.html" as ui %}
 
 {% block title %}{{ title }}{% endblock %}
 
@@ -8,7 +9,8 @@
 
 {% set action = '/admin/providers/' ~ provider.id ~ '/edit' if provider else '/admin/providers/new' %}
 
-<form class="admin-form" method="post" action="{{ action }}">
+<form class="admin-form" method="post" action="{{ action }}"
+      enctype="multipart/form-data">
   <div class="field">
     <label for="provider_type">Тип провайдера</label>
     <select id="provider_type" name="provider_type">
@@ -122,6 +124,24 @@
              {% if provider and provider.is_test %}checked{% endif %}>
       Тестовая запись
     </label>
+  </div>
+
+  <div class="field field-wide logo-field">
+    <label for="logo">Фото или логотип</label>
+    <div class="logo-field-row">
+      {% if provider %}{{ ui.logo(provider, 'md') }}{% endif %}
+      <div class="logo-field-controls">
+        <input type="file" id="logo" name="logo" accept="image/png,image/jpeg,image/webp,image/gif">
+        <p class="hint">PNG, JPEG, WebP или GIF, до 2 МБ. Если не выбирать файл,
+          текущее изображение останется. Без изображения показываются инициалы.</p>
+        {% if provider and provider.logo_path %}
+          <label class="checkbox">
+            <input type="checkbox" name="remove_logo" value="1">
+            Удалить текущее изображение
+          </label>
+        {% endif %}
+      </div>
+    </div>
   </div>
 
   <div class="field field-wide">

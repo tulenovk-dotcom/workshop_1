@@ -3,6 +3,18 @@
   <span class="badge {{ info.css }}">{{ info.label }}</span>
 {% endmacro %}
 
+{% macro logo(provider, size) %}
+  {% if provider.logo_path %}
+    <img class="logo-img logo-{{ size }}" src="{{ provider.logo_path }}"
+         alt="Фото или логотип: {{ provider.name }}" loading="lazy">
+  {% else %}
+    {% set h = provider.name|hue %}
+    <span class="logo-img logo-{{ size }} logo-fallback" aria-hidden="true"
+          style="background: hsl({{ h }} 45% 93%); color: hsl({{ h }} 40% 32%)">
+      {{ provider.name|initials }}</span>
+  {% endif %}
+{% endmacro %}
+
 {% macro rating(value, count) %}
   {% if count %}
     <span class="rating"><span class="star">★</span>{{ '%.1f'|format(value) }}

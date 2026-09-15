@@ -1,6 +1,7 @@
 import os
 import re
 import secrets
+import zlib
 from pathlib import Path
 
 from fastapi import FastAPI, Form, HTTPException, Request
@@ -21,6 +22,8 @@ from .reference import (
 from .seed import seed_if_empty
 
 BASE_DIR = Path(__file__).resolve().parent
+UPLOAD_DIR = BASE_DIR / "static" / "uploads"
+MAX_LOGO_BYTES = 2 * 1024 * 1024
 ADMIN_LOGIN = os.environ.get("ADMIN_LOGIN", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin")
 REDIRECT = 303
@@ -73,7 +76,45 @@ def instagram_link(value: str | None) -> str:
     return f"https://instagram.com/{value.lstrip('@')}"
 
 
+def initials(name: str) -> str:
+    parts = [part for part in re.split(r"\W+", name or "", flags=re.UNICODE) if part]
+    return "".join(part[0].upper() for part in parts[:2]) or "?"
+
+
+def name_hue(name: str) -> int:
+    """Стабильный оттенок для плашки с инициалами, когда фото не загружено."""
+    return zlib.crc32((name or "").encode("utf-8")) % 360
+
+
+def image_extension(data: bytes) -> str | None:
+    """Расширение по сигнатуре файла: имени и content-type из браузера верить нельзя."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return ".png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return ".jpg"
+    if data.startswith((b"GIF87a", b"GIF89a")):
+        return ".gif"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return ".webp"
+    return None
+
+
+async def save_logo(upload, current: str) -> str:
+    if upload is None or not getattr(upload, "filename", ""):
+        return current
+    data = await upload.read(MAX_LOGO_BYTES + 1)
+    extension = image_extension(data)
+    if extension is None or len(data) > MAX_LOGO_BYTES:
+        return current
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    name = f"{secrets.token_hex(8)}{extension}"
+    (UPLOAD_DIR / name).write_bytes(data)
+    return f"/static/uploads/{name}"
+
+
 templates.env.filters["price"] = format_price
+templates.env.filters["initials"] = initials
+templates.env.filters["hue"] = name_hue
 templates.env.filters["wa_link"] = wa_link
 templates.env.filters["site_link"] = site_link
 templates.env.filters["instagram_link"] = instagram_link
@@ -272,7 +313,9 @@ def admin_dashboard(request: Request):
     return render(request, "admin/providers.html", context)
 
 
-def provider_form_data(form, method_codes: list[str]) -> tuple[dict, list[int]]:
+def provider_form_data(
+    form, method_codes: list[str], logo_path: str
+) -> tuple[dict, list[int]]:
     data = {
         "provider_type": form["provider_type"],
         "name": form["name"].strip(),
@@ -291,6 +334,7 @@ def provider_form_data(form, method_codes: list[str]) -> tuple[dict, list[int]]:
         "pricing": form["pricing"] if form["pricing"] in PRICING else "paid",
         "has_state_funding": 1 if form["has_state_funding"] else 0,
         "description": form["description"].strip(),
+        "logo_path": logo_path,
         "is_test": 1 if form["is_test"] else 0,
     }
     method_ids = [int(code) for code in method_codes if code.isdigit()]
@@ -320,8 +364,9 @@ async def admin_provider_create(request: Request):
     if guard := require_admin(request):
         return guard
     form = await request.form()
+    logo_path = await save_logo(form.get("logo"), "")
     data, method_ids = provider_form_data(
-        _form_defaults(form), form.getlist("methods")
+        _form_defaults(form), form.getlist("methods"), logo_path
     )
     if not data["name"] or not data["city"]:
         return RedirectResponse("/admin/providers/new?error=1", status_code=REDIRECT)
@@ -352,16 +397,23 @@ async def admin_provider_update(request: Request, provider_id: int):
     if guard := require_admin(request):
         return guard
     form = await request.form()
+    with db_session() as conn:
+        existing = crud.get_provider(conn, provider_id)
+    if existing is None:
+        raise HTTPException(status_code=404, detail="Провайдер не найден")
+
+    logo_path = (
+        "" if form.get("remove_logo")
+        else await save_logo(form.get("logo"), existing["logo_path"] or "")
+    )
     data, method_ids = provider_form_data(
-        _form_defaults(form), form.getlist("methods")
+        _form_defaults(form), form.getlist("methods"), logo_path
     )
     if not data["name"] or not data["city"]:
         return RedirectResponse(
             f"/admin/providers/{provider_id}/edit?error=1", status_code=REDIRECT
         )
     with db_session() as conn:
-        if crud.get_provider(conn, provider_id) is None:
-            raise HTTPException(status_code=404, detail="Провайдер не найден")
         crud.update_provider(conn, provider_id, data, method_ids)
     return RedirectResponse("/admin", status_code=REDIRECT)
 

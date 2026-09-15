@@ -257,6 +257,46 @@ input:focus, select:focus, textarea:focus {
   gap: 8px;
 }
 
+/* --- Фото и логотипы --- */
+
+.logo-img {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  object-fit: cover;
+  background: #eef2f7;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  overflow: hidden;
+}
+
+.logo-xs { width: 34px; height: 34px; font-size: 0.75rem; border-radius: 9px; }
+.logo-sm { width: 56px; height: 56px; font-size: 1.05rem; }
+.logo-md { width: 72px; height: 72px; font-size: 1.3rem; }
+.logo-lg { width: 92px; height: 92px; font-size: 1.7rem; border-radius: 16px; }
+
+.card-top { display: flex; gap: 12px; align-items: flex-start; }
+.card-heading { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+
+.provider-head {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.provider-head h1 { margin: 0 0 4px; }
+.provider-head .provider-specialty { margin: 0; }
+
+.table-name { display: flex; gap: 10px; align-items: flex-start; }
+
+.logo-field-row { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+.logo-field-controls { display: flex; flex-direction: column; gap: 8px; min-width: 240px; flex: 1; }
+.logo-field-controls .hint { margin: 0; }
+
 .card-title { font-size: 1.1rem; margin: 0; }
 .card-title a { text-decoration: none; }
 .card-title a:hover { text-decoration: underline; }

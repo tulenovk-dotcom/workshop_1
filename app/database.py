@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS providers (
     pricing TEXT NOT NULL DEFAULT 'paid',
     has_state_funding INTEGER NOT NULL DEFAULT 0,
     description TEXT NOT NULL DEFAULT '',
+    logo_path TEXT NOT NULL DEFAULT '',
     is_test INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
 );
@@ -84,3 +85,8 @@ def db_session():
 def init_db() -> None:
     with db_session() as conn:
         conn.executescript(SCHEMA)
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(providers)")}
+        if "logo_path" not in columns:
+            conn.execute(
+                "ALTER TABLE providers ADD COLUMN logo_path TEXT NOT NULL DEFAULT ''"
+            )

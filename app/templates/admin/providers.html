@@ -31,9 +31,14 @@
       {% for p in providers %}
         <tr>
           <td>
-            <a href="/providers/{{ p.id }}">{{ p.name }}</a>
-            {% if p.is_test %}<span class="chip chip-test">тест</span>{% endif %}
-            {% if p.specialty %}<div class="muted">{{ p.specialty }}</div>{% endif %}
+            <div class="table-name">
+              {{ ui.logo(p, 'xs') }}
+              <div>
+                <a href="/providers/{{ p.id }}">{{ p.name }}</a>
+                {% if p.is_test %}<span class="chip chip-test">тест</span>{% endif %}
+                {% if p.specialty %}<div class="muted">{{ p.specialty }}</div>{% endif %}
+              </div>
+            </div>
           </td>
           <td>{{ PROVIDER_TYPES.get(p.provider_type, p.provider_type) }}</td>
           <td>{{ p.city }}</td>

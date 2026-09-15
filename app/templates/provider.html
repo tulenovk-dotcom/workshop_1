@@ -13,8 +13,13 @@
     {{ ui.rating(provider.rating_avg, provider.reviews_count) }}
   </div>
 
-  <h1>{{ provider.name }}</h1>
-  {% if provider.specialty %}<p class="provider-specialty">{{ provider.specialty }}</p>{% endif %}
+  <div class="provider-head">
+    {{ ui.logo(provider, 'lg') }}
+    <div>
+      <h1>{{ provider.name }}</h1>
+      {% if provider.specialty %}<p class="provider-specialty">{{ provider.specialty }}</p>{% endif %}
+    </div>
+  </div>
 
   {% if provider.description %}
     <p class="provider-description">{{ provider.description }}</p>
