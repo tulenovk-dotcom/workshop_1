@@ -160,7 +160,6 @@ def index(
     method: str = "",
     specialty: str = "",
     age: str = "",
-    pricing: str = "",
     proven_only: str = "",
 ):
     filters = {
@@ -170,7 +169,6 @@ def index(
         "method": method,
         "specialty": specialty,
         "age": parse_int(age),
-        "pricing": pricing if pricing in PRICING else "",
         "proven_only": bool(proven_only),
     }
     with db_session() as conn:
@@ -190,7 +188,6 @@ def index(
                 "method": method,
                 "specialty": specialty,
                 "age": age,
-                "pricing": pricing,
                 "proven_only": bool(proven_only),
             },
         }

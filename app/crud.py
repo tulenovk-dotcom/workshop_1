@@ -149,9 +149,6 @@ def search_providers(conn: sqlite3.Connection, f: dict) -> list[sqlite3.Row]:
             " AND (p.age_to IS NULL OR p.age_to >= ?)"
         )
         params.extend([f["age"], f["age"]])
-    if f.get("pricing"):
-        sql.append("AND p.pricing = ?")
-        params.append(f["pricing"])
     if f.get("proven_only"):
         # Провайдер работает доказательными методами и не предлагает методы
         # без подтверждённой эффективности.

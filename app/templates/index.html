@@ -64,16 +64,6 @@
            value="{{ raw.age }}" placeholder="лет">
   </div>
 
-  <div class="field">
-    <label for="pricing">Оплата</label>
-    <select id="pricing" name="pricing">
-      <option value="">Не важно</option>
-      {% for code, label in PRICING.items() %}
-        <option value="{{ code }}" {% if raw.pricing == code %}selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
-  </div>
-
   <div class="field field-check">
     <label class="switch-row">
       <span class="switch">
