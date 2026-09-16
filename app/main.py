@@ -208,7 +208,7 @@ def provider_detail(request: Request, provider_id: int, review: str = ""):
     with db_session() as conn:
         provider = crud.get_provider(conn, provider_id)
         if provider is None:
-            raise HTTPException(status_code=404, detail="Провайдер не найден")
+            raise HTTPException(status_code=404, detail="Запись не найдена")
         context = {
             "provider": provider,
             "methods": crud.methods_for_providers(conn, [provider_id])[provider_id],
@@ -238,7 +238,7 @@ def add_review(
 
     with db_session() as conn:
         if crud.get_provider(conn, provider_id) is None:
-            raise HTTPException(status_code=404, detail="Провайдер не найден")
+            raise HTTPException(status_code=404, detail="Запись не найдена")
         if crud.has_recent_review_from_ip(conn, provider_id, client_ip):
             return RedirectResponse(
                 f"/providers/{provider_id}?review=limit#reviews", status_code=REDIRECT
@@ -385,7 +385,7 @@ def admin_provider_edit(request: Request, provider_id: int):
     with db_session() as conn:
         provider = crud.get_provider(conn, provider_id)
         if provider is None:
-            raise HTTPException(status_code=404, detail="Провайдер не найден")
+            raise HTTPException(status_code=404, detail="Запись не найдена")
         context = {
             "provider": provider,
             "methods": crud.list_methods(conn),
@@ -403,7 +403,7 @@ async def admin_provider_update(request: Request, provider_id: int):
     with db_session() as conn:
         existing = crud.get_provider(conn, provider_id)
     if existing is None:
-        raise HTTPException(status_code=404, detail="Провайдер не найден")
+        raise HTTPException(status_code=404, detail="Запись не найдена")
 
     logo_path = (
         "" if form.get("remove_logo")

@@ -17,7 +17,7 @@
           <span class="review-date">{{ r.created_at[:10] }}</span>
         </div>
         <p class="muted">
-          Провайдер: <a href="/providers/{{ r.provider_id }}">{{ r.provider_name }}</a>
+          Место занятий: <a href="/providers/{{ r.provider_id }}">{{ r.provider_name }}</a>
         </p>
         <p>{{ r.text }}</p>
         <div class="row-actions">
@@ -45,7 +45,7 @@
           <span class="review-rating">{{ '★' * r.rating }}{{ '☆' * (5 - r.rating) }}</span>
           <span class="review-date">{{ r.created_at[:10] }}</span>
         </div>
-        <p class="muted">Провайдер: {{ r.provider_name }}</p>
+        <p class="muted">Место занятий: {{ r.provider_name }}</p>
         <p>{{ r.text }}</p>
         <div class="row-actions">
           <form method="post" action="/admin/reviews/{{ r.id }}/reject">
@@ -69,7 +69,7 @@
           <span class="review-rating">{{ '★' * r.rating }}{{ '☆' * (5 - r.rating) }}</span>
           <span class="review-date">{{ r.created_at[:10] }}</span>
         </div>
-        <p class="muted">Провайдер: {{ r.provider_name }}</p>
+        <p class="muted">Место занятий: {{ r.provider_name }}</p>
         <p>{{ r.text }}</p>
         <div class="row-actions">
           <form method="post" action="/admin/reviews/{{ r.id }}/approve">
