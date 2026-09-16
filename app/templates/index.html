@@ -5,11 +5,14 @@
 <section class="intro">
   <h1>Где получить помощь ребёнку с РАС в Казахстане</h1>
   <p>
-    Клиники, коррекционные центры, врачи и отдельные специалисты. У каждого
-    метода указан уровень доказательности, чтобы родителям было проще
-    выбирать программу помощи.
+    Реабилитационные центры, медицинские клиники, частные специалисты,
+    коррекционные детские сады, школы и государственные организации.
+    У каждого метода указан уровень доказательности, чтобы родителям было
+    проще выбирать программу помощи.
   </p>
 </section>
+
+<h2 class="filters-title">Подобрать помощь</h2>
 
 <form class="filters" method="get" action="/">
   <div class="field field-wide">
@@ -29,9 +32,9 @@
   </div>
 
   <div class="field">
-    <label for="provider_type">Тип провайдера</label>
+    <label for="provider_type">Где заниматься</label>
     <select id="provider_type" name="provider_type">
-      <option value="">Любой</option>
+      <option value="">Все варианты</option>
       {% for code, label in PROVIDER_TYPES.items() %}
         <option value="{{ code }}" {% if raw.provider_type == code %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
@@ -41,7 +44,7 @@
   <div class="field">
     <label for="specialty">Специальность</label>
     <select id="specialty" name="specialty">
-      <option value="">Любая</option>
+      <option value="">Все специальности</option>
       {% for s in SPECIALTIES %}
         <option value="{{ s }}" {% if raw.specialty == s %}selected{% endif %}>{{ s }}</option>
       {% endfor %}
@@ -51,8 +54,8 @@
   <div class="field">
     <label for="method">Метод</label>
     <select id="method" name="method">
-      <option value="">Любой метод</option>
-      {% for m in all_methods %}
+      <option value="">Все методы</option>
+      {% for m in filter_methods %}
         <option value="{{ m.code }}" {% if raw.method == m.code %}selected{% endif %}>{{ m.name }}</option>
       {% endfor %}
     </select>
@@ -60,8 +63,12 @@
 
   <div class="field">
     <label for="age">Возраст ребёнка</label>
-    <input type="number" id="age" name="age" min="0" max="18"
-           value="{{ raw.age }}" placeholder="лет">
+    <select id="age" name="age">
+      <option value="">Любой возраст</option>
+      {% for code, label, low, high in age_ranges %}
+        <option value="{{ code }}" {% if raw.age == code %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
   </div>
 
   <div class="field field-check">
@@ -109,7 +116,7 @@
         </div>
 
         <p class="pc-line">
-          <span class="pc-key">Тип:</span>
+          <span class="pc-key">Где заниматься:</span>
           {{ PROVIDER_TYPES.get(p.provider_type, p.provider_type) }}{% if p.specialty %}, {{ p.specialty }}{% endif %}
           {% if p.is_test %}<span class="chip chip-test">тестовая запись</span>{% endif %}
         </p>

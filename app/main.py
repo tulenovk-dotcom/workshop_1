@@ -13,7 +13,10 @@ from starlette.middleware.sessions import SessionMiddleware
 from . import crud
 from .database import db_session, init_db
 from .reference import (
+    AGE_RANGE_BOUNDS,
+    AGE_RANGES,
     EVIDENCE_LEVELS,
+    FILTER_METHOD_CODES,
     PRICING,
     PROVIDER_TYPES,
     SPECIALTIES,
@@ -162,22 +165,28 @@ def index(
     age: str = "",
     proven_only: str = "",
 ):
+    # Пустое значение любого фильтра означает «показать все результаты».
+    age_range = AGE_RANGE_BOUNDS.get(age)
     filters = {
         "q": q.strip(),
         "city": city,
         "provider_type": provider_type,
         "method": method,
         "specialty": specialty,
-        "age": parse_int(age),
+        "age_range": age_range,
         "proven_only": bool(proven_only),
     }
     with db_session() as conn:
         providers = crud.search_providers(conn, filters)
         methods_map = crud.methods_for_providers(conn, [p["id"] for p in providers])
+        by_code = {row["code"]: row for row in crud.list_methods(conn)}
         context = {
             "providers": providers,
             "methods_map": methods_map,
-            "all_methods": crud.list_methods(conn),
+            "filter_methods": [
+                by_code[code] for code in FILTER_METHOD_CODES if code in by_code
+            ],
+            "age_ranges": AGE_RANGES,
             "cities": crud.cities(conn),
             "specialties": crud.specialties_in_use(conn),
             "filters": filters,
@@ -187,7 +196,7 @@ def index(
                 "provider_type": provider_type,
                 "method": method,
                 "specialty": specialty,
-                "age": age,
+                "age": age if age_range else "",
                 "proven_only": bool(proven_only),
             },
         }
@@ -348,7 +357,7 @@ def admin_provider_new(request: Request):
             "provider": None,
             "methods": methods,
             "selected_methods": set(),
-            "title": "Новый провайдер",
+            "title": "Новое место занятий",
         },
     )
 
@@ -381,7 +390,7 @@ def admin_provider_edit(request: Request, provider_id: int):
             "provider": provider,
             "methods": crud.list_methods(conn),
             "selected_methods": crud.provider_method_ids(conn, provider_id),
-            "title": "Редактирование провайдера",
+            "title": "Редактирование места занятий",
         }
     return render(request, "admin/provider_form.html", context)
 

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% import "_macros.html" as ui %}
 
-{% block title %}Админка — провайдеры{% endblock %}
+{% block title %}Админка — где заниматься{% endblock %}
 
 {% block content %}
 <h1>Провайдеры</h1>
@@ -13,14 +13,14 @@
   <a href="/admin/methods">{{ methods_count }}</a>
 </p>
 
-<p><a class="btn btn-primary" href="/admin/providers/new">Добавить провайдера</a></p>
+<p><a class="btn btn-primary" href="/admin/providers/new">Добавить место занятий</a></p>
 
 <div class="table-wrap">
   <table class="admin-table">
     <thead>
       <tr>
         <th>Название</th>
-        <th>Тип</th>
+        <th>Где заниматься</th>
         <th>Город</th>
         <th>Оплата</th>
         <th>Оценка</th>
@@ -47,7 +47,7 @@
           <td class="row-actions">
             <a class="btn btn-small" href="/admin/providers/{{ p.id }}/edit">Изменить</a>
             <form method="post" action="/admin/providers/{{ p.id }}/delete"
-                  onsubmit="return confirm('Удалить провайдера «{{ p.name }}»? Вместе с ним удалятся его отзывы.');">
+                  onsubmit="return confirm('Удалить запись «{{ p.name }}»? Вместе с ней удалятся её отзывы.');">
               <button type="submit" class="btn btn-small btn-danger">Удалить</button>
             </form>
           </td>

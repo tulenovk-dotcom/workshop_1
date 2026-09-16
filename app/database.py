@@ -83,6 +83,12 @@ def db_session():
 
 
 def init_db() -> None:
+    from .reference import (
+        DEFAULT_METHODS,
+        PROVIDER_TYPE_MIGRATION,
+        SPECIALTY_MIGRATION,
+    )
+
     with db_session() as conn:
         conn.executescript(SCHEMA)
         columns = {row["name"] for row in conn.execute("PRAGMA table_info(providers)")}
@@ -90,3 +96,33 @@ def init_db() -> None:
             conn.execute(
                 "ALTER TABLE providers ADD COLUMN logo_path TEXT NOT NULL DEFAULT ''"
             )
+
+        # Справочники мест занятий и специальностей обновились — приводим
+        # уже сохранённые записи к новым значениям.
+        for old_code, new_code in PROVIDER_TYPE_MIGRATION.items():
+            conn.execute(
+                "UPDATE providers SET provider_type = ? WHERE provider_type = ?",
+                (new_code, old_code),
+            )
+        for old_name, new_name in SPECIALTY_MIGRATION.items():
+            conn.execute(
+                "UPDATE providers SET specialty = ? WHERE specialty = ?",
+                (new_name, old_name),
+            )
+
+        # Методы, добавленные в справочник после создания базы. Названия
+        # уже существующих методов не трогаем: их могли изменить в админке.
+        known = {row["code"] for row in conn.execute("SELECT code FROM methods")}
+        if known:
+            next_order = conn.execute(
+                "SELECT COALESCE(MAX(sort_order), 0) AS n FROM methods"
+            ).fetchone()["n"]
+            for code, name, level, description in DEFAULT_METHODS:
+                if code in known:
+                    continue
+                next_order += 1
+                conn.execute(
+                    "INSERT INTO methods (code, name, description, evidence_level,"
+                    " sort_order) VALUES (?, ?, ?, ?, ?)",
+                    (code, name, description, level, next_order),
+                )

@@ -12,7 +12,7 @@
 <form class="admin-form" method="post" action="{{ action }}"
       enctype="multipart/form-data">
   <div class="field">
-    <label for="provider_type">Тип провайдера</label>
+    <label for="provider_type">Где заниматься</label>
     <select id="provider_type" name="provider_type">
       {% for code, label in PROVIDER_TYPES.items() %}
         <option value="{{ code }}"
@@ -22,12 +22,16 @@
   </div>
 
   <div class="field">
-    <label for="specialty">Специальность (для врачей и специалистов)</label>
+    <label for="specialty">Специальность (для частных специалистов)</label>
     <select id="specialty" name="specialty">
       <option value="">Не указана</option>
       {% for s in SPECIALTIES %}
         <option value="{{ s }}" {% if provider and provider.specialty == s %}selected{% endif %}>{{ s }}</option>
       {% endfor %}
+      {# Значение, сохранённое до обновления справочника, не теряем. #}
+      {% if provider and provider.specialty and provider.specialty not in SPECIALTIES %}
+        <option value="{{ provider.specialty }}" selected>{{ provider.specialty }}</option>
+      {% endif %}
     </select>
   </div>
 

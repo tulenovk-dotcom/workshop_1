@@ -48,7 +48,7 @@ TEST_PROVIDERS = [
         "has_state_funding": 0,
         "description": "Занятия по развитию речи и бытовых навыков, сенсорный "
         "зал, адаптивная физкультура.",
-        "methods": ["speech", "ergo", "si", "adaptive_pe"],
+        "methods": ["speech", "ergo", "si", "adaptive_pe", "floortime"],
     },
     {
         "provider_type": "clinic",
@@ -94,9 +94,9 @@ TEST_PROVIDERS = [
         "methods": ["defect", "speech", "parent"],
     },
     {
-        "provider_type": "doctor",
+        "provider_type": "specialist",
         "name": "Ахметова Айгуль (тестовая запись)",
-        "specialty": "Невролог",
+        "specialty": "Детский невролог",
         "city": "Шымкент",
         "district": "Аль-Фарабийский район",
         "address": "ул. Демонстрационная, 18",
@@ -116,9 +116,9 @@ TEST_PROVIDERS = [
         "methods": ["parent"],
     },
     {
-        "provider_type": "doctor",
+        "provider_type": "specialist",
         "name": "Сериков Данияр (тестовая запись)",
-        "specialty": "Психиатр",
+        "specialty": "Детский психиатр",
         "city": "Алматы",
         "district": "Медеуский район",
         "address": "ул. Учебная, 90",
@@ -139,7 +139,7 @@ TEST_PROVIDERS = [
     {
         "provider_type": "specialist",
         "name": "Кошербаева Динара (тестовая запись)",
-        "specialty": "ABA-терапист",
+        "specialty": "АВА-терапевт",
         "city": "Караганда",
         "district": "район имени Казыбек би",
         "address": "выезд на дом и онлайн",
@@ -176,7 +176,7 @@ TEST_PROVIDERS = [
         "has_state_funding": 0,
         "description": "Логопед-дефектолог. Запуск речи, альтернативная "
         "коммуникация с карточками, домашние задания для семьи.",
-        "methods": ["speech", "pecs", "defect"],
+        "methods": ["speech", "pecs", "defect", "speech_massage"],
     },
     {
         "provider_type": "specialist",
@@ -218,7 +218,7 @@ TEST_PROVIDERS = [
         "has_state_funding": 0,
         "description": "Остеопатия и краниосакральные техники. Запись "
         "добавлена, чтобы показать метку уровня доказательности в карточке.",
-        "methods": ["osteo", "cranio"],
+        "methods": ["osteo", "cranio", "neuro"],
     },
     {
         "provider_type": "center",
@@ -260,7 +260,7 @@ TEST_PROVIDERS = [
         "has_state_funding": 1,
         "description": "Бесплатные группы раннего вмешательства, занятия с "
         "дефектологом и логопедом, школа для родителей.",
-        "methods": ["parent", "defect", "speech", "art"],
+        "methods": ["parent", "defect", "speech", "art", "montessori"],
     },
 ]
 

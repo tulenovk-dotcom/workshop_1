@@ -143,6 +143,11 @@ h3 { font-size: 1.05rem; margin: 20px 0 8px; }
 
 /* --- Фильтры --- */
 
+.filters-title {
+  margin: 24px 0 0;
+  font-size: 1.15rem;
+}
+
 .filters {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));

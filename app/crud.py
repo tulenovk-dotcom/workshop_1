@@ -143,12 +143,15 @@ def search_providers(conn: sqlite3.Connection, f: dict) -> list[sqlite3.Row]:
             " ON m.id = pm.method_id WHERE pm.provider_id = p.id AND m.code = ?)"
         )
         params.append(f["method"])
-    if f.get("age") is not None:
+    if f.get("age_range"):
+        # Провайдер подходит, если его диапазон возрастов пересекается
+        # с выбранной возрастной группой.
+        low, high = f["age_range"]
         sql.append(
             "AND (p.age_from IS NULL OR p.age_from <= ?)"
             " AND (p.age_to IS NULL OR p.age_to >= ?)"
         )
-        params.extend([f["age"], f["age"]])
+        params.extend([high, low])
     if f.get("proven_only"):
         # Провайдер работает доказательными методами и не предлагает методы
         # без подтверждённой эффективности.
