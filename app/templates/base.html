@@ -17,11 +17,10 @@
       <a href="/free-help">Помощь бесплатно</a>
     </nav>
     <div class="header-auth">
+      <a class="btn-outline" href="/dlya-specialistov">Для специалистов</a>
       {% if request.session.get('admin') %}
-        <a class="auth-link" href="/admin">Админка</a>
+        <a class="auth-link auth-link-quiet" href="/admin">Админка</a>
         <a class="auth-link auth-link-quiet" href="/admin/logout">Выйти</a>
-      {% else %}
-        <a class="auth-link" href="/admin/login">Вход</a>
       {% endif %}
     </div>
   </div>
@@ -39,6 +38,10 @@
     <p class="footer-note">
       Данные о местах занятий и отзывы размещают пользователи. Уточняйте
       актуальные цены, возраст детей и программу занятий напрямую на месте.
+    </p>
+    <p class="footer-links">
+      <a href="/dlya-specialistov">Разместить информацию о себе</a>
+      <a href="/privacy">Политика конфиденциальности</a>
     </p>
   </div>
 </footer>

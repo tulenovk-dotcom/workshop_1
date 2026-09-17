@@ -7,9 +7,76 @@
 <h1>Где заниматься</h1>
 {% include "admin/_nav.html" %}
 
+{% set mod = moderation_counts() %}
+<section class="moderation" id="moderation">
+  <h2>Требует проверки{% if mod.total %} ({{ mod.total }}){% endif %}</h2>
+
+  {% if not mod.total %}
+    <p class="notice notice-ok">Всё проверено.</p>
+  {% else %}
+    <div class="moderation-cols">
+      <div class="moderation-col">
+        <h3>Новые заявки ({{ mod.applications }})</h3>
+        {% if new_applications %}
+          <ul class="moderation-list">
+            {% for a in new_applications %}
+              <li>
+                <div class="moderation-head">
+                  <strong>{{ a.name }}</strong>
+                  <span class="muted">{{ a.city }} · {{ APPLICANT_KINDS.get(a.applicant_kind, a.applicant_kind) }}</span>
+                </div>
+                <p class="muted">{{ a.created_at[:10] }} · {{ a.contact_person }}</p>
+                <div class="row-actions">
+                  <a class="btn btn-small" href="/admin/applications/{{ a.id }}">Открыть</a>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+          <p class="hint"><a href="/admin/applications?status=new">Все новые заявки →</a></p>
+        {% else %}
+          <p class="hint">Новых заявок нет.</p>
+        {% endif %}
+      </div>
+
+      <div class="moderation-col">
+        <h3>Отзывы на модерации ({{ mod.reviews }})</h3>
+        {% if pending_reviews %}
+          <ul class="moderation-list">
+            {% for r in pending_reviews %}
+              <li>
+                <div class="moderation-head">
+                  <strong>{{ r.author_name }}</strong>
+                  <span class="review-rating">{{ '★' * r.rating }}{{ '☆' * (5 - r.rating) }}</span>
+                </div>
+                <p class="muted">{{ r.created_at[:10] }} ·
+                  <a href="/providers/{{ r.provider_id }}">{{ r.provider_name }}</a></p>
+                <p class="moderation-text">{{ r.text|truncate(160) }}</p>
+                <div class="row-actions">
+                  <form method="post" action="/admin/reviews/{{ r.id }}/approve">
+                    <input type="hidden" name="next" value="/admin">
+                    <button type="submit" class="btn btn-small btn-primary">Одобрить</button>
+                  </form>
+                  <form method="post" action="/admin/reviews/{{ r.id }}/reject">
+                    <input type="hidden" name="next" value="/admin">
+                    <button type="submit" class="btn btn-small btn-danger">Отклонить</button>
+                  </form>
+                  <a class="btn btn-small" href="/admin/reviews">Открыть</a>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+          <p class="hint"><a href="/admin/reviews">Все отзывы на модерации →</a></p>
+        {% else %}
+          <p class="hint">Отзывов на модерации нет.</p>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+</section>
+
+<h2>Все записи каталога</h2>
 <p class="admin-summary">
-  Всего записей: {{ providers|length }} · Отзывов на модерации:
-  <a href="/admin/reviews">{{ pending_count }}</a> · Методов в справочнике:
+  Всего записей: {{ providers|length }} · Методов в справочнике:
   <a href="/admin/methods">{{ methods_count }}</a>
 </p>
 

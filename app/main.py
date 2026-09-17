@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import secrets
@@ -12,11 +13,15 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from . import crud
 from .database import db_session, init_db
+from .notifications import notify_new_application
 from .reference import (
     AGE_RANGE_BOUNDS,
     AGE_RANGES,
+    APPLICANT_KINDS,
+    APPLICATION_STATUSES,
     EVIDENCE_LEVELS,
     FILTER_METHOD_CODES,
+    ORGANIZATION_TYPES,
     PRICING,
     PROVIDER_TYPES,
     SPECIALTIES,
@@ -27,6 +32,7 @@ from .seed import seed_if_empty
 BASE_DIR = Path(__file__).resolve().parent
 UPLOAD_DIR = BASE_DIR / "static" / "uploads"
 MAX_LOGO_BYTES = 2 * 1024 * 1024
+MAX_APPLICATIONS_PER_HOUR = 3
 ADMIN_LOGIN = os.environ.get("ADMIN_LOGIN", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin")
 REDIRECT = 303
@@ -79,6 +85,26 @@ def instagram_link(value: str | None) -> str:
     return f"https://instagram.com/{value.lstrip('@')}"
 
 
+def normalize_phone(value: str) -> str | None:
+    """Казахстанский номер к виду «+7 707 123 45 67».
+
+    Принимаются записи с +7, 8 и без кода страны. Все номера Казахстана
+    после кода страны начинаются с 6 или 7, этим и отсекаются чужие.
+    """
+    digits = re.sub(r"\D", "", value or "")
+    if len(digits) == 10 and digits[0] in "67":
+        digits = "7" + digits
+    elif len(digits) == 11 and digits[0] == "8":
+        digits = "7" + digits[1:]
+    if len(digits) != 11 or digits[0] != "7" or digits[1] not in "67":
+        return None
+    return f"+7 {digits[1:4]} {digits[4:7]} {digits[7:9]} {digits[9:]}"
+
+
+def looks_like_email(value: str) -> bool:
+    return bool(re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", value))
+
+
 def initials(name: str) -> str:
     parts = [part for part in re.split(r"\W+", name or "", flags=re.UNICODE) if part]
     return "".join(part[0].upper() for part in parts[:2]) or "?"
@@ -121,12 +147,29 @@ templates.env.filters["hue"] = name_hue
 templates.env.filters["wa_link"] = wa_link
 templates.env.filters["site_link"] = site_link
 templates.env.filters["instagram_link"] = instagram_link
+def moderation_counts() -> dict:
+    """Сколько всего ждёт проверки. Меню админки показывает счётчик на
+    каждой странице, поэтому считаем здесь, а не в каждом обработчике."""
+    with db_session() as conn:
+        reviews = crud.pending_count(conn)
+        applications = crud.new_applications_count(conn)
+    return {
+        "reviews": reviews,
+        "applications": applications,
+        "total": reviews + applications,
+    }
+
+
 templates.env.globals.update(
     PROVIDER_TYPES=PROVIDER_TYPES,
     EVIDENCE_LEVELS=EVIDENCE_LEVELS,
     PRICING=PRICING,
     SPECIALTIES=SPECIALTIES,
     TYPES_WITH_SPECIALTY=TYPES_WITH_SPECIALTY,
+    APPLICANT_KINDS=APPLICANT_KINDS,
+    APPLICATION_STATUSES=APPLICATION_STATUSES,
+    ORGANIZATION_TYPES=ORGANIZATION_TYPES,
+    moderation_counts=moderation_counts,
 )
 
 
@@ -274,6 +317,174 @@ def free_help(request: Request):
     return render(request, "free_help.html", {})
 
 
+@app.get("/privacy", response_class=HTMLResponse)
+def privacy(request: Request):
+    return render(request, "privacy.html", {})
+
+
+# --- Заявки на размещение ---------------------------------------------------
+
+def application_form_context(conn, form: dict, errors: list[str]) -> dict:
+    return {
+        "methods": crud.list_methods(conn),
+        "form": form,
+        "errors": errors,
+        "selected_methods": set(form.get("methods", [])),
+    }
+
+
+def clean_application(form: dict, known_codes: set[str]) -> tuple[dict, list[str]]:
+    """Разбор и проверка формы заявки. Возвращает данные и список ошибок."""
+    errors: list[str] = []
+    kind = form.get("applicant_kind", "")
+    if kind not in APPLICANT_KINDS:
+        errors.append("Выберите, кто вы: организация или частный специалист.")
+        kind = ""
+
+    name = form.get("org_name" if kind == "organization" else "person_name", "").strip()
+    if kind and not name:
+        errors.append(
+            "Укажите название организации."
+            if kind == "organization"
+            else "Укажите фамилию, имя и отчество."
+        )
+    if len(name) > 160:
+        errors.append("Название или ФИО не длиннее 160 символов.")
+
+    city = form.get("city", "").strip()
+    if not city:
+        errors.append("Укажите город.")
+    if len(city) > 80:
+        errors.append("Название города не длиннее 80 символов.")
+
+    contact_person = form.get("contact_person", "").strip()
+    if not contact_person:
+        errors.append("Укажите контактное лицо.")
+    if len(contact_person) > 120:
+        errors.append("Имя контактного лица не длиннее 120 символов.")
+
+    phone = normalize_phone(form.get("phone", ""))
+    if phone is None:
+        errors.append(
+            "Телефон должен быть казахстанским номером, например +7 701 234 56 78."
+        )
+
+    whatsapp_raw = form.get("whatsapp", "").strip()
+    whatsapp = normalize_phone(whatsapp_raw) if whatsapp_raw else ""
+    if whatsapp_raw and whatsapp is None:
+        errors.append("WhatsApp должен быть казахстанским номером или остаться пустым.")
+        whatsapp = ""
+
+    email = form.get("email", "").strip()
+    if email and not looks_like_email(email):
+        errors.append("Проверьте адрес электронной почты.")
+    if len(email) > 120:
+        errors.append("Адрес почты не длиннее 120 символов.")
+
+    comment = form.get("comment", "").strip()
+    if len(comment) > 2000:
+        errors.append("Комментарий не длиннее 2000 символов.")
+
+    if not form.get("consent"):
+        errors.append("Без согласия на обработку персональных данных заявку принять нельзя.")
+
+    age_from = parse_int(form.get("age_from", ""))
+    age_to = parse_int(form.get("age_to", ""))
+    if age_from is not None and age_to is not None and age_from > age_to:
+        errors.append("Возраст «от» больше, чем «до».")
+
+    pricing = "free" if form.get("pricing_free") else "paid"
+    price_from = None if pricing == "free" else parse_int(form.get("price_from", ""))
+    price_to = None if pricing == "free" else parse_int(form.get("price_to", ""))
+    if price_from is not None and price_to is not None and price_from > price_to:
+        errors.append("Стоимость «от» больше, чем «до».")
+
+    codes = [code for code in form.get("methods", []) if code in known_codes]
+
+    data = {
+        "applicant_kind": kind,
+        "name": name[:160],
+        "provider_type": (
+            form.get("provider_type", "") if kind == "organization" else ""
+        ),
+        "specialty": form.get("specialty", "") if kind == "specialist" else "",
+        "city": city[:80],
+        "address": form.get("address", "").strip()[:200],
+        "method_codes": json.dumps(codes, ensure_ascii=False),
+        "age_from": age_from,
+        "age_to": age_to,
+        "price_from": price_from,
+        "price_to": price_to,
+        "pricing": pricing,
+        "link": form.get("link", "").strip()[:200],
+        "contact_person": contact_person[:120],
+        "phone": phone or "",
+        "whatsapp": whatsapp or "",
+        "email": email[:120],
+        "comment": comment[:2000],
+    }
+    if data["provider_type"] and data["provider_type"] not in ORGANIZATION_TYPES:
+        data["provider_type"] = ""
+    if data["specialty"] and data["specialty"] not in SPECIALTIES:
+        data["specialty"] = ""
+    return data, errors
+
+
+@app.get("/dlya-specialistov", response_class=HTMLResponse)
+def application_form(request: Request):
+    with db_session() as conn:
+        context = application_form_context(conn, {"applicant_kind": ""}, [])
+    return render(request, "application_form.html", context)
+
+
+@app.post("/dlya-specialistov", response_class=HTMLResponse)
+async def application_create(request: Request):
+    raw = await request.form()
+    form = {
+        key: str(value)
+        for key, value in raw.items()
+        if key != "methods"
+    }
+    form["methods"] = raw.getlist("methods")
+    client_ip = request.client.host if request.client else "unknown"
+
+    # Honeypot: поле спрятано от людей, его заполняют только боты.
+    if form.get("company_site", "").strip():
+        return RedirectResponse("/dlya-specialistov/sent", status_code=REDIRECT)
+
+    with db_session() as conn:
+        known_codes = {row["code"] for row in crud.list_methods(conn)}
+        data, errors = clean_application(form, known_codes)
+        if not errors and (
+            crud.applications_from_ip_last_hour(conn, client_ip)
+            >= MAX_APPLICATIONS_PER_HOUR
+        ):
+            errors.append(
+                "С одного устройства принимаем не больше трёх заявок в час."
+                " Попробуйте позже или напишите нам другим способом."
+            )
+        if errors:
+            context = application_form_context(conn, form, errors)
+            return render(request, "application_form.html", context)
+
+        data["author_ip"] = client_ip
+        application_id = crud.create_application(conn, data)
+        application = crud.get_application(conn, application_id)
+
+    try:
+        notify_new_application(application)
+    except Exception:
+        # Оповещение не должно мешать приёму заявки.
+        pass
+
+    return RedirectResponse("/dlya-specialistov/sent", status_code=REDIRECT)
+
+
+@app.get("/dlya-specialistov/sent", response_class=HTMLResponse)
+def application_sent(request: Request):
+    return render(request, "application_sent.html", {})
+
+
 # --- Админка ----------------------------------------------------------------
 
 def require_admin(request: Request) -> RedirectResponse | None:
@@ -310,10 +521,52 @@ def admin_dashboard(request: Request):
     with db_session() as conn:
         context = {
             "providers": crud.list_providers_admin(conn),
-            "pending_count": crud.pending_count(conn),
             "methods_count": len(crud.list_methods(conn)),
+            "new_applications": crud.list_applications(conn, "new", limit=5),
+            "pending_reviews": crud.pending_reviews(conn, 5),
         }
     return render(request, "admin/providers.html", context)
+
+
+def application_methods(conn, application) -> list:
+    """Методы заявки: в базе они лежат списком кодов."""
+    try:
+        codes = json.loads(application["method_codes"] or "[]")
+    except ValueError:
+        codes = []
+    by_code = {row["code"]: row for row in crud.list_methods(conn)}
+    return [by_code[code] for code in codes if code in by_code]
+
+
+def provider_prefill(conn, application) -> tuple[dict, set[int]]:
+    """Заготовка карточки по заявке. Сама карточка создаётся только после
+    того, как администратор нажмёт «Сохранить» в форме."""
+    kind = application["applicant_kind"]
+    data = {
+        "provider_type": application["provider_type"] or (
+            "specialist" if kind == "specialist" else "center"
+        ),
+        "name": application["name"],
+        "specialty": application["specialty"],
+        "city": application["city"],
+        "district": "",
+        "address": application["address"],
+        "phone": application["phone"],
+        "whatsapp": application["whatsapp"],
+        "website": application["link"],
+        "instagram": "",
+        "age_from": application["age_from"],
+        "age_to": application["age_to"],
+        "price_from": application["price_from"],
+        "price_to": application["price_to"],
+        "pricing": application["pricing"],
+        "has_state_funding": 0,
+        "description": application["comment"],
+        "logo_path": "",
+        "is_test": 0,
+    }
+    method_ids = {row["id"] for row in application_methods(conn, application)}
+    return data, method_ids
 
 
 def provider_form_data(
@@ -345,18 +598,28 @@ def provider_form_data(
 
 
 @app.get("/admin/providers/new", response_class=HTMLResponse)
-def admin_provider_new(request: Request):
+def admin_provider_new(request: Request, from_application: str = ""):
     if guard := require_admin(request):
         return guard
+    application_id = parse_int(from_application)
+    prefill: dict | None = None
+    selected: set[int] = set()
     with db_session() as conn:
         methods = crud.list_methods(conn)
+        if application_id is not None:
+            application = crud.get_application(conn, application_id)
+            if application is None:
+                raise HTTPException(status_code=404, detail="Заявка не найдена")
+            prefill, selected = provider_prefill(conn, application)
     return render(
         request,
         "admin/provider_form.html",
         {
             "provider": None,
+            "prefill": prefill,
+            "from_application": application_id,
             "methods": methods,
-            "selected_methods": set(),
+            "selected_methods": selected,
             "title": "Новое место занятий",
         },
     )
@@ -371,10 +634,19 @@ async def admin_provider_create(request: Request):
     data, method_ids = provider_form_data(
         _form_defaults(form), form.getlist("methods"), logo_path
     )
+    application_id = parse_int(form.get("from_application", ""))
     if not data["name"] or not data["city"]:
-        return RedirectResponse("/admin/providers/new?error=1", status_code=REDIRECT)
+        back = "/admin/providers/new?error=1"
+        if application_id is not None:
+            back += f"&from_application={application_id}"
+        return RedirectResponse(back, status_code=REDIRECT)
     with db_session() as conn:
-        crud.create_provider(conn, data, method_ids)
+        provider_id = crud.create_provider(conn, data, method_ids)
+        if application_id is not None and crud.get_application(conn, application_id):
+            crud.link_application_to_provider(conn, application_id, provider_id)
+            return RedirectResponse(
+                f"/admin/applications/{application_id}?saved=1", status_code=REDIRECT
+            )
     return RedirectResponse("/admin", status_code=REDIRECT)
 
 
@@ -389,6 +661,8 @@ def admin_provider_edit(request: Request, provider_id: int):
         context = {
             "provider": provider,
             "methods": crud.list_methods(conn),
+            "prefill": None,
+            "from_application": None,
             "selected_methods": crud.provider_method_ids(conn, provider_id),
             "title": "Редактирование места занятий",
         }
@@ -430,6 +704,64 @@ def admin_provider_delete(request: Request, provider_id: int):
     return RedirectResponse("/admin", status_code=REDIRECT)
 
 
+@app.get("/admin/applications", response_class=HTMLResponse)
+def admin_applications(request: Request):
+    if guard := require_admin(request):
+        return guard
+    status = request.query_params.get("status", "")
+    if status not in APPLICATION_STATUSES:
+        status = ""
+    with db_session() as conn:
+        context = {
+            "applications": crud.list_applications(conn, status),
+            "status": status,
+        }
+    return render(request, "admin/applications.html", context)
+
+
+@app.get("/admin/applications/{application_id}", response_class=HTMLResponse)
+def admin_application_detail(request: Request, application_id: int):
+    if guard := require_admin(request):
+        return guard
+    with db_session() as conn:
+        application = crud.get_application(conn, application_id)
+        if application is None:
+            raise HTTPException(status_code=404, detail="Заявка не найдена")
+        context = {
+            "application": application,
+            "methods": application_methods(conn, application),
+        }
+    return render(request, "admin/application.html", context)
+
+
+@app.post("/admin/applications/{application_id}")
+async def admin_application_update(request: Request, application_id: int):
+    if guard := require_admin(request):
+        return guard
+    form = _form_defaults(await request.form())
+    status = form["status"]
+    if status not in APPLICATION_STATUSES:
+        status = "new"
+    with db_session() as conn:
+        if crud.get_application(conn, application_id) is None:
+            raise HTTPException(status_code=404, detail="Заявка не найдена")
+        crud.update_application(
+            conn, application_id, status, form["admin_note"].strip()[:2000]
+        )
+    return RedirectResponse(
+        f"/admin/applications/{application_id}?saved=1", status_code=REDIRECT
+    )
+
+
+@app.post("/admin/applications/{application_id}/delete")
+def admin_application_delete(request: Request, application_id: int):
+    if guard := require_admin(request):
+        return guard
+    with db_session() as conn:
+        crud.delete_application(conn, application_id)
+    return RedirectResponse("/admin/applications", status_code=REDIRECT)
+
+
 @app.get("/admin/reviews", response_class=HTMLResponse)
 def admin_reviews(request: Request):
     if guard := require_admin(request):
@@ -444,15 +776,18 @@ def admin_reviews(request: Request):
 
 
 @app.post("/admin/reviews/{review_id}/{action}")
-def admin_review_action(request: Request, review_id: int, action: str):
+async def admin_review_action(request: Request, review_id: int, action: str):
     if guard := require_admin(request):
         return guard
     statuses = {"approve": "published", "reject": "rejected"}
     if action not in statuses:
         raise HTTPException(status_code=404, detail="Неизвестное действие")
+    form = _form_defaults(await request.form())
+    # Отзыв модерируется и со страницы отзывов, и из блока на главной админки.
+    back = form["next"] if form["next"].startswith("/admin") else "/admin/reviews"
     with db_session() as conn:
         crud.set_review_status(conn, review_id, statuses[action])
-    return RedirectResponse("/admin/reviews", status_code=REDIRECT)
+    return RedirectResponse(back, status_code=REDIRECT)
 
 
 @app.get("/admin/methods", response_class=HTMLResponse)

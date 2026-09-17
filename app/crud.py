@@ -265,3 +265,120 @@ def has_recent_review_from_ip(
         (provider_id, ip, since),
     ).fetchone()
     return row is not None
+
+
+# --- Заявки на размещение ---------------------------------------------------
+
+APPLICATION_FIELDS = (
+    "applicant_kind",
+    "name",
+    "provider_type",
+    "specialty",
+    "city",
+    "address",
+    "method_codes",
+    "age_from",
+    "age_to",
+    "price_from",
+    "price_to",
+    "pricing",
+    "link",
+    "contact_person",
+    "phone",
+    "whatsapp",
+    "email",
+    "comment",
+    "author_ip",
+)
+
+
+def create_application(conn: sqlite3.Connection, data: dict) -> int:
+    columns = ", ".join(APPLICATION_FIELDS)
+    placeholders = ", ".join(f":{name}" for name in APPLICATION_FIELDS)
+    now = now_iso()
+    cur = conn.execute(
+        f"INSERT INTO applications ({columns}, consent_at, created_at, updated_at)"
+        f" VALUES ({placeholders}, :consent_at, :created_at, :updated_at)",
+        {**data, "consent_at": now, "created_at": now, "updated_at": now},
+    )
+    return int(cur.lastrowid)
+
+
+def list_applications(
+    conn: sqlite3.Connection, status: str = "", limit: int | None = None
+) -> list[sqlite3.Row]:
+    sql = [
+        "SELECT a.*, p.name AS provider_name FROM applications a"
+        " LEFT JOIN providers p ON p.id = a.provider_id"
+    ]
+    params: list = []
+    if status:
+        sql.append("WHERE a.status = ?")
+        params.append(status)
+    sql.append("ORDER BY a.created_at DESC, a.id DESC")
+    if limit is not None:
+        sql.append("LIMIT ?")
+        params.append(limit)
+    return conn.execute(" ".join(sql), params).fetchall()
+
+
+def get_application(
+    conn: sqlite3.Connection, application_id: int
+) -> sqlite3.Row | None:
+    return conn.execute(
+        "SELECT a.*, p.name AS provider_name FROM applications a"
+        " LEFT JOIN providers p ON p.id = a.provider_id WHERE a.id = ?",
+        (application_id,),
+    ).fetchone()
+
+
+def update_application(
+    conn: sqlite3.Connection, application_id: int, status: str, admin_note: str
+) -> None:
+    conn.execute(
+        "UPDATE applications SET status = ?, admin_note = ?, updated_at = ?"
+        " WHERE id = ?",
+        (status, admin_note, now_iso(), application_id),
+    )
+
+
+def link_application_to_provider(
+    conn: sqlite3.Connection, application_id: int, provider_id: int
+) -> None:
+    """Заявка одобрена: запоминаем карточку, созданную по ней."""
+    conn.execute(
+        "UPDATE applications SET status = 'approved', provider_id = ?,"
+        " updated_at = ? WHERE id = ?",
+        (provider_id, now_iso(), application_id),
+    )
+
+
+def delete_application(conn: sqlite3.Connection, application_id: int) -> None:
+    conn.execute("DELETE FROM applications WHERE id = ?", (application_id,))
+
+
+def new_applications_count(conn: sqlite3.Connection) -> int:
+    row = conn.execute(
+        "SELECT COUNT(*) AS n FROM applications WHERE status = 'new'"
+    ).fetchone()
+    return int(row["n"])
+
+
+def applications_from_ip_last_hour(conn: sqlite3.Connection, ip: str) -> int:
+    since = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat(
+        timespec="seconds"
+    )
+    row = conn.execute(
+        "SELECT COUNT(*) AS n FROM applications WHERE author_ip = ? AND created_at > ?",
+        (ip, since),
+    ).fetchone()
+    return int(row["n"])
+
+
+def pending_reviews(conn: sqlite3.Connection, limit: int) -> list[sqlite3.Row]:
+    return conn.execute(
+        "SELECT r.*, p.name AS provider_name FROM reviews r"
+        " JOIN providers p ON p.id = r.provider_id"
+        " WHERE r.status = 'pending' ORDER BY r.created_at DESC LIMIT ?",
+        (limit,),
+    ).fetchall()

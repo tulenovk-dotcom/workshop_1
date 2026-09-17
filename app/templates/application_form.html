@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Разместите информацию о себе — каталог помощи детям с РАС{% endblock %}
+
+{% block content %}
+<section class="intro">
+  <h1>Разместите информацию о себе в каталоге</h1>
+  <p>
+    Для реабилитационных центров, клиник, частных специалистов, детских садов
+    и школ, которые работают с детьми с РАС.
+  </p>
+</section>
+
+<section class="steps">
+  <h2>Как проходит размещение</h2>
+  <ol class="steps-list">
+    <li><span class="step-num">1</span> Вы отправляете заявку.</li>
+    <li><span class="step-num">2</span> Мы проверяем информацию и можем
+      запросить лицензию или диплом.</li>
+    <li><span class="step-num">3</span> Публикуем карточку в каталоге.</li>
+  </ol>
+  <p class="hint">Размещение бесплатное.</p>
+</section>
+
+{% if errors %}
+  <div class="notice notice-warn form-errors">
+    <p><strong>Заявка не отправлена. Проверьте, пожалуйста:</strong></p>
+    <ul>
+      {% for error in errors %}<li>{{ error }}</li>{% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<form class="admin-form application-form" method="post" action="/dlya-specialistov">
+  <fieldset class="field field-wide kind-picker">
+    <legend>Кто вы *</legend>
+    <label class="radio">
+      <input type="radio" name="applicant_kind" value="organization"
+             {% if form.applicant_kind == 'organization' %}checked{% endif %}>
+      Организация
+    </label>
+    <label class="radio">
+      <input type="radio" name="applicant_kind" value="specialist"
+             {% if form.applicant_kind == 'specialist' %}checked{% endif %}>
+      Частный специалист
+    </label>
+    <p class="hint">Центр, клиника, детский сад и школа — это организация.</p>
+  </fieldset>
+
+  <div class="field only-organization">
+    <label for="org_name">Название организации *</label>
+    <input type="text" id="org_name" name="org_name" maxlength="160"
+           value="{{ form.org_name or '' }}">
+  </div>
+
+  <div class="field only-organization">
+    <label for="provider_type">Где заниматься</label>
+    <select id="provider_type" name="provider_type">
+      <option value="">Не указано</option>
+      {% for code, label in ORGANIZATION_TYPES.items() %}
+        <option value="{{ code }}" {% if form.provider_type == code %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="field only-specialist">
+    <label for="person_name">Фамилия, имя, отчество *</label>
+    <input type="text" id="person_name" name="person_name" maxlength="160"
+           value="{{ form.person_name or '' }}">
+  </div>
+
+  <div class="field only-specialist">
+    <label for="specialty">Специальность</label>
+    <select id="specialty" name="specialty">
+      <option value="">Не указана</option>
+      {% for s in SPECIALTIES %}
+        <option value="{{ s }}" {% if form.specialty == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="field">
+    <label for="city">Город *</label>
+    <input type="text" id="city" name="city" maxlength="80" required
+           value="{{ form.city or '' }}">
+  </div>
+
+  <div class="field">
+    <label for="address">Адрес</label>
+    <input type="text" id="address" name="address" maxlength="200"
+           value="{{ form.address or '' }}">
+  </div>
+
+  <fieldset class="field field-wide methods-picker">
+    <legend>Методы, с которыми вы работаете</legend>
+    {% for m in methods %}
+      <label class="checkbox">
+        <input type="checkbox" name="methods" value="{{ m.code }}"
+               {% if m.code in selected_methods %}checked{% endif %}>
+        {{ m.name }}
+        <span class="badge {{ EVIDENCE_LEVELS[m.evidence_level].css }}">{{ EVIDENCE_LEVELS[m.evidence_level].label }}</span>
+      </label>
+    {% endfor %}
+  </fieldset>
+
+  <div class="field">
+    <label for="age_from">Возраст детей от</label>
+    <input type="number" id="age_from" name="age_from" min="0" max="18"
+           value="{{ form.age_from or '' }}">
+  </div>
+
+  <div class="field">
+    <label for="age_to">Возраст детей до</label>
+    <input type="number" id="age_to" name="age_to" min="0" max="18"
+           value="{{ form.age_to or '' }}">
+  </div>
+
+  <div class="field">
+    <label for="price_from">Стоимость занятия от, ₸</label>
+    <input type="number" id="price_from" name="price_from" min="0" step="500"
+           value="{{ form.price_from or '' }}">
+  </div>
+
+  <div class="field">
+    <label for="price_to">Стоимость занятия до, ₸</label>
+    <input type="number" id="price_to" name="price_to" min="0" step="500"
+           value="{{ form.price_to or '' }}">
+  </div>
+
+  <div class="field field-check">
+    <label class="switch-row">
+      <span class="switch">
+        <input type="checkbox" id="pricing_free" name="pricing_free" value="1"
+               {% if form.pricing_free %}checked{% endif %}>
+        <span class="switch-track"></span>
+      </span>
+      <span class="switch-label">Занятия бесплатные</span>
+    </label>
+    <p class="hint">Тогда стоимость заполнять не нужно.</p>
+  </div>
+
+  <div class="field">
+    <label for="link">Сайт или Instagram</label>
+    <input type="text" id="link" name="link" maxlength="200"
+           placeholder="example.kz или @account" value="{{ form.link or '' }}">
+  </div>
+
+  <div class="field">
+    <label for="contact_person">Контактное лицо *</label>
+    <input type="text" id="contact_person" name="contact_person" maxlength="120"
+           required value="{{ form.contact_person or '' }}">
+  </div>
+
+  <div class="field">
+    <label for="phone">Телефон *</label>
+    <input type="tel" id="phone" name="phone" required
+           placeholder="+7 701 234 56 78" value="{{ form.phone or '' }}">
+  </div>
+
+  <div class="field">
+    <label for="whatsapp">WhatsApp</label>
+    <input type="tel" id="whatsapp" name="whatsapp"
+           placeholder="+7 701 234 56 78" value="{{ form.whatsapp or '' }}">
+  </div>
+
+  <div class="field">
+    <label for="email">Электронная почта</label>
+    <input type="email" id="email" name="email" maxlength="120"
+           value="{{ form.email or '' }}">
+  </div>
+
+  <div class="field field-wide">
+    <label for="comment">Комментарий</label>
+    <textarea id="comment" name="comment" rows="5" maxlength="2000"
+              placeholder="Коротко о занятиях, программе и специалистах">{{ form.comment or '' }}</textarea>
+    <p class="hint">До 2000 символов.</p>
+  </div>
+
+  {# Honeypot: поле спрятано от людей, его заполняют только боты. #}
+  <div class="trap" aria-hidden="true">
+    <label for="company_site">Не заполняйте это поле</label>
+    <input type="text" id="company_site" name="company_site" tabindex="-1"
+           autocomplete="off" value="">
+  </div>
+
+  <div class="field field-wide consent-field">
+    <label class="checkbox">
+      <input type="checkbox" name="consent" value="1" required
+             {% if form.consent %}checked{% endif %}>
+      Я согласен на обработку персональных данных и принимаю
+      <a href="/privacy" target="_blank" rel="noopener">политику конфиденциальности</a> *
+    </label>
+  </div>
+
+  <div class="filter-actions">
+    <button type="submit" class="btn btn-primary">Отправить заявку</button>
+  </div>
+
+  <p class="hint field-wide">
+    Поля со звёздочкой обязательные. Мы проверим информацию и свяжемся
+    с вами в течение двух рабочих дней.
+  </p>
+</form>
+{% endblock %}

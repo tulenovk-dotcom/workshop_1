@@ -55,8 +55,39 @@ CREATE TABLE IF NOT EXISTS reviews (
     created_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS applications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    applicant_kind TEXT NOT NULL,
+    name TEXT NOT NULL,
+    provider_type TEXT NOT NULL DEFAULT '',
+    specialty TEXT NOT NULL DEFAULT '',
+    city TEXT NOT NULL,
+    address TEXT NOT NULL DEFAULT '',
+    method_codes TEXT NOT NULL DEFAULT '[]',
+    age_from INTEGER,
+    age_to INTEGER,
+    price_from INTEGER,
+    price_to INTEGER,
+    pricing TEXT NOT NULL DEFAULT 'paid',
+    link TEXT NOT NULL DEFAULT '',
+    contact_person TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    whatsapp TEXT NOT NULL DEFAULT '',
+    email TEXT NOT NULL DEFAULT '',
+    comment TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'new',
+    admin_note TEXT NOT NULL DEFAULT '',
+    provider_id INTEGER REFERENCES providers(id) ON DELETE SET NULL,
+    consent_at TEXT NOT NULL,
+    author_ip TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_reviews_provider ON reviews(provider_id, status);
 CREATE INDEX IF NOT EXISTS idx_reviews_ip ON reviews(provider_id, author_ip, created_at);
+CREATE INDEX IF NOT EXISTS idx_applications_status ON applications(status, created_at);
+CREATE INDEX IF NOT EXISTS idx_applications_ip ON applications(author_ip, created_at);
 """
 
 

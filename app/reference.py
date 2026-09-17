@@ -65,6 +65,29 @@ FILTER_METHOD_CODES = [
     "montessori",
 ]
 
+# --- Заявки на размещение -----------------------------------------------
+
+APPLICANT_KINDS = {
+    "organization": "Организация",
+    "specialist": "Частный специалист",
+}
+
+# Места занятий, которые может указать организация: сам «частный специалист»
+# в этот список не входит — для него в форме отдельная ветка со специальностью.
+ORGANIZATION_TYPES = {
+    code: label for code, label in PROVIDER_TYPES.items() if code != "specialist"
+}
+
+APPLICATION_STATUSES = {
+    "new": "Новая",
+    "in_progress": "В работе",
+    "approved": "Одобрена",
+    "rejected": "Отклонена",
+}
+
+# Статусы, которые ждут действия администратора.
+APPLICATION_STATUS_NEW = "new"
+
 EVIDENCE_LEVELS = {
     "proven": {
         "label": "Доказано",

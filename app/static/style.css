@@ -676,6 +676,161 @@ input:focus, select:focus, textarea:focus {
 .row-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
 .row-actions form { margin: 0; }
 
+/* --- Заявки на размещение --- */
+
+.btn-outline {
+  padding: 7px 15px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--accent);
+  background: var(--surface);
+  border: 1.5px solid var(--accent);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.btn-outline:hover { background: var(--accent); color: #fff; }
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 12px 0 0;
+  font-size: 0.9rem;
+}
+
+.steps-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.steps-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.step-num {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.form-errors ul { margin: 6px 0 0; padding-left: 20px; }
+
+.kind-picker {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.kind-picker legend { font-weight: 600; color: var(--muted); padding: 0 6px; }
+
+.radio, .checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.4;
+}
+
+.kind-picker .radio { margin-bottom: 6px; }
+
+/* Показываем только поля выбранного варианта. Браузер без поддержки :has()
+   правило не применит и покажет все поля — форма всё равно работает. */
+.application-form:has(input[name="applicant_kind"][value="organization"]:checked)
+  .only-specialist { display: none; }
+.application-form:has(input[name="applicant_kind"][value="specialist"]:checked)
+  .only-organization { display: none; }
+
+.consent-field {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+/* Ловушка для ботов: человек это поле не видит и не может в него попасть. */
+.trap {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* --- Модерация --- */
+
+.moderation {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 18px 18px;
+  margin-bottom: 24px;
+}
+
+.moderation h2 { margin-top: 0; }
+.moderation h3 { font-size: 0.98rem; color: var(--muted); }
+
+.moderation-cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 8px 24px;
+}
+
+.moderation-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.moderation-list li {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.moderation-list p { margin: 4px 0 8px; }
+
+.moderation-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+
+.moderation-text { font-size: 0.93rem; }
+
+.admin-nav-flag { color: var(--amber); }
+.admin-nav-flag-clear { color: var(--muted); font-weight: 400; }
+
+.status-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.status-filter .chip { text-decoration: none; }
+.chip-active { background: var(--accent); color: #fff; }
+
+.status-new { background: var(--amber-bg); color: var(--amber); }
+.status-in_progress { background: #e7eefb; color: var(--accent); }
+.status-approved { background: var(--green-bg); color: var(--green); }
+.status-rejected { background: var(--red-bg); color: var(--red); }
+
 /* --- Телефоны --- */
 
 @media (max-width: 900px) {
@@ -709,6 +864,10 @@ input:focus, select:focus, textarea:focus {
   .pc-media .logo-xl { max-width: 72px; font-size: 1.35rem; }
   .rating { margin-left: 0; }
   .actions .btn, .filter-actions .btn { flex: 1 1 auto; }
+  .moderation-cols { grid-template-columns: 1fr; }
+  .header-inner { gap: 10px; }
+  .header-auth { width: 100%; }
+  .btn-outline { width: 100%; text-align: center; }
   .btn-cta { width: 100%; }
   .pc-more { margin: 0; }
   .site-nav { font-size: 0.9rem; }

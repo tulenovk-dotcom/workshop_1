@@ -8,15 +8,26 @@
 {% include "admin/_nav.html" %}
 
 {% set action = '/admin/providers/' ~ provider.id ~ '/edit' if provider else '/admin/providers/new' %}
+{# Значения полей: у существующей записи свои, у новой — заготовка из заявки. #}
+{% set fd = provider or prefill %}
+
+{% if from_application %}
+  <p class="notice notice-ok">Форма заполнена по заявке
+    № {{ from_application }}. Карточка появится в каталоге только после
+    нажатия «Сохранить», заявка при этом станет одобренной.</p>
+{% endif %}
 
 <form class="admin-form" method="post" action="{{ action }}"
       enctype="multipart/form-data">
+  {% if from_application %}
+    <input type="hidden" name="from_application" value="{{ from_application }}">
+  {% endif %}
   <div class="field">
     <label for="provider_type">Где заниматься</label>
     <select id="provider_type" name="provider_type">
       {% for code, label in PROVIDER_TYPES.items() %}
         <option value="{{ code }}"
-          {% if provider and provider.provider_type == code %}selected{% endif %}>{{ label }}</option>
+          {% if fd and fd.provider_type == code %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
   </div>
@@ -26,11 +37,11 @@
     <select id="specialty" name="specialty">
       <option value="">Не указана</option>
       {% for s in SPECIALTIES %}
-        <option value="{{ s }}" {% if provider and provider.specialty == s %}selected{% endif %}>{{ s }}</option>
+        <option value="{{ s }}" {% if fd and fd.specialty == s %}selected{% endif %}>{{ s }}</option>
       {% endfor %}
       {# Значение, сохранённое до обновления справочника, не теряем. #}
-      {% if provider and provider.specialty and provider.specialty not in SPECIALTIES %}
-        <option value="{{ provider.specialty }}" selected>{{ provider.specialty }}</option>
+      {% if fd and fd.specialty and fd.specialty not in SPECIALTIES %}
+        <option value="{{ fd.specialty }}" selected>{{ fd.specialty }}</option>
       {% endif %}
     </select>
   </div>
@@ -38,73 +49,73 @@
   <div class="field field-wide">
     <label for="name">Название или ФИО *</label>
     <input type="text" id="name" name="name" required
-           value="{{ provider.name if provider else '' }}">
+           value="{{ fd.name if fd else '' }}">
   </div>
 
   <div class="field">
     <label for="city">Город *</label>
     <input type="text" id="city" name="city" required
-           value="{{ provider.city if provider else '' }}">
+           value="{{ fd.city if fd else '' }}">
   </div>
 
   <div class="field">
     <label for="district">Район</label>
     <input type="text" id="district" name="district"
-           value="{{ provider.district if provider else '' }}">
+           value="{{ fd.district if fd else '' }}">
   </div>
 
   <div class="field field-wide">
     <label for="address">Адрес</label>
     <input type="text" id="address" name="address"
-           value="{{ provider.address if provider else '' }}">
+           value="{{ fd.address if fd else '' }}">
   </div>
 
   <div class="field">
     <label for="phone">Телефон</label>
     <input type="text" id="phone" name="phone" placeholder="+7 7xx xxx xx xx"
-           value="{{ provider.phone if provider else '' }}">
+           value="{{ fd.phone if fd else '' }}">
   </div>
 
   <div class="field">
     <label for="whatsapp">WhatsApp</label>
     <input type="text" id="whatsapp" name="whatsapp" placeholder="+7 7xx xxx xx xx"
-           value="{{ provider.whatsapp if provider else '' }}">
+           value="{{ fd.whatsapp if fd else '' }}">
   </div>
 
   <div class="field">
     <label for="website">Сайт</label>
     <input type="text" id="website" name="website" placeholder="example.kz"
-           value="{{ provider.website if provider else '' }}">
+           value="{{ fd.website if fd else '' }}">
   </div>
 
   <div class="field">
     <label for="instagram">Instagram</label>
     <input type="text" id="instagram" name="instagram" placeholder="@account"
-           value="{{ provider.instagram if provider else '' }}">
+           value="{{ fd.instagram if fd else '' }}">
   </div>
 
   <div class="field">
     <label for="age_from">Возраст детей от</label>
     <input type="number" id="age_from" name="age_from" min="0" max="18"
-           value="{{ provider.age_from if provider and provider.age_from is not none else '' }}">
+           value="{{ fd.age_from if fd and fd.age_from is not none else '' }}">
   </div>
 
   <div class="field">
     <label for="age_to">Возраст детей до</label>
     <input type="number" id="age_to" name="age_to" min="0" max="18"
-           value="{{ provider.age_to if provider and provider.age_to is not none else '' }}">
+           value="{{ fd.age_to if fd and fd.age_to is not none else '' }}">
   </div>
 
   <div class="field">
     <label for="price_from">Цена за занятие от, ₸</label>
     <input type="number" id="price_from" name="price_from" min="0" step="500"
-           value="{{ provider.price_from if provider and provider.price_from is not none else '' }}">
+           value="{{ fd.price_from if fd and fd.price_from is not none else '' }}">
   </div>
 
   <div class="field">
     <label for="price_to">Цена за занятие до, ₸</label>
     <input type="number" id="price_to" name="price_to" min="0" step="500"
-           value="{{ provider.price_to if provider and provider.price_to is not none else '' }}">
+           value="{{ fd.price_to if fd and fd.price_to is not none else '' }}">
   </div>
 
   <div class="field">
@@ -112,7 +123,7 @@
     <select id="pricing" name="pricing">
       {% for code, label in PRICING.items() %}
         <option value="{{ code }}"
-          {% if provider and provider.pricing == code %}selected{% endif %}>{{ label }}</option>
+          {% if fd and fd.pricing == code %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
     </select>
   </div>
@@ -121,7 +132,7 @@
     <label class="switch-row">
       <span class="switch">
         <input type="checkbox" name="has_state_funding" value="1"
-               {% if provider and provider.has_state_funding %}checked{% endif %}>
+               {% if fd and fd.has_state_funding %}checked{% endif %}>
         <span class="switch-track"></span>
       </span>
       <span class="switch-label">Есть гос. финансирование</span>
@@ -129,7 +140,7 @@
     <label class="switch-row">
       <span class="switch">
         <input type="checkbox" name="is_test" value="1"
-               {% if provider and provider.is_test %}checked{% endif %}>
+               {% if fd and fd.is_test %}checked{% endif %}>
         <span class="switch-track"></span>
       </span>
       <span class="switch-label">Тестовая запись</span>
@@ -159,7 +170,7 @@
 
   <div class="field field-wide">
     <label for="description">Описание</label>
-    <textarea id="description" name="description" rows="5">{{ provider.description if provider else '' }}</textarea>
+    <textarea id="description" name="description" rows="5">{{ fd.description if fd else '' }}</textarea>
   </div>
 
   <fieldset class="field field-wide methods-picker">

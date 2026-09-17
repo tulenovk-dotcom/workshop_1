@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui %}
+
+{% block title %}Заявка № {{ application.id }} — админка{% endblock %}
+
+{% block content %}
+<h1>Заявка № {{ application.id }}</h1>
+{% include "admin/_nav.html" %}
+
+<p class="breadcrumbs"><a href="/admin/applications">← Ко всем заявкам</a></p>
+
+{% if request.query_params.get('saved') %}
+  <p class="notice notice-ok">Изменения сохранены.</p>
+{% endif %}
+
+<article class="provider">
+  <div class="card-head">
+    <span class="chip">{{ APPLICANT_KINDS.get(application.applicant_kind, application.applicant_kind) }}</span>
+    <span class="chip status-{{ application.status }}">{{ APPLICATION_STATUSES.get(application.status, application.status) }}</span>
+    <span class="muted">Отправлена {{ application.created_at[:10] }}</span>
+  </div>
+
+  <h2>{{ application.name }}</h2>
+
+  <dl class="info-grid">
+    {% if application.provider_type %}
+      <div><dt>Где заниматься</dt>
+        <dd>{{ PROVIDER_TYPES.get(application.provider_type, application.provider_type) }}</dd></div>
+    {% endif %}
+    {% if application.specialty %}
+      <div><dt>Специальность</dt><dd>{{ application.specialty }}</dd></div>
+    {% endif %}
+    <div><dt>Город</dt><dd>{{ application.city }}</dd></div>
+    {% if application.address %}<div><dt>Адрес</dt><dd>{{ application.address }}</dd></div>{% endif %}
+    <div><dt>Контактное лицо</dt><dd>{{ application.contact_person }}</dd></div>
+    <div><dt>Телефон</dt><dd>{{ application.phone }}</dd></div>
+    {% if application.whatsapp %}<div><dt>WhatsApp</dt><dd>{{ application.whatsapp }}</dd></div>{% endif %}
+    {% if application.email %}<div><dt>Почта</dt><dd>{{ application.email }}</dd></div>{% endif %}
+    {% if application.link %}<div><dt>Сайт или Instagram</dt><dd>{{ application.link }}</dd></div>{% endif %}
+    <div><dt>Возраст детей</dt><dd>{{ ui.age_line(application) }}</dd></div>
+    <div><dt>Стоимость</dt><dd>{{ ui.price_line(application) }}</dd></div>
+    <div><dt>Согласие на обработку</dt><dd>дано {{ application.consent_at[:10] }}</dd></div>
+    <div><dt>IP отправителя</dt><dd>{{ application.author_ip or '—' }}</dd></div>
+    <div><dt>Обновлена</dt><dd>{{ application.updated_at[:10] }}</dd></div>
+  </dl>
+
+  <h2>Методы</h2>
+  {% if methods %}
+    <div class="badges">
+      {% for m in methods %}
+        <span class="badge {{ EVIDENCE_LEVELS[m.evidence_level].css }}">{{ m.name }}</span>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="empty">Методы не указаны.</p>
+  {% endif %}
+
+  {% if application.comment %}
+    <h2>Комментарий заявителя</h2>
+    <p class="provider-description">{{ application.comment }}</p>
+  {% endif %}
+
+  <h2>Обработка</h2>
+
+  {% if application.provider_id %}
+    <p class="notice notice-ok">
+      По заявке создана карточка:
+      <a href="/providers/{{ application.provider_id }}">{{ application.provider_name }}</a>
+    </p>
+  {% else %}
+    <p>
+      <a class="btn btn-primary" href="/admin/providers/new?from_application={{ application.id }}">
+        Создать карточку из заявки</a>
+    </p>
+    <p class="hint">
+      Откроется форма новой записи с заполненными данными. Карточка появится
+      в каталоге только после нажатия «Сохранить».
+    </p>
+  {% endif %}
+
+  <form class="admin-form" method="post" action="/admin/applications/{{ application.id }}">
+    <div class="field">
+      <label for="status">Статус</label>
+      <select id="status" name="status">
+        {% for code, label in APPLICATION_STATUSES.items() %}
+          <option value="{{ code }}" {% if application.status == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field field-wide">
+      <label for="admin_note">Заметка администратора</label>
+      <textarea id="admin_note" name="admin_note" rows="4" maxlength="2000"
+                placeholder="Что проверили, что запросили, о чём договорились">{{ application.admin_note }}</textarea>
+    </div>
+
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-primary">Сохранить</button>
+    </div>
+  </form>
+
+  <form method="post" action="/admin/applications/{{ application.id }}/delete"
+        onsubmit="return confirm('Удалить заявку от «{{ application.name }}»? Действие необратимо.');">
+    <button type="submit" class="btn btn-small btn-danger">Удалить заявку</button>
+  </form>
+</article>
+{% endblock %}
