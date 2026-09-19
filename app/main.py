@@ -128,17 +128,28 @@ def image_extension(data: bytes) -> str | None:
     return None
 
 
-async def save_logo(upload, current: str) -> str:
+async def read_image(upload) -> tuple[bytes, str] | None:
+    """Прочитать и проверить картинку, ничего не записывая на диск.
+    None означает «файла нет или он не подошёл»."""
     if upload is None or not getattr(upload, "filename", ""):
-        return current
+        return None
     data = await upload.read(MAX_LOGO_BYTES + 1)
     extension = image_extension(data)
     if extension is None or len(data) > MAX_LOGO_BYTES:
-        return current
+        return None
+    return data, extension
+
+
+def store_image(data: bytes, extension: str) -> str:
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     name = f"{secrets.token_hex(8)}{extension}"
     (UPLOAD_DIR / name).write_bytes(data)
     return f"/static/uploads/{name}"
+
+
+async def save_logo(upload, current: str) -> str:
+    image = await read_image(upload)
+    return store_image(*image) if image else current
 
 
 templates.env.filters["price"] = format_price
@@ -443,7 +454,7 @@ async def application_create(request: Request):
     form = {
         key: str(value)
         for key, value in raw.items()
-        if key != "methods"
+        if key not in ("methods", "logo")
     }
     form["methods"] = raw.getlist("methods")
     client_ip = request.client.host if request.client else "unknown"
@@ -452,9 +463,19 @@ async def application_create(request: Request):
     if form.get("company_site", "").strip():
         return RedirectResponse("/dlya-specialistov/sent", status_code=REDIRECT)
 
+    upload = raw.get("logo")
+    sent_file = upload is not None and getattr(upload, "filename", "")
+    # Картинку проверяем сразу, а записываем на диск только если заявку
+    # приняли: иначе каждая неудачная отправка оставляла бы мусорный файл.
+    image = await read_image(upload)
+
     with db_session() as conn:
         known_codes = {row["code"] for row in crud.list_methods(conn)}
         data, errors = clean_application(form, known_codes)
+        if sent_file and image is None:
+            errors.append(
+                "Фото не принято: нужен PNG, JPEG, WebP или GIF размером до 2 МБ."
+            )
         if not errors and (
             crud.applications_from_ip_last_hour(conn, client_ip)
             >= MAX_APPLICATIONS_PER_HOUR
@@ -467,6 +488,7 @@ async def application_create(request: Request):
             context = application_form_context(conn, form, errors)
             return render(request, "application_form.html", context)
 
+        data["logo_path"] = store_image(*image) if image else ""
         data["author_ip"] = client_ip
         application_id = crud.create_application(conn, data)
         application = crud.get_application(conn, application_id)
@@ -562,7 +584,7 @@ def provider_prefill(conn, application) -> tuple[dict, set[int]]:
         "pricing": application["pricing"],
         "has_state_funding": 0,
         "description": application["comment"],
-        "logo_path": "",
+        "logo_path": application["logo_path"],
         "is_test": 0,
     }
     method_ids = {row["id"] for row in application_methods(conn, application)}
@@ -630,11 +652,20 @@ async def admin_provider_create(request: Request):
     if guard := require_admin(request):
         return guard
     form = await request.form()
-    logo_path = await save_logo(form.get("logo"), "")
+    application_id = parse_int(form.get("from_application", ""))
+
+    # Карточка по заявке наследует присланное фото, пока администратор
+    # не выберет в форме другой файл.
+    base_logo = ""
+    if application_id is not None:
+        with db_session() as conn:
+            application = crud.get_application(conn, application_id)
+        base_logo = application["logo_path"] if application else ""
+
+    logo_path = await save_logo(form.get("logo"), base_logo)
     data, method_ids = provider_form_data(
         _form_defaults(form), form.getlist("methods"), logo_path
     )
-    application_id = parse_int(form.get("from_application", ""))
     if not data["name"] or not data["city"]:
         back = "/admin/providers/new?error=1"
         if application_id is not None:

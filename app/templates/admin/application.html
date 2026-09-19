@@ -20,7 +20,18 @@
     <span class="muted">Отправлена {{ application.created_at[:10] }}</span>
   </div>
 
-  <h2>{{ application.name }}</h2>
+  <div class="provider-head">
+    {% if application.logo_path %}
+      <img class="logo-img logo-lg" src="{{ application.logo_path }}"
+           alt="Фото или логотип: {{ application.name }}">
+    {% endif %}
+    <div>
+      <h2>{{ application.name }}</h2>
+      {% if not application.logo_path %}
+        <p class="hint">Фото не прислано.</p>
+      {% endif %}
+    </div>
+  </div>
 
   <dl class="info-grid">
     {% if application.provider_type %}

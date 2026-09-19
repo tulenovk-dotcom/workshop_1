@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS applications (
     whatsapp TEXT NOT NULL DEFAULT '',
     email TEXT NOT NULL DEFAULT '',
     comment TEXT NOT NULL DEFAULT '',
+    logo_path TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL DEFAULT 'new',
     admin_note TEXT NOT NULL DEFAULT '',
     provider_id INTEGER REFERENCES providers(id) ON DELETE SET NULL,
@@ -126,6 +127,11 @@ def init_db() -> None:
         if "logo_path" not in columns:
             conn.execute(
                 "ALTER TABLE providers ADD COLUMN logo_path TEXT NOT NULL DEFAULT ''"
+            )
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(applications)")}
+        if "logo_path" not in columns:
+            conn.execute(
+                "ALTER TABLE applications ADD COLUMN logo_path TEXT NOT NULL DEFAULT ''"
             )
 
         # Справочники мест занятий и специальностей обновились — приводим

@@ -150,7 +150,7 @@
   <div class="field field-wide logo-field">
     <label for="logo">Фото или логотип</label>
     <div class="logo-field-row">
-      {% if provider %}{{ ui.logo(provider, 'md') }}{% endif %}
+      {% if fd %}{{ ui.logo(fd, 'md') }}{% endif %}
       <div class="logo-field-controls">
         <input type="file" id="logo" name="logo" accept="image/png,image/jpeg,image/webp,image/gif">
         <p class="hint">PNG, JPEG, WebP или GIF, до 2 МБ. Если не выбирать файл,

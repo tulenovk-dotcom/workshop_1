@@ -288,6 +288,7 @@ APPLICATION_FIELDS = (
     "whatsapp",
     "email",
     "comment",
+    "logo_path",
     "author_ip",
 )
 

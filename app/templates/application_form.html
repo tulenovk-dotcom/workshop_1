@@ -31,7 +31,8 @@
   </div>
 {% endif %}
 
-<form class="admin-form application-form" method="post" action="/dlya-specialistov">
+<form class="admin-form application-form" method="post" action="/dlya-specialistov"
+      enctype="multipart/form-data">
   <fieldset class="field field-wide kind-picker">
     <legend>Кто вы *</legend>
     <label class="radio">
@@ -89,6 +90,21 @@
     <label for="address">Адрес</label>
     <input type="text" id="address" name="address" maxlength="200"
            value="{{ form.address or '' }}">
+  </div>
+
+  <div class="field field-wide logo-field">
+    <label for="logo">Фото или логотип</label>
+    <div class="logo-field-row">
+      <div class="logo-field-controls">
+        <input type="file" id="logo" name="logo"
+               accept="image/png,image/jpeg,image/webp,image/gif">
+        <p class="hint">PNG, JPEG, WebP или GIF, до 2 МБ. Логотип организации
+          или ваше рабочее фото — оно появится в карточке. Без него карточка
+          покажет инициалы.</p>
+        <p class="hint">Если форма вернётся с ошибками, файл придётся выбрать
+          заново: браузер не позволяет подставить его обратно.</p>
+      </div>
+    </div>
   </div>
 
   <fieldset class="field field-wide methods-picker">
