@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% import "_macros.html" as ui %}
 
-{% block title %}Заявка № {{ application.id }} — админка{% endblock %}
+{% block title %}Заявка № {{ application.id }} - админка{% endblock %}
 
 {% block content %}
 <h1>Заявка № {{ application.id }}</h1>
@@ -51,7 +51,7 @@
     <div><dt>Возраст детей</dt><dd>{{ ui.age_line(application) }}</dd></div>
     <div><dt>Стоимость</dt><dd>{{ ui.price_line(application) }}</dd></div>
     <div><dt>Согласие на обработку</dt><dd>дано {{ application.consent_at[:10] }}</dd></div>
-    <div><dt>IP отправителя</dt><dd>{{ application.author_ip or '—' }}</dd></div>
+    <div><dt>IP отправителя</dt><dd>{{ application.author_ip or '-' }}</dd></div>
     <div><dt>Обновлена</dt><dd>{{ application.updated_at[:10] }}</dd></div>
   </dl>
 

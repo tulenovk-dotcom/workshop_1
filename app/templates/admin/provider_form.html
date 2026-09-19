@@ -8,7 +8,7 @@
 {% include "admin/_nav.html" %}
 
 {% set action = '/admin/providers/' ~ provider.id ~ '/edit' if provider else '/admin/providers/new' %}
-{# Значения полей: у существующей записи свои, у новой — заготовка из заявки. #}
+{# Значения полей: у существующей записи свои, у новой - заготовка из заявки. #}
 {% set fd = provider or prefill %}
 
 {% if from_application %}

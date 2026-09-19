@@ -147,6 +147,17 @@ def init_db() -> None:
                 (new_name, old_name),
             )
 
+        # Тексты сайта набираются с обычным дефисом. В справочнике методов
+        # остались длинные тире от прежних версий - заменяем только сам
+        # знак, остальное содержимое не трогаем. Отзывы и заявки не правим:
+        # это чужой текст, а не наш.
+        conn.execute(
+            "UPDATE methods SET name = REPLACE(name, char(8212), '-'),"
+            " description = REPLACE(description, char(8212), '-')"
+            " WHERE name LIKE '%' || char(8212) || '%'"
+            " OR description LIKE '%' || char(8212) || '%'"
+        )
+
         # Методы, добавленные в справочник после создания базы. Названия
         # уже существующих методов не трогаем: их могли изменить в админке.
         known = {row["code"] for row in conn.execute("SELECT code FROM methods")}

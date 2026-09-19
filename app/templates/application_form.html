@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Разместите информацию о себе — каталог помощи детям с РАС{% endblock %}
+{% block title %}Разместите информацию о себе - каталог помощи детям с РАС{% endblock %}
 
 {% block content %}
 <section class="intro">
@@ -34,18 +34,17 @@
 <form class="admin-form application-form" method="post" action="/dlya-specialistov"
       enctype="multipart/form-data">
   <fieldset class="field field-wide kind-picker">
-    <legend>Кто вы *</legend>
+    <legend>Вы заполняете анкету от имени *</legend>
     <label class="radio">
       <input type="radio" name="applicant_kind" value="organization"
              {% if form.applicant_kind == 'organization' %}checked{% endif %}>
-      Организация
+      Организации (центр, клиника, детский сад, школа)
     </label>
     <label class="radio">
       <input type="radio" name="applicant_kind" value="specialist"
              {% if form.applicant_kind == 'specialist' %}checked{% endif %}>
-      Частный специалист
+      Себя как частного специалиста (работаю сам)
     </label>
-    <p class="hint">Центр, клиника, детский сад и школа — это организация.</p>
   </fieldset>
 
   <div class="field only-organization">
@@ -99,7 +98,7 @@
         <input type="file" id="logo" name="logo"
                accept="image/png,image/jpeg,image/webp,image/gif">
         <p class="hint">PNG, JPEG, WebP или GIF, до 2 МБ. Логотип организации
-          или ваше рабочее фото — оно появится в карточке. Без него карточка
+          или ваше рабочее фото - оно появится в карточке. Без него карточка
           покажет инициалы.</p>
         <p class="hint">Если форма вернётся с ошибками, файл придётся выбрать
           заново: браузер не позволяет подставить его обратно.</p>
