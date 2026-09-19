@@ -1,18 +1,33 @@
 :root {
-  --bg: #f6f7f9;
+  /* Интерфейс намеренно монохромный: цветом на странице говорит только
+     уровень доказательности метода. Это главное, ради чего сайт есть,
+     и глаз должен находить его первым. */
+  --bg: #f1f3f2;
   --surface: #ffffff;
-  --text: #1d2330;
-  --muted: #5d6675;
-  --line: #e2e6ec;
-  --accent: #245b8f;
-  --accent-dark: #1b4670;
+  --text: #15212b;
+  --muted: #5a6570;
+  --line: #dde2e2;
+  --accent: #22333f;
+  --accent-dark: #15212b;
+
+  /* Единственные цветные значения: метки доказательности и WhatsApp. */
   --green: #1f7a4d;
   --green-bg: #e6f4ec;
   --amber: #8a6108;
   --amber-bg: #fdf3dc;
   --red: #9b2c2c;
   --red-bg: #fbe9e9;
-  --whatsapp: #1f8a4c;
+
+  /* Шрифты: сериф для заголовков — «справочник», а не лендинг. */
+  --font-display: "Literata", Georgia, "Times New Roman", serif;
+  --font-text: "Golos Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+
+  /* Шкала кегля, шаг ≈1.25 */
+  --step--1: 0.82rem;
+  --step-0: 1rem;
+  --step-1: 1.25rem;
+  --step-2: 1.5rem;
+  --step-3: 1.95rem;
 }
 
 * { box-sizing: border-box; }
@@ -21,7 +36,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  font-family: var(--font-text);
   font-size: 16px;
   line-height: 1.55;
 }
@@ -91,7 +106,7 @@ a { color: var(--accent); }
   white-space: nowrap;
 }
 
-.auth-link:hover { background: #eef2f7; }
+.auth-link:hover { background: #eceeed; }
 
 .auth-link-quiet { color: var(--muted); border-color: transparent; }
 
@@ -116,9 +131,16 @@ a { color: var(--accent); }
 
 main.container { padding-top: 24px; }
 
-h1 { font-size: 1.6rem; line-height: 1.25; margin: 0 0 12px; }
-h2 { font-size: 1.25rem; margin: 28px 0 12px; }
-h3 { font-size: 1.05rem; margin: 20px 0 8px; }
+h1, h2, h3, .logo {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+h1 { font-size: var(--step-3); line-height: 1.15; margin: 0 0 14px; }
+h2 { font-size: var(--step-2); line-height: 1.25; margin: 30px 0 12px; }
+h3 { font-size: var(--step-1); margin: 22px 0 8px; }
 
 .intro p { max-width: 70ch; color: var(--muted); }
 
@@ -156,17 +178,17 @@ h3 { font-size: 1.05rem; margin: 20px 0 8px; }
   margin: 20px 0;
 }
 
-/* Поля фильтров — белые «таблетки» с подписью внутри. */
+/* Поля фильтров — белые «таблетки» с подписью внутри. Тень убрана:
+   скругление и граница уже отделяют поле от фона. */
 .filters .field {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 10px 16px;
-  box-shadow: 0 1px 2px rgba(16, 32, 56, 0.04);
 }
 
 .filters .field label {
-  font-size: 0.78rem;
+  font-size: var(--step--1);
   font-weight: 500;
 }
 
@@ -187,7 +209,7 @@ h3 { font-size: 1.05rem; margin: 20px 0 8px; }
 
 .filters .field:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(36, 91, 143, 0.12);
+  box-shadow: 0 0 0 3px rgba(34, 51, 63, 0.12);
 }
 
 .filters .field-check {
@@ -289,7 +311,7 @@ input:focus, select:focus, textarea:focus {
 .switch input:checked + .switch-track::after { transform: translateX(20px); }
 
 .switch input:focus-visible + .switch-track {
-  box-shadow: 0 0 0 3px rgba(36, 91, 143, 0.28);
+  box-shadow: 0 0 0 3px rgba(34, 51, 63, 0.28);
 }
 
 .switch-label { font-size: 0.95rem; color: var(--text); font-weight: 500; }
@@ -328,7 +350,9 @@ input:focus, select:focus, textarea:focus {
 
 .btn-primary { background: var(--accent); color: #fff; }
 .btn-primary:hover { background: var(--accent-dark); }
-.btn-whatsapp { background: var(--whatsapp); color: #fff; }
+/* Одно и то же действие выглядит одинаково в списке и в карточке.
+   Зелёный на сайте занят под «доказано», брать его под кнопку нельзя. */
+.btn-whatsapp { background: var(--accent); color: #fff; }
 .btn-ghost { background: transparent; }
 .btn-danger { color: var(--red); border-color: #e9c7c7; background: var(--red-bg); }
 .btn-small { padding: 7px 12px; font-size: 0.87rem; }
@@ -371,7 +395,7 @@ input:focus, select:focus, textarea:focus {
 
 .pc-line { margin: 0; font-size: 0.91rem; }
 .pc-key { color: var(--muted); }
-.pc-line-accent { color: var(--green); font-weight: 600; }
+.pc-line-accent { font-weight: 600; }
 
 .pc-description {
   margin: 1px 0 0;
@@ -400,6 +424,7 @@ input:focus, select:focus, textarea:focus {
 
 .pc-price {
   margin: 0;
+  font-family: var(--font-display);
   font-size: 1.05rem;
   font-weight: 700;
   line-height: 1.25;
@@ -418,7 +443,7 @@ input:focus, select:focus, textarea:focus {
 
 .btn-cta:hover { background: var(--accent-dark); }
 
-.pc-hint { margin: 0; font-size: 0.8rem; color: var(--green); }
+.pc-hint { margin: 0; font-size: 0.8rem; color: var(--muted); }
 
 .pc-more { margin-top: 2px; font-size: 0.88rem; font-weight: 600; text-decoration: none; }
 .pc-more:hover { text-decoration: underline; }
@@ -426,8 +451,8 @@ input:focus, select:focus, textarea:focus {
 .card, .provider, .method-card, .login-box, .admin-form, .review-form, .placeholder {
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 18px;
+  border-radius: 12px;
+  padding: 20px;
 }
 
 .card { display: flex; flex-direction: column; gap: 8px; }
@@ -447,7 +472,7 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
   justify-content: center;
   object-fit: cover;
-  background: #eef2f7;
+  background: #eceeed;
   border: 1px solid var(--line);
   border-radius: 12px;
   font-weight: 700;
@@ -506,11 +531,11 @@ input:focus, select:focus, textarea:focus {
   font-size: 0.78rem;
   font-weight: 600;
   border-radius: 999px;
-  background: #eef2f7;
-  color: var(--accent-dark);
+  background: #e8ebea;
+  color: var(--text);
 }
 
-.chip-test { background: #f1e7fb; color: #5b2a86; }
+.chip-test { background: #eceeed; color: var(--muted); }
 
 .rating { margin-left: auto; font-weight: 700; font-size: 0.95rem; white-space: nowrap; }
 .rating .star { color: #d08700; }
@@ -533,6 +558,36 @@ input:focus, select:focus, textarea:focus {
 .ev-proven { background: var(--green-bg); color: var(--green); border-color: #bfe3cf; }
 .ev-limited { background: var(--amber-bg); color: var(--amber); border-color: #f0dcae; }
 .ev-none { background: var(--red-bg); color: var(--red); border-color: #eec4c4; }
+
+/* Ключ к меткам стоит до списка, который он объясняет: без него
+   цветные плашки в карточках — просто украшение. */
+.evidence-key {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--text);
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin: 28px 0 0;
+}
+
+.evidence-key h2 { margin: 0 0 14px; font-size: var(--step-1); }
+
+.evidence-key dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px 24px;
+  margin: 0;
+}
+
+.evidence-key dt { margin-bottom: 5px; }
+
+.evidence-key dd {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.evidence-key .hint { margin: 14px 0 0; }
 
 .legend {
   display: flex;
@@ -671,7 +726,7 @@ input:focus, select:focus, textarea:focus {
   vertical-align: top;
 }
 
-.admin-table th { background: #eef2f7; font-size: 0.85rem; }
+.admin-table th { background: #eceeed; font-size: 0.85rem; }
 
 .row-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
 .row-actions form { margin: 0; }

@@ -12,6 +12,28 @@
   </p>
 </section>
 
+<section class="evidence-key">
+  <h2>Что значат метки у методов</h2>
+  <dl>
+    <div>
+      <dt><span class="badge ev-proven">Доказано</span></dt>
+      <dd>Эффективность при РАС подтверждена исследованиями.</dd>
+    </div>
+    <div>
+      <dt><span class="badge ev-limited">Ограниченные данные</span></dt>
+      <dd>Метод изучен мало, надёжных выводов пока нет.</dd>
+    </div>
+    <div>
+      <dt><span class="badge ev-none">Без доказательств при РАС</span></dt>
+      <dd>Исследования влияния на проявления РАС не подтверждают.</dd>
+    </div>
+  </dl>
+  <p class="hint">
+    Метка говорит о состоянии исследований, а не о качестве работы
+    конкретного специалиста. <a href="/methods">Подробнее о методах</a>
+  </p>
+</section>
+
 <h2 class="filters-title">Подобрать помощь</h2>
 
 <form class="filters" method="get" action="/">
@@ -144,16 +166,10 @@
         {% endif %}
 
         {% if p.pricing == 'free' %}<p class="pc-hint">занятия бесплатные</p>{% endif %}
-        <a class="pc-more" href="/providers/{{ p.id }}">Подробнее ›</a>
+        <a class="pc-more" href="/providers/{{ p.id }}">Подробнее</a>
       </div>
     </article>
   {% endfor %}
 </div>
 
-<p class="legend">
-  Метки методов:
-  <span class="badge ev-proven">Доказано</span>
-  <span class="badge ev-limited">Ограниченные данные</span>
-  <span class="badge ev-none">Без доказательств при РАС</span>
-</p>
 {% endblock %}
