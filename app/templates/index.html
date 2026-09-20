@@ -64,6 +64,26 @@
   </div>
 
   <div class="field">
+    <label for="specialty">Специальность</label>
+    <select id="specialty" name="specialty">
+      <option value="">Все специальности</option>
+      {% for s in SPECIALTIES %}
+        <option value="{{ s }}" {% if raw.specialty == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="field">
+    <label for="method">Метод</label>
+    <select id="method" name="method">
+      <option value="">Все методы</option>
+      {% for m in filter_methods %}
+        <option value="{{ m.code }}" {% if raw.method == m.code %}selected{% endif %}>{{ m.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="field">
     <label for="age">Возраст ребёнка</label>
     <select id="age" name="age">
       <option value="">Любой возраст</option>
@@ -73,46 +93,17 @@
     </select>
   </div>
 
-  {# Реже нужные фильтры спрятаны. Если один из них уже выбран, блок открыт
-     сразу: иначе непонятно, почему выборка такая узкая. #}
-  <details class="more-filters"
-           {% if raw.specialty or raw.method or raw.proven_only %}open{% endif %}>
-    <summary>Ещё фильтры</summary>
-
-    <div class="more-filters-fields">
-      <div class="field">
-        <label for="specialty">Специальность</label>
-        <select id="specialty" name="specialty">
-          <option value="">Все специальности</option>
-          {% for s in SPECIALTIES %}
-            <option value="{{ s }}" {% if raw.specialty == s %}selected{% endif %}>{{ s }}</option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <div class="field">
-        <label for="method">Метод</label>
-        <select id="method" name="method">
-          <option value="">Все методы</option>
-          {% for m in filter_methods %}
-            <option value="{{ m.code }}" {% if raw.method == m.code %}selected{% endif %}>{{ m.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <div class="field field-check">
-        <label class="switch-row">
-          <span class="switch">
-            <input type="checkbox" name="proven_only" value="1"
-                   {% if raw.proven_only %}checked{% endif %}>
-            <span class="switch-track"></span>
-          </span>
-          <span class="switch-label">Только доказательные методы</span>
-        </label>
-        <p class="hint">Без методов без доказательств.</p>
-      </div>
-    </div>
-  </details>
+  <div class="field field-check">
+    <label class="switch-row">
+      <span class="switch">
+        <input type="checkbox" name="proven_only" value="1"
+               {% if raw.proven_only %}checked{% endif %}>
+        <span class="switch-track"></span>
+      </span>
+      <span class="switch-label">Только доказательные методы</span>
+    </label>
+    <p class="hint">Без методов без доказательств.</p>
+  </div>
 
   <div class="filter-actions">
     <button type="submit" class="btn btn-primary">Найти</button>

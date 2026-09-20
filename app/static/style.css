@@ -351,63 +351,6 @@ input:focus, select:focus, textarea:focus {
   .switch-track, .switch-track::after { transition: none; }
 }
 
-/* «Ещё фильтры»: остальные условия поиска, спрятанные до нажатия.
-   Подпись набрана текстом, а не кнопкой, - кнопка рядом с «Найти»
-   читалась бы как второе действие поиска. Знак слева меняется с «+» на
-   «−» и сообщает состояние блока, а не украшает его. */
-.more-filters { grid-column: 1 / -1; }
-
-.more-filters > summary {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  width: fit-content;
-  padding: 2px 0;
-  font-weight: 600;
-  font-size: 0.95rem;
-  color: var(--accent);
-  cursor: pointer;
-  list-style: none;
-}
-
-.more-filters > summary::-webkit-details-marker { display: none; }
-
-.more-filters > summary::before {
-  content: "+";
-  display: inline-grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--surface);
-  font-weight: 500;
-  line-height: 1;
-}
-
-.more-filters[open] > summary::before { content: "−"; }
-
-.more-filters > summary:hover { text-decoration: underline; }
-
-.more-filters > summary:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-  border-radius: 4px;
-}
-
-/* Раскрытые поля продолжают ту же сетку, что и видимые сверху:
-   блок должен выглядеть продолжением ряда, а не отдельной панелью. */
-.more-filters-fields {
-  display: grid;
-  /* auto-fill, а не auto-fit: пустая колонка должна остаться пустой.
-     auto-fit схлопнул бы её, и три раскрытых поля стали бы шире трёх
-     полей сверху - ряды разъехались бы по ширине. */
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  align-items: start;
-  gap: 14px;
-  margin-top: 12px;
-}
-
 .filter-actions {
   grid-column: 1 / -1;
   display: flex;
@@ -1090,7 +1033,7 @@ input:focus, select:focus, textarea:focus {
   body { font-size: 15px; }
   h1 { font-size: 1.35rem; }
   .card, .provider, .admin-form { padding: 14px; }
-  .filters, .more-filters-fields { grid-template-columns: 1fr; }
+  .filters { grid-template-columns: 1fr; }
   .method-cards, .admin-form, .review-form, .methods-picker,
   .info-grid { grid-template-columns: 1fr; }
   .card.provider-card { grid-template-columns: 1fr; padding: 16px; }
