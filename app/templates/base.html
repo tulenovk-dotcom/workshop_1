@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,500;7..72,600&family=Golos+Text:wght@400;500;600&display=swap">
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="{{ static_url('style.css') }}">
 </head>
 <body>
 {% if SHOW_TEST_BANNER %}
@@ -23,8 +23,11 @@
     <a class="logo" href="/">
       {# alt пустой: название сайта стоит рядом текстом, и читалка
          не должна произносить его дважды. #}
-      <img class="logo-mark" src="/static/logo.webp" alt=""
-           width="200" height="188">
+      {# Ширина и высота указаны в том размере, в каком знак стоит на
+         экране: если стили почему-то не приехали, картинка всё равно
+         останется маленькой, а не развернётся во весь файл. #}
+      <img class="logo-mark" src="{{ static_url('logo.webp') }}" alt=""
+           width="49" height="46">
       <span class="logo-text">Каталог помощи детям с РАС<span>Казахстан</span></span>
     </a>
     <nav class="site-nav">

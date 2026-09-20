@@ -315,6 +315,23 @@ templates.env.filters["mask_contact"] = mask_contact
 templates.env.filters["short_hash"] = short_hash
 
 
+# Браузер держит style.css в кеше, и после правки стилей он может выдать
+# старый файл к новой разметке - страница рассыпается. Метка версии в адресе
+# считается от содержимого файла: пока файл не менялся, адрес прежний и кеш
+# работает; поменялся - адрес другой, и файл скачивается заново.
+_static_versions: dict[str, str] = {}
+
+
+def static_url(name: str) -> str:
+    if name not in _static_versions:
+        try:
+            data = (BASE_DIR / "static" / name).read_bytes()
+            _static_versions[name] = format(zlib.crc32(data), "x")
+        except OSError:
+            _static_versions[name] = "0"
+    return f"/static/{name}?v={_static_versions[name]}"
+
+
 def moderation_counts() -> dict:
     """Сколько всего ждёт проверки. Меню админки показывает счётчик на
     каждой странице, поэтому считаем здесь, а не в каждом обработчике."""
@@ -349,6 +366,7 @@ templates.env.globals.update(
     POLICY_UPDATED=POLICY_UPDATED,
     moderation_counts=moderation_counts,
     health_markers=health_markers,
+    static_url=static_url,
 )
 
 
