@@ -1,8 +1,11 @@
+import os
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parent.parent / "catalog.db"
+# На хостинге база лежит на подключённом диске, локально - рядом с проектом.
+DEFAULT_DB_PATH = Path(__file__).resolve().parent.parent / "catalog.db"
+DB_PATH = Path(os.environ.get("DB_PATH") or DEFAULT_DB_PATH)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS methods (
@@ -93,6 +96,7 @@ CREATE INDEX IF NOT EXISTS idx_applications_ip ON applications(author_ip, create
 
 
 def get_connection() -> sqlite3.Connection:
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")

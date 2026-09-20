@@ -6,7 +6,7 @@ import zlib
 from pathlib import Path
 
 from fastapi import FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -30,11 +30,22 @@ from .reference import (
 from .seed import seed_if_empty
 
 BASE_DIR = Path(__file__).resolve().parent
-UPLOAD_DIR = BASE_DIR / "static" / "uploads"
+
+# На хостинге загруженные файлы лежат на подключённом диске, локально -
+# внутри проекта. Адрес в браузере в обоих случаях один: /static/uploads/.
+UPLOAD_DIR = Path(os.environ.get("UPLOAD_DIR") or BASE_DIR / "static" / "uploads")
+
 MAX_LOGO_BYTES = 2 * 1024 * 1024
 MAX_APPLICATIONS_PER_HOUR = 3
-ADMIN_LOGIN = os.environ.get("ADMIN_LOGIN", "admin")
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin")
+
+# Пароля по умолчанию нет: без заданных переменных вход в админку закрыт.
+ADMIN_LOGIN = os.environ.get("ADMIN_LOGIN", "")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
+ADMIN_ENABLED = bool(ADMIN_LOGIN and ADMIN_PASSWORD)
+
+SHOW_TEST_BANNER = os.environ.get("SHOW_TEST_BANNER") == "1"
+NOINDEX = os.environ.get("NOINDEX") == "1"
+
 REDIRECT = 303
 
 
@@ -53,6 +64,10 @@ SECRET_KEY = load_secret_key()
 
 app = FastAPI(title="Каталог помощи детям с РАС в Казахстане")
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+# Папка загрузок монтируется первой: иначе её перехватит общий /static,
+# который смотрит только внутрь проекта.
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/static/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
@@ -177,6 +192,9 @@ templates.env.globals.update(
     PRICING=PRICING,
     SPECIALTIES=SPECIALTIES,
     TYPES_WITH_SPECIALTY=TYPES_WITH_SPECIALTY,
+    SHOW_TEST_BANNER=SHOW_TEST_BANNER,
+    NOINDEX=NOINDEX,
+    ADMIN_ENABLED=ADMIN_ENABLED,
     APPLICANT_KINDS=APPLICANT_KINDS,
     APPLICATION_STATUSES=APPLICATION_STATUSES,
     ORGANIZATION_TYPES=ORGANIZATION_TYPES,
@@ -331,6 +349,15 @@ def free_help(request: Request):
 @app.get("/privacy", response_class=HTMLResponse)
 def privacy(request: Request):
     return render(request, "privacy.html", {})
+
+
+@app.get("/robots.txt", response_class=PlainTextResponse)
+def robots() -> str:
+    """Тестовый стенд закрыт от поисковиков той же переменной, что и
+    мета-тег noindex: включили NOINDEX=1 - закрыт и файл, и страницы."""
+    if NOINDEX:
+        return "User-agent: *\nDisallow: /\n"
+    return "User-agent: *\nDisallow:\n"
 
 
 # --- Заявки на размещение ---------------------------------------------------
@@ -522,6 +549,9 @@ def admin_login_form(request: Request, error: str = ""):
 
 @app.post("/admin/login")
 def admin_login(request: Request, login: str = Form(""), password: str = Form("")):
+    if not ADMIN_ENABLED:
+        # Без заданных ADMIN_LOGIN и ADMIN_PASSWORD входить некуда.
+        return RedirectResponse("/admin/login", status_code=REDIRECT)
     login_ok = secrets.compare_digest(login.strip(), ADMIN_LOGIN)
     password_ok = secrets.compare_digest(password, ADMIN_PASSWORD)
     if login_ok and password_ok:

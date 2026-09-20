@@ -5,9 +5,22 @@
 {% block content %}
 <section class="login-box">
   <h1>Вход в админку</h1>
-  {% if error %}
-    <p class="notice notice-warn">Неверный логин или пароль.</p>
-  {% endif %}
+
+  {% if not ADMIN_ENABLED %}
+    <p class="notice notice-warn">
+      Вход в админку отключён: на сервере не заданы переменные окружения
+      <code>ADMIN_LOGIN</code> и <code>ADMIN_PASSWORD</code>.
+    </p>
+    <p class="hint">
+      Чтобы включить вход, задайте обе переменные в настройках сервиса и
+      перезапустите приложение. Пароля по умолчанию у сайта нет - это
+      сделано намеренно, чтобы открытый стенд нельзя было открыть парой
+      admin / admin.
+    </p>
+  {% else %}
+    {% if error %}
+      <p class="notice notice-warn">Неверный логин или пароль.</p>
+    {% endif %}
   <form method="post" action="/admin/login">
     <div class="field field-wide">
       <label for="login">Логин</label>
@@ -21,5 +34,6 @@
     </div>
     <button type="submit" class="btn btn-primary">Войти</button>
   </form>
+  {% endif %}
 </section>
 {% endblock %}

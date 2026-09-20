@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% if NOINDEX %}<meta name="robots" content="noindex, nofollow">{% endif %}
   <title>{% block title %}Каталог помощи детям с РАС в Казахстане{% endblock %}</title>
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11,6 +12,12 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+{% if SHOW_TEST_BANNER %}
+  <p class="test-banner" role="status">
+    <strong>Тестовая версия сайта.</strong> Данные вымышленные.
+  </p>
+{% endif %}
+
 <header class="site-header">
   <div class="container header-inner">
     <a class="logo" href="/">Каталог помощи детям с РАС<span>Казахстан</span></a>

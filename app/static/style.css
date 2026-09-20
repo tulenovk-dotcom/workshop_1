@@ -50,6 +50,20 @@ body {
 
 a { color: var(--accent); }
 
+/* Полоса тестового стенда. Это служебное сообщение, а не содержание
+   сайта, поэтому она набрана инверсно - тёмная плашка во всю ширину.
+   Цвет не берём: на сайте он означает уровень доказательности метода. */
+.test-banner {
+  margin: 0;
+  padding: 9px 16px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.test-banner strong { font-weight: 600; }
+
 /* --- Шапка и подвал --- */
 
 .site-header {

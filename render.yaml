@@ -1,0 +1,56 @@
+# Описание сервиса для Render. Подробности и инструкция - в README.
+#
+# ВАЖНО про бесплатный тариф: на нём нельзя подключить постоянный диск -
+# диски доступны только на платных типах инстансов. Поэтому здесь план free
+# и диска нет: база и загруженные файлы живут до перезапуска, после чего
+# создаются заново из тестовых данных. Для стенда с вымышленными записями
+# это обычно и нужно.
+#
+# Чтобы данные перестали пропадать, поменяйте plan на starter и раскомментируйте
+# блок disk вместе с переменными DB_PATH и UPLOAD_DIR ниже.
+
+services:
+  - type: web
+    name: ras-catalog
+    runtime: python
+    plan: free
+    region: frankfurt
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /
+
+    # disk:
+    #   name: ras-catalog-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
+
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+
+      # Ключ подписи cookie администратора. Render сгенерирует его сам.
+      # Без постоянного значения сессия сбрасывается при каждом перезапуске.
+      - key: SECRET_KEY
+        generateValue: true
+
+      # Логин и пароль администратора. sync: false означает, что значения
+      # не хранятся в репозитории - их задают руками в панели Render.
+      # Пока обе переменные пусты, вход в админку отключён.
+      - key: ADMIN_LOGIN
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+
+      # Полоса «Тестовая версия сайта» и запрет индексации.
+      - key: SHOW_TEST_BANNER
+        value: "1"
+      - key: NOINDEX
+        value: "1"
+
+      # Пути к данным. Нужны только вместе с подключённым диском выше:
+      # на бесплатном тарифе оставьте их закомментированными, тогда база
+      # и загрузки лягут рядом с проектом.
+      # - key: DB_PATH
+      #   value: /var/data/catalog.db
+      # - key: UPLOAD_DIR
+      #   value: /var/data/uploads
