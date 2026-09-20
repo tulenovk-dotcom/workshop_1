@@ -20,7 +20,13 @@
 
 <header class="site-header">
   <div class="container header-inner">
-    <a class="logo" href="/">Каталог помощи детям с РАС<span>Казахстан</span></a>
+    <a class="logo" href="/">
+      {# alt пустой: название сайта стоит рядом текстом, и читалка
+         не должна произносить его дважды. #}
+      <img class="logo-mark" src="/static/logo.webp" alt=""
+           width="200" height="188">
+      <span class="logo-text">Каталог помощи детям с РАС<span>Казахстан</span></span>
+    </a>
     <nav class="site-nav">
       <a href="/">Каталог</a>
       <a href="/methods">Методы помощи</a>

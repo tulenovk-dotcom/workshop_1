@@ -81,7 +81,11 @@ a { color: var(--accent); }
   padding-bottom: 14px;
 }
 
+/* Знак и название стоят в строку: сначала рисунок, потом надпись. */
 .logo {
+  display: flex;
+  align-items: center;
+  gap: 11px;
   font-weight: 700;
   font-size: 1.05rem;
   text-decoration: none;
@@ -89,7 +93,15 @@ a { color: var(--accent); }
   line-height: 1.25;
 }
 
-.logo span {
+/* Размер задан по высоте: у знака своя пропорция, по ширине он
+   подстраивается сам. flex: none - чтобы длинное название его не сжимало. */
+.logo-mark {
+  flex: none;
+  width: auto;
+  height: 46px;
+}
+
+.logo-text span {
   display: block;
   font-weight: 400;
   font-size: 0.8rem;
@@ -1048,4 +1060,6 @@ input:focus, select:focus, textarea:focus {
   .btn-cta { width: 100%; }
   .pc-more { margin: 0; }
   .site-nav { font-size: 0.9rem; }
+  .logo { gap: 9px; }
+  .logo-mark { height: 40px; }
 }
