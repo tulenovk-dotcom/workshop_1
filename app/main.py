@@ -52,6 +52,12 @@ LOGIN_BLOCK_SECONDS = 15 * 60
 SHOW_TEST_BANNER = os.environ.get("SHOW_TEST_BANNER") == "1"
 NOINDEX = os.environ.get("NOINDEX") == "1"
 
+# На хостинге запросы приходят не напрямую, а через балансировщик, и адрес
+# подключения у всех посетителей один. Настоящий адрес балансировщик кладёт
+# в заголовок X-Forwarded-For. Верить заголовку можно только за таким
+# балансировщиком: напрямую его подделает кто угодно и обойдёт все счётчики.
+TRUST_PROXY_HEADERS = os.environ.get("TRUST_PROXY_HEADERS") == "1"
+
 REDIRECT = 303
 
 
@@ -104,6 +110,20 @@ def instagram_link(value: str | None) -> str:
     if value.startswith(("http://", "https://")):
         return value
     return f"https://instagram.com/{value.lstrip('@')}"
+
+
+def request_ip(request: Request) -> str:
+    """Адрес посетителя - для счётчиков отзывов, заявок и попыток входа.
+
+    За балансировщиком берём первый адрес из X-Forwarded-For: там стоит тот,
+    кто обратился к сайту, дальше идут промежуточные узлы.
+    """
+    if TRUST_PROXY_HEADERS:
+        forwarded = request.headers.get("x-forwarded-for", "")
+        first = forwarded.split(",")[0].strip()
+        if first:
+            return first
+    return request.client.host if request.client else "unknown"
 
 
 # Счётчик живёт в памяти процесса: отдельная таблица тут лишняя, а при
@@ -353,7 +373,7 @@ def add_review(
     author_name = author_name.strip()
     text = text.strip()
     rating_value = parse_int(rating)
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = request_ip(request)
 
     if not author_name or not text or rating_value not in (1, 2, 3, 4, 5):
         return RedirectResponse(
@@ -536,7 +556,7 @@ async def application_create(request: Request):
         if key not in ("methods", "logo")
     }
     form["methods"] = raw.getlist("methods")
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = request_ip(request)
 
     # Honeypot: поле спрятано от людей, его заполняют только боты.
     if form.get("company_site", "").strip():
@@ -596,7 +616,7 @@ def require_admin(request: Request) -> RedirectResponse | None:
 
 @app.get("/admin/login", response_class=HTMLResponse)
 def admin_login_form(request: Request, error: str = ""):
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = request_ip(request)
     seconds_left = login_block_seconds_left(client_ip)
     minutes_left = (seconds_left + 59) // 60
     return render(
@@ -618,7 +638,7 @@ def admin_login(request: Request, login: str = Form(""), password: str = Form(""
         # Без заданных ADMIN_LOGIN и ADMIN_PASSWORD входить некуда.
         return RedirectResponse("/admin/login", status_code=REDIRECT)
 
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = request_ip(request)
     if login_block_seconds_left(client_ip):
         return RedirectResponse("/admin/login", status_code=REDIRECT)
 
