@@ -60,8 +60,8 @@ ADMIN_LOGIN=admin ADMIN_PASSWORD=admin \
 
 ## Публикация на Render
 
-**Тестовый стенд:** https://erekshe-test.onrender.com - на нём работает само
-приложение, а не демоверсия. Админка там по адресу `/admin`.
+**Тестовый стенд:** https://erekshe-test.onrender.com - на нём работает это же
+приложение из ветки `main`. Админка там по адресу `/admin`.
 
 Как стенд устроен на самом деле:
 
