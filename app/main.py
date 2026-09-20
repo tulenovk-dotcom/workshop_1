@@ -2,6 +2,7 @@ import json
 import os
 import re
 import secrets
+import time
 import zlib
 from pathlib import Path
 
@@ -42,6 +43,11 @@ MAX_APPLICATIONS_PER_HOUR = 3
 ADMIN_LOGIN = os.environ.get("ADMIN_LOGIN", "")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 ADMIN_ENABLED = bool(ADMIN_LOGIN and ADMIN_PASSWORD)
+
+# Перебор пароля к админке: пять неудач с адреса - и он ждёт четверть часа.
+LOGIN_MAX_ATTEMPTS = 5
+LOGIN_WINDOW_SECONDS = 15 * 60
+LOGIN_BLOCK_SECONDS = 15 * 60
 
 SHOW_TEST_BANNER = os.environ.get("SHOW_TEST_BANNER") == "1"
 NOINDEX = os.environ.get("NOINDEX") == "1"
@@ -98,6 +104,52 @@ def instagram_link(value: str | None) -> str:
     if value.startswith(("http://", "https://")):
         return value
     return f"https://instagram.com/{value.lstrip('@')}"
+
+
+# Счётчик живёт в памяти процесса: отдельная таблица тут лишняя, а при
+# перезапуске блокировки и так пора забывать. На нескольких процессах
+# каждый будет считать своё - для стенда этого достаточно.
+_login_failures: dict[str, list[float]] = {}
+_login_blocked_until: dict[str, float] = {}
+
+
+def login_block_seconds_left(ip: str) -> int:
+    """Сколько секунд осталось ждать этому адресу. 0 - можно пробовать."""
+    until = _login_blocked_until.get(ip, 0.0)
+    left = until - time.time()
+    if left <= 0:
+        _login_blocked_until.pop(ip, None)
+        return 0
+    return int(left) + 1
+
+
+def register_login_failure(ip: str) -> None:
+    now = time.time()
+    # Старые неудачи забываем, иначе они копятся месяцами.
+    attempts = [t for t in _login_failures.get(ip, []) if now - t < LOGIN_WINDOW_SECONDS]
+    attempts.append(now)
+    _login_failures[ip] = attempts
+    if len(attempts) >= LOGIN_MAX_ATTEMPTS:
+        _login_blocked_until[ip] = now + LOGIN_BLOCK_SECONDS
+        _login_failures.pop(ip, None)
+
+    # Подчищаем адреса, о которых давно ничего не слышно.
+    for old_ip, times in list(_login_failures.items()):
+        if not times or now - times[-1] > LOGIN_WINDOW_SECONDS:
+            _login_failures.pop(old_ip, None)
+
+
+def forget_login_failures(ip: str) -> None:
+    _login_failures.pop(ip, None)
+    _login_blocked_until.pop(ip, None)
+
+
+def minutes_word(minutes: int) -> str:
+    if minutes % 10 == 1 and minutes % 100 != 11:
+        return "минуту"
+    if minutes % 10 in (2, 3, 4) and minutes % 100 not in (12, 13, 14):
+        return "минуты"
+    return "минут"
 
 
 def normalize_phone(value: str) -> str | None:
@@ -544,7 +596,20 @@ def require_admin(request: Request) -> RedirectResponse | None:
 
 @app.get("/admin/login", response_class=HTMLResponse)
 def admin_login_form(request: Request, error: str = ""):
-    return render(request, "admin/login.html", {"error": error})
+    client_ip = request.client.host if request.client else "unknown"
+    seconds_left = login_block_seconds_left(client_ip)
+    minutes_left = (seconds_left + 59) // 60
+    return render(
+        request,
+        "admin/login.html",
+        {
+            "error": error,
+            "blocked": seconds_left > 0,
+            "minutes_left": minutes_left,
+            "minutes_word": minutes_word(minutes_left),
+            "max_attempts": LOGIN_MAX_ATTEMPTS,
+        },
+    )
 
 
 @app.post("/admin/login")
@@ -552,11 +617,19 @@ def admin_login(request: Request, login: str = Form(""), password: str = Form(""
     if not ADMIN_ENABLED:
         # Без заданных ADMIN_LOGIN и ADMIN_PASSWORD входить некуда.
         return RedirectResponse("/admin/login", status_code=REDIRECT)
+
+    client_ip = request.client.host if request.client else "unknown"
+    if login_block_seconds_left(client_ip):
+        return RedirectResponse("/admin/login", status_code=REDIRECT)
+
     login_ok = secrets.compare_digest(login.strip(), ADMIN_LOGIN)
     password_ok = secrets.compare_digest(password, ADMIN_PASSWORD)
     if login_ok and password_ok:
+        forget_login_failures(client_ip)
         request.session["admin"] = True
         return RedirectResponse("/admin", status_code=REDIRECT)
+
+    register_login_failure(client_ip)
     return RedirectResponse("/admin/login?error=1", status_code=REDIRECT)
 
 

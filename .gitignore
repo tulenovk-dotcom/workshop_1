@@ -3,6 +3,7 @@ __pycache__/
 .venv/
 venv/
 *.db
+catalog.db
 .env
 .secret_key
 app/static/uploads/
