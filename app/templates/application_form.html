@@ -22,6 +22,12 @@
   <p class="hint">Размещение бесплатное.</p>
 </section>
 
+<p class="data-warning">
+  В анкете нужны сведения об организации или специалисте. Не указывайте
+  диагнозы, фамилии детей, номера справок и другие данные о здоровье - ни
+  в комментарии, ни в названии. Такие заявки мы возвращаем на доработку.
+</p>
+
 {% if errors %}
   <div class="notice notice-warn form-errors">
     <p><strong>Заявка не отправлена. Проверьте, пожалуйста:</strong></p>
@@ -202,7 +208,8 @@
     <label class="checkbox">
       <input type="checkbox" name="consent" value="1" required
              {% if form.consent %}checked{% endif %}>
-      Я согласен на обработку персональных данных и принимаю
+      Я согласен на обработку персональных данных, указанных в заявке,
+      и принимаю
       <a href="/privacy" target="_blank" rel="noopener">политику конфиденциальности</a> *
     </label>
   </div>

@@ -52,19 +52,6 @@ AGE_RANGES = [
 
 AGE_RANGE_BOUNDS = {code: (low, high) for code, _, low, high in AGE_RANGES}
 
-# Методы, которые показываются в фильтре на странице поиска.
-# Справочник методов шире: остальные используются для меток
-# доказательности в карточках и на странице «Методы помощи».
-FILTER_METHOD_CODES = [
-    "aba",
-    "si",
-    "speech_massage",
-    "floortime",
-    "pecs",
-    "neuro",
-    "montessori",
-]
-
 # --- Заявки на размещение -----------------------------------------------
 
 APPLICANT_KINDS = {
@@ -87,6 +74,17 @@ APPLICATION_STATUSES = {
 
 # Статусы, которые ждут действия администратора.
 APPLICATION_STATUS_NEW = "new"
+
+# --- Обращения по персональным данным -----------------------------------
+
+REQUEST_STATUSES = {
+    "new": "Новое",
+    "in_progress": "В работе",
+    "done": "Отвечено",
+}
+
+# Срок ответа на обращение, о котором сказано на странице обращения.
+REQUEST_ANSWER_DAYS = 10
 
 EVIDENCE_LEVELS = {
     "proven": {

@@ -13,6 +13,20 @@
   <p class="notice notice-ok">Изменения сохранены.</p>
 {% endif %}
 
+{% if application.anonymized_at %}
+  <p class="notice notice-warn">
+    Заявка обезличена {{ application.anonymized_at[:10] }}: контакты затёрты,
+    связаться с заявителем по ней уже нельзя.
+  </p>
+{% endif %}
+
+{% if markers %}
+  <p class="notice notice-warn">
+    В заявке встречаются слова о здоровье: {{ markers|join(', ') }}.
+    Проверьте внимательнее: сведения о здоровье в каталоге не публикуются.
+  </p>
+{% endif %}
+
 <article class="provider">
   <div class="card-head">
     <span class="chip">{{ APPLICANT_KINDS.get(application.applicant_kind, application.applicant_kind) }}</span>
@@ -50,8 +64,16 @@
     {% if application.link %}<div><dt>Сайт или Instagram</dt><dd>{{ application.link }}</dd></div>{% endif %}
     <div><dt>Возраст детей</dt><dd>{{ ui.age_line(application) }}</dd></div>
     <div><dt>Стоимость</dt><dd>{{ ui.price_line(application) }}</dd></div>
-    <div><dt>Согласие на обработку</dt><dd>дано {{ application.consent_at[:10] }}</dd></div>
-    <div><dt>IP отправителя</dt><dd>{{ application.author_ip or '-' }}</dd></div>
+    <div><dt>Согласие на обработку</dt>
+      <dd>
+        {% if consent %}
+          дано {{ consent.given_at[:10] }}, политика версии {{ consent.policy_version }}
+          {% if consent.revoked_at %}<br>отозвано {{ consent.revoked_at[:10] }}{% endif %}
+        {% else %}
+          дано {{ application.consent_at[:10] }} (до введения журнала согласий)
+        {% endif %}
+      </dd></div>
+    <div><dt>Отпечаток адреса</dt><dd>{{ application.author_ip_hash|short_hash }}</dd></div>
     <div><dt>Обновлена</dt><dd>{{ application.updated_at[:10] }}</dd></div>
   </dl>
 
@@ -110,9 +132,18 @@
     </div>
   </form>
 
-  <form method="post" action="/admin/applications/{{ application.id }}/delete"
-        onsubmit="return confirm('Удалить заявку от «{{ application.name }}»? Действие необратимо.');">
-    <button type="submit" class="btn btn-small btn-danger">Удалить заявку</button>
-  </form>
+  {% if consent %}
+    <h2>С чем согласился заявитель</h2>
+    <p class="consent-text">{{ consent.consent_text }}</p>
+    <p class="hint">
+      Цель: {{ consent.purpose }}. Политика версии {{ consent.policy_version }},
+      согласие дано {{ consent.given_at[:16]|replace('T', ' ') }}.
+    </p>
+  {% endif %}
+
+  {% with subject_type = 'application', record_id = application.id,
+          subject_name = application.name, back = '/admin/applications' %}
+    {% include "admin/_data_actions.html" %}
+  {% endwith %}
 </article>
 {% endblock %}

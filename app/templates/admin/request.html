@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Обращение № {{ item.id }} - админка{% endblock %}
+
+{% block content %}
+<h1>Обращение № {{ item.id }}</h1>
+{% include "admin/_nav.html" %}
+
+<p class="breadcrumbs"><a href="/admin/requests">← Ко всем обращениям</a></p>
+
+{% if request.query_params.get('saved') %}
+  <p class="notice notice-ok">Изменения сохранены.</p>
+{% endif %}
+
+<article class="provider">
+  <div class="card-head">
+    <span class="chip status-{{ item.status }}">{{ REQUEST_STATUSES.get(item.status, item.status) }}</span>
+    <span class="muted">Получено {{ item.created_at[:10] }}</span>
+  </div>
+
+  <h2>{{ item.name }}</h2>
+  <p class="provider-description">{{ item.message }}</p>
+
+  <dl class="info-grid">
+    <div><dt>Контакт для ответа</dt><dd>{{ item.contact }}</dd></div>
+    <div><dt>Отпечаток адреса</dt><dd>{{ item.author_ip_hash|short_hash }}</dd></div>
+    <div><dt>Обновлено</dt><dd>{{ item.updated_at[:10] }}</dd></div>
+  </dl>
+
+  <p class="hint">
+    Чтобы выполнить просьбу, найдите запись в заявках или отзывах и
+    воспользуйтесь блоком «Персональные данные» на её странице. В основании
+    укажите номер этого обращения.
+  </p>
+
+  <h2>Обработка</h2>
+  <form class="admin-form" method="post" action="/admin/requests/{{ item.id }}">
+    <div class="field">
+      <label for="status">Статус</label>
+      <select id="status" name="status">
+        {% for code, label in REQUEST_STATUSES.items() %}
+          <option value="{{ code }}" {% if item.status == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field field-wide">
+      <label for="admin_note">Заметка администратора</label>
+      <textarea id="admin_note" name="admin_note" rows="4" maxlength="2000"
+                placeholder="Что сделали по обращению и когда ответили">{{ item.admin_note }}</textarea>
+    </div>
+
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-primary">Сохранить</button>
+    </div>
+  </form>
+
+  <form method="post" action="/admin/requests/{{ item.id }}/delete"
+        onsubmit="return confirm('Удалить обращение от «{{ item.name }}»? Действие необратимо.');">
+    <button type="submit" class="btn btn-small btn-danger">Удалить обращение</button>
+  </form>
+</article>
+{% endblock %}

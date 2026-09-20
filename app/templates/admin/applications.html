@@ -7,7 +7,8 @@
 {% include "admin/_nav.html" %}
 
 <p class="admin-summary">
-  Всего в списке: {{ applications|length }}
+  Всего в списке: {{ applications|length }}. Телефон и почта показаны
+  частично: полностью они видны на странице заявки.
 </p>
 
 <p class="status-filter">
@@ -40,11 +41,17 @@
             <td>
               <a href="/admin/applications/{{ a.id }}">{{ a.name }}</a>
               <div class="muted">{{ APPLICANT_KINDS.get(a.applicant_kind, a.applicant_kind) }}</div>
+              {% if a.anonymized_at %}<span class="chip chip-test">обезличена</span>{% endif %}
+              {% set marks = health_markers(a.name, a.comment) %}
+              {% if marks %}
+                <div><span class="chip chip-flag">о здоровье: {{ marks|join(', ') }}</span></div>
+              {% endif %}
             </td>
             <td>{{ a.city }}</td>
             <td>
               {{ a.contact_person }}
-              <div class="muted">{{ a.phone }}</div>
+              <div class="muted">{{ a.phone|mask_phone }}</div>
+              {% if a.email %}<div class="muted">{{ a.email|mask_email }}</div>{% endif %}
             </td>
             <td>
               <span class="chip status-{{ a.status }}">{{ APPLICATION_STATUSES.get(a.status, a.status) }}</span>

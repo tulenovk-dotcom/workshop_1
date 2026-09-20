@@ -6,15 +6,23 @@
 <h1>Отзывы</h1>
 {% include "admin/_nav.html" %}
 
+<p class="admin-summary">
+  Имя автора ведёт на страницу отзыва: там видно согласие и можно удалить
+  или обезличить данные.
+</p>
+
 <h2>На модерации ({{ pending|length }})</h2>
 {% if pending %}
   <ul class="admin-reviews">
     {% for r in pending %}
       <li class="review">
         <div class="review-head">
-          <strong>{{ r.author_name }}</strong>
+          <strong><a href="/admin/reviews/{{ r.id }}">{{ r.author_name }}</a></strong>
           <span class="review-rating">{{ '★' * r.rating }}{{ '☆' * (5 - r.rating) }}</span>
           <span class="review-date">{{ r.created_at[:10] }}</span>
+          {% set marks = health_markers(r.author_name, r.text) %}
+          {% if marks %}<span class="chip chip-flag">о здоровье: {{ marks|join(', ') }}</span>{% endif %}
+          {% if r.anonymized_at %}<span class="chip chip-test">обезличен</span>{% endif %}
         </div>
         <p class="muted">
           Место занятий: <a href="/providers/{{ r.provider_id }}">{{ r.provider_name }}</a>
@@ -27,6 +35,7 @@
           <form method="post" action="/admin/reviews/{{ r.id }}/reject">
             <button type="submit" class="btn btn-small btn-danger">Отклонить</button>
           </form>
+          <a class="btn btn-small" href="/admin/reviews/{{ r.id }}">Открыть</a>
         </div>
       </li>
     {% endfor %}
@@ -41,9 +50,12 @@
     {% for r in published %}
       <li class="review">
         <div class="review-head">
-          <strong>{{ r.author_name }}</strong>
+          <strong><a href="/admin/reviews/{{ r.id }}">{{ r.author_name }}</a></strong>
           <span class="review-rating">{{ '★' * r.rating }}{{ '☆' * (5 - r.rating) }}</span>
           <span class="review-date">{{ r.created_at[:10] }}</span>
+          {% set marks = health_markers(r.author_name, r.text) %}
+          {% if marks %}<span class="chip chip-flag">о здоровье: {{ marks|join(', ') }}</span>{% endif %}
+          {% if r.anonymized_at %}<span class="chip chip-test">обезличен</span>{% endif %}
         </div>
         <p class="muted">Место занятий: {{ r.provider_name }}</p>
         <p>{{ r.text }}</p>
@@ -65,9 +77,12 @@
     {% for r in rejected %}
       <li class="review">
         <div class="review-head">
-          <strong>{{ r.author_name }}</strong>
+          <strong><a href="/admin/reviews/{{ r.id }}">{{ r.author_name }}</a></strong>
           <span class="review-rating">{{ '★' * r.rating }}{{ '☆' * (5 - r.rating) }}</span>
           <span class="review-date">{{ r.created_at[:10] }}</span>
+          {% set marks = health_markers(r.author_name, r.text) %}
+          {% if marks %}<span class="chip chip-flag">о здоровье: {{ marks|join(', ') }}</span>{% endif %}
+          {% if r.anonymized_at %}<span class="chip chip-test">обезличен</span>{% endif %}
         </div>
         <p class="muted">Место занятий: {{ r.provider_name }}</p>
         <p>{{ r.text }}</p>

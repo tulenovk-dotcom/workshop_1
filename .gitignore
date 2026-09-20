@@ -6,4 +6,5 @@ venv/
 catalog.db
 .env
 .secret_key
+.ip_salt
 app/static/uploads/

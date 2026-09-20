@@ -1,4 +1,5 @@
 import os
+import secrets
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
@@ -6,6 +7,20 @@ from pathlib import Path
 # На хостинге база лежит на подключённом диске, локально - рядом с проектом.
 DEFAULT_DB_PATH = Path(__file__).resolve().parent.parent / "catalog.db"
 DB_PATH = Path(os.environ.get("DB_PATH") or DEFAULT_DB_PATH)
+
+
+def read_or_create_secret(name: str) -> str:
+    """Длинная случайная строка, которая переживает перезапуск процесса.
+
+    Файл лежит рядом с базой: там же, где данные, которые он защищает.
+    Если переменная окружения задана, этот файл не нужен - вызывающий код
+    смотрит переменную первым.
+    """
+    path = DB_PATH.parent / name
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(secrets.token_hex(32))
+    return path.read_text().strip()
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS methods (
@@ -54,7 +69,8 @@ CREATE TABLE IF NOT EXISTS reviews (
     rating INTEGER NOT NULL,
     text TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending',
-    author_ip TEXT,
+    author_ip_hash TEXT,
+    anonymized_at TEXT,
     created_at TEXT NOT NULL
 );
 
@@ -83,15 +99,57 @@ CREATE TABLE IF NOT EXISTS applications (
     admin_note TEXT NOT NULL DEFAULT '',
     provider_id INTEGER REFERENCES providers(id) ON DELETE SET NULL,
     consent_at TEXT NOT NULL,
-    author_ip TEXT,
+    author_ip_hash TEXT,
+    anonymized_at TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS consents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    subject_type TEXT NOT NULL,
+    record_id INTEGER NOT NULL,
+    purpose TEXT NOT NULL,
+    policy_version TEXT NOT NULL,
+    consent_text TEXT NOT NULL,
+    given_at TEXT NOT NULL,
+    ip_hash TEXT NOT NULL DEFAULT '',
+    user_agent TEXT NOT NULL DEFAULT '',
+    revoked_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS data_actions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    action TEXT NOT NULL,
+    subject_type TEXT NOT NULL,
+    record_id INTEGER NOT NULL,
+    reason TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    contact TEXT NOT NULL,
+    message TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'new',
+    admin_note TEXT NOT NULL DEFAULT '',
+    author_ip_hash TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+"""
+
+# Индексы создаются после миграций: на старой базе колонка с хешем адреса
+# появляется только там, а индекс по несуществующей колонке не создать.
+INDEXES = """
 CREATE INDEX IF NOT EXISTS idx_reviews_provider ON reviews(provider_id, status);
-CREATE INDEX IF NOT EXISTS idx_reviews_ip ON reviews(provider_id, author_ip, created_at);
+CREATE INDEX IF NOT EXISTS idx_reviews_ip ON reviews(provider_id, author_ip_hash, created_at);
 CREATE INDEX IF NOT EXISTS idx_applications_status ON applications(status, created_at);
-CREATE INDEX IF NOT EXISTS idx_applications_ip ON applications(author_ip, created_at);
+CREATE INDEX IF NOT EXISTS idx_applications_ip ON applications(author_ip_hash, created_at);
+CREATE INDEX IF NOT EXISTS idx_consents_record ON consents(subject_type, record_id);
+CREATE INDEX IF NOT EXISTS idx_data_actions_record ON data_actions(subject_type, record_id);
+CREATE INDEX IF NOT EXISTS idx_requests_status ON requests(status, created_at);
 """
 
 
@@ -118,6 +176,40 @@ def db_session():
         conn.close()
 
 
+def table_columns(conn: sqlite3.Connection, table: str) -> set[str]:
+    return {row["name"] for row in conn.execute(f"PRAGMA table_info({table})")}
+
+
+def migrate_ip_columns(conn: sqlite3.Connection) -> None:
+    """Открытые адреса в старых базах заменяются хешами - один раз.
+
+    Колонка переименовывается, чтобы по имени было видно, что в ней лежит:
+    author_ip хранил сам адрес, author_ip_hash хранит только его отпечаток.
+    """
+    from .personal_data import hash_ip, looks_like_hash
+
+    for table in ("reviews", "applications"):
+        columns = table_columns(conn, table)
+        if "author_ip" in columns and "author_ip_hash" not in columns:
+            conn.execute(
+                f"ALTER TABLE {table} RENAME COLUMN author_ip TO author_ip_hash"
+            )
+        if "anonymized_at" not in table_columns(conn, table):
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN anonymized_at TEXT")
+
+        rows = conn.execute(
+            f"SELECT id, author_ip_hash FROM {table}"
+            " WHERE author_ip_hash IS NOT NULL AND author_ip_hash <> ''"
+        ).fetchall()
+        for row in rows:
+            if looks_like_hash(row["author_ip_hash"]):
+                continue
+            conn.execute(
+                f"UPDATE {table} SET author_ip_hash = ? WHERE id = ?",
+                (hash_ip(row["author_ip_hash"]), row["id"]),
+            )
+
+
 def init_db() -> None:
     from .reference import (
         DEFAULT_METHODS,
@@ -127,6 +219,8 @@ def init_db() -> None:
 
     with db_session() as conn:
         conn.executescript(SCHEMA)
+        migrate_ip_columns(conn)
+        conn.executescript(INDEXES)
         columns = {row["name"] for row in conn.execute("PRAGMA table_info(providers)")}
         if "logo_path" not in columns:
             conn.execute(

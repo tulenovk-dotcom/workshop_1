@@ -240,9 +240,9 @@ def pending_count(conn: sqlite3.Connection) -> int:
 def create_review(conn: sqlite3.Connection, data: dict) -> int:
     cur = conn.execute(
         "INSERT INTO reviews (provider_id, author_name, rating, text, status,"
-        " author_ip, created_at)"
+        " author_ip_hash, created_at)"
         " VALUES (:provider_id, :author_name, :rating, :text, 'pending',"
-        " :author_ip, :created_at)",
+        " :author_ip_hash, :created_at)",
         {**data, "created_at": now_iso()},
     )
     return int(cur.lastrowid)
@@ -252,17 +252,28 @@ def set_review_status(conn: sqlite3.Connection, review_id: int, status: str) -> 
     conn.execute("UPDATE reviews SET status = ? WHERE id = ?", (status, review_id))
 
 
+def get_review(conn: sqlite3.Connection, review_id: int) -> sqlite3.Row | None:
+    return conn.execute(
+        "SELECT r.*, p.name AS provider_name FROM reviews r"
+        " LEFT JOIN providers p ON p.id = r.provider_id WHERE r.id = ?",
+        (review_id,),
+    ).fetchone()
+
+
 def has_recent_review_from_ip(
-    conn: sqlite3.Connection, provider_id: int, ip: str
+    conn: sqlite3.Connection, provider_id: int, ip_hash: str
 ) -> bool:
-    """Не больше одного отзыва с одного IP на провайдера в сутки."""
+    """Не больше одного отзыва с одного адреса на провайдера в сутки.
+
+    Сам адрес нигде не хранится, сравниваются хеши.
+    """
     since = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat(
         timespec="seconds"
     )
     row = conn.execute(
-        "SELECT 1 FROM reviews WHERE provider_id = ? AND author_ip = ?"
+        "SELECT 1 FROM reviews WHERE provider_id = ? AND author_ip_hash = ?"
         " AND created_at > ? LIMIT 1",
-        (provider_id, ip, since),
+        (provider_id, ip_hash, since),
     ).fetchone()
     return row is not None
 
@@ -289,7 +300,7 @@ APPLICATION_FIELDS = (
     "email",
     "comment",
     "logo_path",
-    "author_ip",
+    "author_ip_hash",
 )
 
 
@@ -365,13 +376,14 @@ def new_applications_count(conn: sqlite3.Connection) -> int:
     return int(row["n"])
 
 
-def applications_from_ip_last_hour(conn: sqlite3.Connection, ip: str) -> int:
+def applications_from_ip_last_hour(conn: sqlite3.Connection, ip_hash: str) -> int:
     since = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat(
         timespec="seconds"
     )
     row = conn.execute(
-        "SELECT COUNT(*) AS n FROM applications WHERE author_ip = ? AND created_at > ?",
-        (ip, since),
+        "SELECT COUNT(*) AS n FROM applications"
+        " WHERE author_ip_hash = ? AND created_at > ?",
+        (ip_hash, since),
     ).fetchone()
     return int(row["n"])
 
@@ -383,3 +395,225 @@ def pending_reviews(conn: sqlite3.Connection, limit: int) -> list[sqlite3.Row]:
         " WHERE r.status = 'pending' ORDER BY r.created_at DESC LIMIT ?",
         (limit,),
     ).fetchall()
+
+
+# --- Согласия на обработку данных -------------------------------------------
+
+def create_consent(conn: sqlite3.Connection, data: dict) -> int:
+    """Отметка о согласии. Пишется в той же транзакции, что и сама запись:
+    данных без согласия в базе быть не должно."""
+    cur = conn.execute(
+        "INSERT INTO consents (subject_type, record_id, purpose, policy_version,"
+        " consent_text, given_at, ip_hash, user_agent)"
+        " VALUES (:subject_type, :record_id, :purpose, :policy_version,"
+        " :consent_text, :given_at, :ip_hash, :user_agent)",
+        {**data, "given_at": now_iso()},
+    )
+    return int(cur.lastrowid)
+
+
+def get_consent(
+    conn: sqlite3.Connection, subject_type: str, record_id: int
+) -> sqlite3.Row | None:
+    return conn.execute(
+        "SELECT * FROM consents WHERE subject_type = ? AND record_id = ?"
+        " ORDER BY id DESC LIMIT 1",
+        (subject_type, record_id),
+    ).fetchone()
+
+
+def revoke_consent(conn: sqlite3.Connection, subject_type: str, record_id: int) -> None:
+    conn.execute(
+        "UPDATE consents SET revoked_at = ? WHERE subject_type = ? AND record_id = ?"
+        " AND revoked_at IS NULL",
+        (now_iso(), subject_type, record_id),
+    )
+
+
+# --- Журнал действий с данными ----------------------------------------------
+
+def log_data_action(
+    conn: sqlite3.Connection,
+    action: str,
+    subject_type: str,
+    record_id: int,
+    reason: str = "",
+) -> None:
+    conn.execute(
+        "INSERT INTO data_actions (action, subject_type, record_id, reason, created_at)"
+        " VALUES (?, ?, ?, ?, ?)",
+        (action, subject_type, record_id, reason[:500], now_iso()),
+    )
+
+
+def data_actions_for(
+    conn: sqlite3.Connection, subject_type: str, record_id: int
+) -> list[sqlite3.Row]:
+    return conn.execute(
+        "SELECT * FROM data_actions WHERE subject_type = ? AND record_id = ?"
+        " ORDER BY id DESC",
+        (subject_type, record_id),
+    ).fetchall()
+
+
+def list_data_actions(conn: sqlite3.Connection, limit: int = 50) -> list[sqlite3.Row]:
+    return conn.execute(
+        "SELECT * FROM data_actions ORDER BY id DESC LIMIT ?", (limit,)
+    ).fetchall()
+
+
+# --- Удаление и обезличивание -----------------------------------------------
+
+# Что остаётся на месте затёртых контактов. Пустая строка не годится:
+# по ней не видно, что запись обезличили, а не оставили незаполненной.
+ANONYMIZED = "Данные удалены"
+
+
+def delete_personal_data(
+    conn: sqlite3.Connection, subject_type: str, record_id: int, reason: str = ""
+) -> bool:
+    """Необратимое удаление записи вместе с отметкой о согласии."""
+    table = "applications" if subject_type == "application" else "reviews"
+    row = conn.execute(
+        f"SELECT 1 FROM {table} WHERE id = ?", (record_id,)
+    ).fetchone()
+    if row is None:
+        return False
+    conn.execute(f"DELETE FROM {table} WHERE id = ?", (record_id,))
+    conn.execute(
+        "DELETE FROM consents WHERE subject_type = ? AND record_id = ?",
+        (subject_type, record_id),
+    )
+    # Журнал переживает саму запись: в нём остаётся только её номер.
+    log_data_action(conn, "delete", subject_type, record_id, reason)
+    return True
+
+
+def anonymize_personal_data(
+    conn: sqlite3.Connection, subject_type: str, record_id: int, reason: str = ""
+) -> bool:
+    """Контакты затираются, обезличенная часть записи остаётся.
+
+    У заявки это город, вид заявителя, место занятий и даты; у отзыва -
+    оценка, место занятий и дата. Отзыв при этом снимается с публикации:
+    его текст писал человек, и он тоже мог назвать себя.
+    """
+    now = now_iso()
+    if subject_type == "application":
+        changed = conn.execute(
+            "UPDATE applications SET name = ?, contact_person = ?, phone = '',"
+            " whatsapp = '', email = '', address = '', link = '', comment = '',"
+            " logo_path = '', author_ip_hash = NULL, anonymized_at = ?,"
+            " updated_at = ? WHERE id = ? AND anonymized_at IS NULL",
+            (ANONYMIZED, ANONYMIZED, now, now, record_id),
+        ).rowcount
+    else:
+        changed = conn.execute(
+            "UPDATE reviews SET author_name = ?, text = ?, status = 'rejected',"
+            " author_ip_hash = NULL, anonymized_at = ?"
+            " WHERE id = ? AND anonymized_at IS NULL",
+            (ANONYMIZED, "Отзыв обезличен по обращению автора.", now, record_id),
+        ).rowcount
+    if not changed:
+        return False
+    revoke_consent(conn, subject_type, record_id)
+    log_data_action(conn, "anonymize", subject_type, record_id, reason)
+    return True
+
+
+def cleanup_personal_data(conn: sqlite3.Connection) -> int:
+    """Сроки хранения: отклонённая заявка обезличивается через полгода,
+    отклонённый отзыв - через три месяца. Вызывается при старте."""
+    now = datetime.now(timezone.utc)
+    applications_before = (now - timedelta(days=183)).isoformat(timespec="seconds")
+    reviews_before = (now - timedelta(days=92)).isoformat(timespec="seconds")
+
+    stale_applications = conn.execute(
+        "SELECT id FROM applications WHERE status = 'rejected'"
+        " AND anonymized_at IS NULL AND updated_at < ?",
+        (applications_before,),
+    ).fetchall()
+    stale_reviews = conn.execute(
+        "SELECT id FROM reviews WHERE status = 'rejected'"
+        " AND anonymized_at IS NULL AND created_at < ?",
+        (reviews_before,),
+    ).fetchall()
+
+    done = 0
+    for row in stale_applications:
+        if anonymize_personal_data(
+            conn, "application", row["id"], "истёк срок хранения: 6 месяцев"
+        ):
+            done += 1
+    for row in stale_reviews:
+        if anonymize_personal_data(
+            conn, "review", row["id"], "истёк срок хранения: 3 месяца"
+        ):
+            done += 1
+    return done
+
+
+# --- Обращения субъектов данных ---------------------------------------------
+
+def create_request(conn: sqlite3.Connection, data: dict) -> int:
+    now = now_iso()
+    cur = conn.execute(
+        "INSERT INTO requests (name, contact, message, author_ip_hash,"
+        " created_at, updated_at)"
+        " VALUES (:name, :contact, :message, :author_ip_hash,"
+        " :created_at, :updated_at)",
+        {**data, "created_at": now, "updated_at": now},
+    )
+    return int(cur.lastrowid)
+
+
+def list_requests(
+    conn: sqlite3.Connection, status: str = "", limit: int | None = None
+) -> list[sqlite3.Row]:
+    sql = ["SELECT * FROM requests"]
+    params: list = []
+    if status:
+        sql.append("WHERE status = ?")
+        params.append(status)
+    sql.append("ORDER BY created_at DESC, id DESC")
+    if limit is not None:
+        sql.append("LIMIT ?")
+        params.append(limit)
+    return conn.execute(" ".join(sql), params).fetchall()
+
+
+def get_request(conn: sqlite3.Connection, request_id: int) -> sqlite3.Row | None:
+    return conn.execute(
+        "SELECT * FROM requests WHERE id = ?", (request_id,)
+    ).fetchone()
+
+
+def update_request(
+    conn: sqlite3.Connection, request_id: int, status: str, admin_note: str
+) -> None:
+    conn.execute(
+        "UPDATE requests SET status = ?, admin_note = ?, updated_at = ? WHERE id = ?",
+        (status, admin_note, now_iso(), request_id),
+    )
+
+
+def delete_request(conn: sqlite3.Connection, request_id: int) -> None:
+    conn.execute("DELETE FROM requests WHERE id = ?", (request_id,))
+
+
+def new_requests_count(conn: sqlite3.Connection) -> int:
+    row = conn.execute(
+        "SELECT COUNT(*) AS n FROM requests WHERE status = 'new'"
+    ).fetchone()
+    return int(row["n"])
+
+
+def requests_from_ip_last_hour(conn: sqlite3.Connection, ip_hash: str) -> int:
+    since = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat(
+        timespec="seconds"
+    )
+    row = conn.execute(
+        "SELECT COUNT(*) AS n FROM requests WHERE author_ip_hash = ? AND created_at > ?",
+        (ip_hash, since),
+    ).fetchone()
+    return int(row["n"])

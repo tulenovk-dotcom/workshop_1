@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Обращение отправлено - каталог помощи детям с РАС{% endblock %}
+
+{% block content %}
+<section class="intro">
+  <h1>Обращение отправлено</h1>
+  <p>
+    Мы рассмотрим его и ответим на указанный контакт в течение
+    {{ REQUEST_ANSWER_DAYS }} рабочих дней.
+  </p>
+</section>
+
+<p class="actions">
+  <a class="btn btn-primary" href="/">Вернуться в каталог</a>
+  <a class="btn btn-ghost" href="/privacy">Политика конфиденциальности</a>
+</p>
+{% endblock %}

@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import re
 import secrets
@@ -13,22 +14,38 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
 from . import crud
-from .database import db_session, init_db
+from .database import DB_PATH, db_session, init_db, read_or_create_secret
 from .notifications import notify_new_application
+from .personal_data import (
+    CONSENT_PURPOSES,
+    CONSENT_TEXTS,
+    POLICY_UPDATED,
+    POLICY_VERSION,
+    SUBJECT_TYPES,
+    hash_ip,
+    health_markers,
+    mask_contact,
+    mask_email,
+    mask_phone,
+    short_hash,
+)
 from .reference import (
     AGE_RANGE_BOUNDS,
     AGE_RANGES,
     APPLICANT_KINDS,
     APPLICATION_STATUSES,
     EVIDENCE_LEVELS,
-    FILTER_METHOD_CODES,
     ORGANIZATION_TYPES,
     PRICING,
     PROVIDER_TYPES,
+    REQUEST_ANSWER_DAYS,
+    REQUEST_STATUSES,
     SPECIALTIES,
     TYPES_WITH_SPECIALTY,
 )
 from .seed import seed_if_empty
+
+log = logging.getLogger("app")
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -52,24 +69,47 @@ LOGIN_BLOCK_SECONDS = 15 * 60
 SHOW_TEST_BANNER = os.environ.get("SHOW_TEST_BANNER") == "1"
 NOINDEX = os.environ.get("NOINDEX") == "1"
 
-# На хостинге запросы приходят не напрямую, а через балансировщик, и адрес
-# подключения у всех посетителей один. Настоящий адрес балансировщик кладёт
-# в заголовок X-Forwarded-For. Верить заголовку можно только за таким
-# балансировщиком: напрямую его подделает кто угодно и обойдёт все счётчики.
-TRUST_PROXY_HEADERS = os.environ.get("TRUST_PROXY_HEADERS") == "1"
+MAX_REQUESTS_PER_HOUR = 3
+
+
+def detect_proxy() -> bool:
+    """Стоит ли верить заголовку X-Forwarded-For.
+
+    На хостинге запросы приходят не напрямую, а через балансировщик, и адрес
+    подключения у всех посетителей один; настоящий адрес лежит в заголовке.
+    Render задаёт переменную RENDER сам, поэтому там доверие включается без
+    ручной настройки. Напрямую заголовку верить нельзя: его подделает кто
+    угодно и обойдёт все счётчики, поэтому по умолчанию доверия нет.
+    TRUST_PROXY_HEADERS перебивает определение в обе стороны.
+    """
+    manual = os.environ.get("TRUST_PROXY_HEADERS")
+    if manual is not None:
+        return manual == "1"
+    return bool(os.environ.get("RENDER"))
+
+
+TRUST_PROXY_HEADERS = detect_proxy()
 
 REDIRECT = 303
 
 
 def load_secret_key() -> str:
-    """Ключ хранится между запусками, иначе uvicorn --reload на каждой
-    перезагрузке обнуляет сессию администратора."""
+    """Ключ подписи cookie администратора.
+
+    Хранится между запусками, иначе каждая перезагрузка процесса обнуляет
+    сессию. Без переменной окружения ключ лежит в файле рядом с базой; на
+    хостинге без постоянного диска такой файл исчезает при перезапуске
+    сервиса, поэтому в логах об этом сказано.
+    """
     if key := os.environ.get("SECRET_KEY"):
         return key
-    key_file = BASE_DIR.parent / ".secret_key"
-    if not key_file.exists():
-        key_file.write_text(secrets.token_hex(32))
-    return key_file.read_text().strip()
+    log.warning(
+        "SECRET_KEY не задан: ключ взят из файла %s рядом с базой."
+        " Задайте переменную SECRET_KEY, иначе после перезапуска сервиса"
+        " администратору придётся входить заново.",
+        DB_PATH.parent / ".secret_key",
+    )
+    return read_or_create_secret(".secret_key")
 
 
 SECRET_KEY = load_secret_key()
@@ -124,6 +164,28 @@ def request_ip(request: Request) -> str:
         if first:
             return first
     return request.client.host if request.client else "unknown"
+
+
+def request_ip_hash(request: Request) -> str:
+    """Хеш адреса: только он попадает в базу и в счётчики частоты."""
+    return hash_ip(request_ip(request))
+
+
+def user_agent(request: Request) -> str:
+    return request.headers.get("user-agent", "")[:300]
+
+
+def consent_data(subject_type: str, record_id: int, request: Request) -> dict:
+    """Отметка о согласии: что человек видел, когда и с какой страницы."""
+    return {
+        "subject_type": subject_type,
+        "record_id": record_id,
+        "purpose": CONSENT_PURPOSES[subject_type],
+        "policy_version": POLICY_VERSION,
+        "consent_text": CONSENT_TEXTS[subject_type],
+        "ip_hash": request_ip_hash(request),
+        "user_agent": user_agent(request),
+    }
 
 
 # Счётчик живёт в памяти процесса: отдельная таблица тут лишняя, а при
@@ -245,16 +307,26 @@ templates.env.filters["hue"] = name_hue
 templates.env.filters["wa_link"] = wa_link
 templates.env.filters["site_link"] = site_link
 templates.env.filters["instagram_link"] = instagram_link
+# Контакты в списках показываются замаскированными, поэтому маскирование -
+# такой же фильтр шаблона, как и остальное форматирование.
+templates.env.filters["mask_phone"] = mask_phone
+templates.env.filters["mask_email"] = mask_email
+templates.env.filters["mask_contact"] = mask_contact
+templates.env.filters["short_hash"] = short_hash
+
+
 def moderation_counts() -> dict:
     """Сколько всего ждёт проверки. Меню админки показывает счётчик на
     каждой странице, поэтому считаем здесь, а не в каждом обработчике."""
     with db_session() as conn:
         reviews = crud.pending_count(conn)
         applications = crud.new_applications_count(conn)
+        requests = crud.new_requests_count(conn)
     return {
         "reviews": reviews,
         "applications": applications,
-        "total": reviews + applications,
+        "requests": requests,
+        "total": reviews + applications + requests,
     }
 
 
@@ -270,7 +342,13 @@ templates.env.globals.update(
     APPLICANT_KINDS=APPLICANT_KINDS,
     APPLICATION_STATUSES=APPLICATION_STATUSES,
     ORGANIZATION_TYPES=ORGANIZATION_TYPES,
+    REQUEST_STATUSES=REQUEST_STATUSES,
+    REQUEST_ANSWER_DAYS=REQUEST_ANSWER_DAYS,
+    SUBJECT_TYPES=SUBJECT_TYPES,
+    POLICY_VERSION=POLICY_VERSION,
+    POLICY_UPDATED=POLICY_UPDATED,
     moderation_counts=moderation_counts,
+    health_markers=health_markers,
 )
 
 
@@ -278,6 +356,12 @@ templates.env.globals.update(
 def on_startup() -> None:
     init_db()
     seed_if_empty()
+    # Сроки хранения проверяются при запуске: отдельного планировщика в
+    # проекте нет, а сервис на хостинге и так перезапускается регулярно.
+    with db_session() as conn:
+        cleaned = crud.cleanup_personal_data(conn)
+    if cleaned:
+        log.info("Обезличено записей по истечении срока хранения: %s", cleaned)
 
 
 def parse_int(value: str | None) -> int | None:
@@ -323,13 +407,12 @@ def index(
     with db_session() as conn:
         providers = crud.search_providers(conn, filters)
         methods_map = crud.methods_for_providers(conn, [p["id"] for p in providers])
-        by_code = {row["code"]: row for row in crud.list_methods(conn)}
         context = {
             "providers": providers,
             "methods_map": methods_map,
-            "filter_methods": [
-                by_code[code] for code in FILTER_METHOD_CODES if code in by_code
-            ],
+            # В фильтре весь справочник, в порядке справочника: раньше список
+            # был урезан до семи методов, и остальные было нечем искать.
+            "filter_methods": crud.list_methods(conn),
             "age_ranges": AGE_RANGES,
             "cities": crud.cities(conn),
             "specialties": crud.specialties_in_use(conn),
@@ -369,34 +452,41 @@ def add_review(
     author_name: str = Form(""),
     rating: str = Form(""),
     text: str = Form(""),
+    consent: str = Form(""),
 ):
     author_name = author_name.strip()
     text = text.strip()
     rating_value = parse_int(rating)
-    client_ip = request_ip(request)
+    ip_hash = request_ip_hash(request)
 
     if not author_name or not text or rating_value not in (1, 2, 3, 4, 5):
         return RedirectResponse(
             f"/providers/{provider_id}?review=invalid#reviews", status_code=REDIRECT
         )
+    if not consent:
+        # Без согласия отзыв не сохраняется - ни текст, ни имя автора.
+        return RedirectResponse(
+            f"/providers/{provider_id}?review=consent#reviews", status_code=REDIRECT
+        )
 
     with db_session() as conn:
         if crud.get_provider(conn, provider_id) is None:
             raise HTTPException(status_code=404, detail="Запись не найдена")
-        if crud.has_recent_review_from_ip(conn, provider_id, client_ip):
+        if crud.has_recent_review_from_ip(conn, provider_id, ip_hash):
             return RedirectResponse(
                 f"/providers/{provider_id}?review=limit#reviews", status_code=REDIRECT
             )
-        crud.create_review(
+        review_id = crud.create_review(
             conn,
             {
                 "provider_id": provider_id,
                 "author_name": author_name[:80],
                 "rating": rating_value,
                 "text": text[:2000],
-                "author_ip": client_ip,
+                "author_ip_hash": ip_hash,
             },
         )
+        crud.create_consent(conn, consent_data("review", review_id, request))
     return RedirectResponse(
         f"/providers/{provider_id}?review=ok#reviews", status_code=REDIRECT
     )
@@ -421,6 +511,70 @@ def free_help(request: Request):
 @app.get("/privacy", response_class=HTMLResponse)
 def privacy(request: Request):
     return render(request, "privacy.html", {})
+
+
+# --- Обращения по персональным данным ---------------------------------------
+
+def clean_request(form: dict) -> tuple[dict, list[str]]:
+    """Разбор формы обращения. Обязательны имя, контакт и суть обращения:
+    без контакта ответить некуда, без сути непонятно, что человек просит."""
+    errors: list[str] = []
+
+    name = form.get("name", "").strip()
+    if not name:
+        errors.append("Укажите, как к вам обращаться.")
+
+    contact = form.get("contact", "").strip()
+    if not contact:
+        errors.append("Укажите телефон или электронную почту для ответа.")
+
+    message = form.get("message", "").strip()
+    if not message:
+        errors.append("Опишите, что нужно сделать с вашими данными.")
+
+    data = {
+        "name": name[:120],
+        "contact": contact[:160],
+        "message": message[:2000],
+    }
+    return data, errors
+
+
+@app.get("/privacy/request", response_class=HTMLResponse)
+def privacy_request_form(request: Request):
+    return render(request, "privacy_request.html", {"form": {}, "errors": []})
+
+
+@app.post("/privacy/request", response_class=HTMLResponse)
+async def privacy_request_create(request: Request):
+    form = {key: str(value) for key, value in (await request.form()).items()}
+    ip_hash = request_ip_hash(request)
+
+    # Та же ловушка для ботов, что и в заявке на размещение.
+    if form.get("company_site", "").strip():
+        return RedirectResponse("/privacy/request/sent", status_code=REDIRECT)
+
+    data, errors = clean_request(form)
+    with db_session() as conn:
+        if not errors and (
+            crud.requests_from_ip_last_hour(conn, ip_hash) >= MAX_REQUESTS_PER_HOUR
+        ):
+            errors.append(
+                "С одного устройства принимаем не больше трёх обращений в час."
+                " Попробуйте позже."
+            )
+        if errors:
+            return render(
+                request, "privacy_request.html", {"form": form, "errors": errors}
+            )
+        data["author_ip_hash"] = ip_hash
+        crud.create_request(conn, data)
+    return RedirectResponse("/privacy/request/sent", status_code=REDIRECT)
+
+
+@app.get("/privacy/request/sent", response_class=HTMLResponse)
+def privacy_request_sent(request: Request):
+    return render(request, "privacy_request_sent.html", {})
 
 
 @app.get("/robots.txt", response_class=PlainTextResponse)
@@ -556,7 +710,7 @@ async def application_create(request: Request):
         if key not in ("methods", "logo")
     }
     form["methods"] = raw.getlist("methods")
-    client_ip = request_ip(request)
+    ip_hash = request_ip_hash(request)
 
     # Honeypot: поле спрятано от людей, его заполняют только боты.
     if form.get("company_site", "").strip():
@@ -576,7 +730,7 @@ async def application_create(request: Request):
                 "Фото не принято: нужен PNG, JPEG, WebP или GIF размером до 2 МБ."
             )
         if not errors and (
-            crud.applications_from_ip_last_hour(conn, client_ip)
+            crud.applications_from_ip_last_hour(conn, ip_hash)
             >= MAX_APPLICATIONS_PER_HOUR
         ):
             errors.append(
@@ -588,8 +742,9 @@ async def application_create(request: Request):
             return render(request, "application_form.html", context)
 
         data["logo_path"] = store_image(*image) if image else ""
-        data["author_ip"] = client_ip
+        data["author_ip_hash"] = ip_hash
         application_id = crud.create_application(conn, data)
+        crud.create_consent(conn, consent_data("application", application_id, request))
         application = crud.get_application(conn, application_id)
 
     try:
@@ -669,6 +824,7 @@ def admin_dashboard(request: Request):
             "methods_count": len(crud.list_methods(conn)),
             "new_applications": crud.list_applications(conn, "new", limit=5),
             "pending_reviews": crud.pending_reviews(conn, 5),
+            "new_requests": crud.list_requests(conn, "new", limit=5),
         }
     return render(request, "admin/providers.html", context)
 
@@ -884,6 +1040,11 @@ def admin_application_detail(request: Request, application_id: int):
         context = {
             "application": application,
             "methods": application_methods(conn, application),
+            "consent": crud.get_consent(conn, "application", application_id),
+            "actions": crud.data_actions_for(conn, "application", application_id),
+            "markers": health_markers(
+                application["name"], application["comment"], application["address"]
+            ),
         }
     return render(request, "admin/application.html", context)
 
@@ -905,6 +1066,61 @@ async def admin_application_update(request: Request, application_id: int):
     return RedirectResponse(
         f"/admin/applications/{application_id}?saved=1", status_code=REDIRECT
     )
+
+
+def unused_upload(conn, logo_path: str) -> bool:
+    """Файл можно стирать, только если на него не ссылается карточка
+    каталога: карточка по заявке наследует то же самое фото."""
+    if not logo_path.startswith("/static/uploads/"):
+        return False
+    row = conn.execute(
+        "SELECT 1 FROM providers WHERE logo_path = ? LIMIT 1", (logo_path,)
+    ).fetchone()
+    return row is None
+
+
+def remove_upload(logo_path: str) -> None:
+    name = logo_path.rsplit("/", 1)[-1]
+    if name:
+        (UPLOAD_DIR / name).unlink(missing_ok=True)
+
+
+@app.post("/admin/data/{subject_type}/{record_id}/{action}")
+async def admin_personal_data_action(
+    request: Request, subject_type: str, record_id: int, action: str
+):
+    """Удаление и обезличивание - одним обработчиком для заявок и отзывов:
+    правила у них общие, различия спрятаны внутри crud."""
+    if guard := require_admin(request):
+        return guard
+    if subject_type not in SUBJECT_TYPES or action not in ("delete", "anonymize"):
+        raise HTTPException(status_code=404, detail="Неизвестное действие")
+
+    form = _form_defaults(await request.form())
+    reason = form["reason"].strip()
+    back = form["next"] if form["next"].startswith("/admin") else "/admin"
+
+    with db_session() as conn:
+        logo_path = ""
+        if subject_type == "application":
+            application = crud.get_application(conn, record_id)
+            if application is None:
+                raise HTTPException(status_code=404, detail="Заявка не найдена")
+            logo_path = application["logo_path"] or ""
+        elif crud.get_review(conn, record_id) is None:
+            raise HTTPException(status_code=404, detail="Отзыв не найден")
+
+        if action == "delete":
+            crud.delete_personal_data(conn, subject_type, record_id, reason)
+        else:
+            crud.anonymize_personal_data(conn, subject_type, record_id, reason)
+        # Присланное фото - тоже персональные данные, и в обоих случаях
+        # запись на него больше не ссылается.
+        drop_file = bool(logo_path) and unused_upload(conn, logo_path)
+
+    if drop_file:
+        remove_upload(logo_path)
+    return RedirectResponse(back, status_code=REDIRECT)
 
 
 @app.post("/admin/applications/{application_id}/delete")
@@ -929,6 +1145,23 @@ def admin_reviews(request: Request):
     return render(request, "admin/reviews.html", context)
 
 
+@app.get("/admin/reviews/{review_id}", response_class=HTMLResponse)
+def admin_review_detail(request: Request, review_id: int):
+    if guard := require_admin(request):
+        return guard
+    with db_session() as conn:
+        review = crud.get_review(conn, review_id)
+        if review is None:
+            raise HTTPException(status_code=404, detail="Отзыв не найден")
+        context = {
+            "review": review,
+            "consent": crud.get_consent(conn, "review", review_id),
+            "actions": crud.data_actions_for(conn, "review", review_id),
+            "markers": health_markers(review["author_name"], review["text"]),
+        }
+    return render(request, "admin/review.html", context)
+
+
 @app.post("/admin/reviews/{review_id}/{action}")
 async def admin_review_action(request: Request, review_id: int, action: str):
     if guard := require_admin(request):
@@ -942,6 +1175,56 @@ async def admin_review_action(request: Request, review_id: int, action: str):
     with db_session() as conn:
         crud.set_review_status(conn, review_id, statuses[action])
     return RedirectResponse(back, status_code=REDIRECT)
+
+
+@app.get("/admin/requests", response_class=HTMLResponse)
+def admin_requests(request: Request):
+    if guard := require_admin(request):
+        return guard
+    status = request.query_params.get("status", "")
+    if status not in REQUEST_STATUSES:
+        status = ""
+    with db_session() as conn:
+        context = {"requests": crud.list_requests(conn, status), "status": status}
+    return render(request, "admin/requests.html", context)
+
+
+@app.get("/admin/requests/{request_id}", response_class=HTMLResponse)
+def admin_request_detail(request: Request, request_id: int):
+    if guard := require_admin(request):
+        return guard
+    with db_session() as conn:
+        item = crud.get_request(conn, request_id)
+        if item is None:
+            raise HTTPException(status_code=404, detail="Обращение не найдено")
+        context = {"item": item}
+    return render(request, "admin/request.html", context)
+
+
+@app.post("/admin/requests/{request_id}")
+async def admin_request_update(request: Request, request_id: int):
+    if guard := require_admin(request):
+        return guard
+    form = _form_defaults(await request.form())
+    status = form["status"] if form["status"] in REQUEST_STATUSES else "new"
+    with db_session() as conn:
+        if crud.get_request(conn, request_id) is None:
+            raise HTTPException(status_code=404, detail="Обращение не найдено")
+        crud.update_request(
+            conn, request_id, status, form["admin_note"].strip()[:2000]
+        )
+    return RedirectResponse(
+        f"/admin/requests/{request_id}?saved=1", status_code=REDIRECT
+    )
+
+
+@app.post("/admin/requests/{request_id}/delete")
+def admin_request_delete(request: Request, request_id: int):
+    if guard := require_admin(request):
+        return guard
+    with db_session() as conn:
+        crud.delete_request(conn, request_id)
+    return RedirectResponse("/admin/requests", status_code=REDIRECT)
 
 
 @app.get("/admin/methods", response_class=HTMLResponse)

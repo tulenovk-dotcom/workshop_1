@@ -25,7 +25,12 @@
                   <strong>{{ a.name }}</strong>
                   <span class="muted">{{ a.city }} · {{ APPLICANT_KINDS.get(a.applicant_kind, a.applicant_kind) }}</span>
                 </div>
-                <p class="muted">{{ a.created_at[:10] }} · {{ a.contact_person }}</p>
+                <p class="muted">{{ a.created_at[:10] }} · {{ a.contact_person }}
+                  · {{ a.phone|mask_phone }}</p>
+                {% set marks = health_markers(a.name, a.comment) %}
+                {% if marks %}
+                  <p><span class="chip chip-flag">о здоровье: {{ marks|join(', ') }}</span></p>
+                {% endif %}
                 <div class="row-actions">
                   <a class="btn btn-small" href="/admin/applications/{{ a.id }}">Открыть</a>
                 </div>
@@ -51,6 +56,10 @@
                 <p class="muted">{{ r.created_at[:10] }} ·
                   <a href="/providers/{{ r.provider_id }}">{{ r.provider_name }}</a></p>
                 <p class="moderation-text">{{ r.text|truncate(160) }}</p>
+                {% set marks = health_markers(r.author_name, r.text) %}
+                {% if marks %}
+                  <p><span class="chip chip-flag">о здоровье: {{ marks|join(', ') }}</span></p>
+                {% endif %}
                 <div class="row-actions">
                   <form method="post" action="/admin/reviews/{{ r.id }}/approve">
                     <input type="hidden" name="next" value="/admin">
@@ -60,7 +69,7 @@
                     <input type="hidden" name="next" value="/admin">
                     <button type="submit" class="btn btn-small btn-danger">Отклонить</button>
                   </form>
-                  <a class="btn btn-small" href="/admin/reviews">Открыть</a>
+                  <a class="btn btn-small" href="/admin/reviews/{{ r.id }}">Открыть</a>
                 </div>
               </li>
             {% endfor %}
@@ -68,6 +77,30 @@
           <p class="hint"><a href="/admin/reviews">Все отзывы на модерации →</a></p>
         {% else %}
           <p class="hint">Отзывов на модерации нет.</p>
+        {% endif %}
+      </div>
+
+      <div class="moderation-col">
+        <h3>Обращения по данным ({{ mod.requests }})</h3>
+        {% if new_requests %}
+          <ul class="moderation-list">
+            {% for r in new_requests %}
+              <li>
+                <div class="moderation-head">
+                  <strong>{{ r.name }}</strong>
+                  <span class="muted">{{ r.contact|mask_contact }}</span>
+                </div>
+                <p class="muted">{{ r.created_at[:10] }}</p>
+                <p class="moderation-text">{{ r.message|truncate(160) }}</p>
+                <div class="row-actions">
+                  <a class="btn btn-small" href="/admin/requests/{{ r.id }}">Открыть</a>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+          <p class="hint"><a href="/admin/requests?status=new">Все новые обращения →</a></p>
+        {% else %}
+          <p class="hint">Новых обращений нет.</p>
         {% endif %}
       </div>
     </div>

@@ -84,6 +84,11 @@
     <p class="notice notice-warn">С одного устройства можно оставить один отзыв о месте занятий в сутки.</p>
   {% elif review_status == 'invalid' %}
     <p class="notice notice-warn">Заполните имя, оценку и текст отзыва.</p>
+  {% elif review_status == 'consent' %}
+    <p class="notice notice-warn">
+      Отзыв не сохранён: без согласия на обработку данных опубликовать его
+      нельзя.
+    </p>
   {% endif %}
 
   {% if reviews %}
@@ -104,6 +109,11 @@
   {% endif %}
 
   <h3>Оставить отзыв</h3>
+  <p class="data-warning">
+    Пишите о занятиях и о работе специалистов. Не указывайте диагнозы,
+    имена и фамилии детей и другие сведения о здоровье - ни о своём ребёнке,
+    ни о чужом. Такие отзывы модератор не опубликует.
+  </p>
   <form class="review-form" method="post" action="/providers/{{ provider.id }}/reviews">
     <div class="field">
       <label for="author_name">Ваше имя</label>
@@ -124,12 +134,21 @@
       <textarea id="text" name="text" rows="5" maxlength="2000" required
                 placeholder="Расскажите о занятиях, специалистах и результатах"></textarea>
     </div>
+    <div class="field field-wide consent-field">
+      <label class="checkbox">
+        <input type="checkbox" name="consent" value="1" required>
+        Я согласен на обработку персональных данных, указанных в отзыве,
+        и принимаю <a href="/privacy" target="_blank" rel="noopener">политику
+        конфиденциальности</a>
+      </label>
+    </div>
+
     <div class="filter-actions">
       <button type="submit" class="btn btn-primary">Отправить на модерацию</button>
     </div>
     <p class="hint">
-      Отзывы публикуются после проверки модератором. Не оставляйте медицинские
-      диагнозы и персональные данные других людей.
+      Отзывы публикуются после проверки модератором. Отозвать согласие и
+      удалить отзыв можно <a href="/privacy/request">через обращение</a>.
     </p>
   </form>
 </article>

@@ -329,7 +329,8 @@ def seed_if_empty() -> None:
                     "author_name": author,
                     "rating": rating,
                     "text": text,
-                    "author_ip": "seed",
+                    # Тестовые отзывы никто не отправлял, адреса у них нет.
+                    "author_ip_hash": None,
                 },
             )
             if status != "pending":

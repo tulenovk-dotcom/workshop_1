@@ -1,0 +1,43 @@
+{# Действия с персональными данными записи. Один и тот же блок на странице
+   заявки и на странице отзыва: правила у них общие. #}
+<h2>Персональные данные</h2>
+
+<p class="hint">
+  Удаление стирает запись целиком и не отменяется. Обезличивание затирает
+  контакты, но оставляет обезличенную часть: город, вид записи и даты.
+  Оба действия попадают в журнал ниже.
+</p>
+
+<form class="data-actions" method="post"
+      action="/admin/data/{{ subject_type }}/{{ record_id }}/anonymize"
+      onsubmit="return confirm('Обезличить «{{ subject_name }}»? Контакты будут затёрты.');">
+  <input type="hidden" name="next" value="/admin/{{ 'applications' if subject_type == 'application' else 'reviews' }}">
+  <div class="field field-wide">
+    <label for="reason-{{ subject_type }}-{{ record_id }}">Основание</label>
+    <input type="text" id="reason-{{ subject_type }}-{{ record_id }}" name="reason"
+           maxlength="500" placeholder="Например: обращение № 4 от автора">
+    <p class="hint">Свободный текст, попадёт в журнал рядом с действием.</p>
+  </div>
+  <div class="row-actions">
+    <button type="submit" class="btn btn-small">Обезличить</button>
+    <button type="submit" class="btn btn-small btn-danger"
+            formaction="/admin/data/{{ subject_type }}/{{ record_id }}/delete"
+            onclick="return confirm('Удалить «{{ subject_name }}» насовсем? Восстановить будет нельзя.');">
+      Удалить насовсем</button>
+  </div>
+</form>
+
+<h3>Журнал действий</h3>
+{% if actions %}
+  <ul class="data-log">
+    {% for a in actions %}
+      <li>
+        <strong>{{ 'Удаление' if a.action == 'delete' else 'Обезличивание' }}</strong>
+        <span class="muted">{{ a.created_at[:16]|replace('T', ' ') }}</span>
+        {% if a.reason %}<div class="muted">Основание: {{ a.reason }}</div>{% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="empty">С данными этой записи ничего не делали.</p>
+{% endif %}

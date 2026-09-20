@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Отзыв № {{ review.id }} - админка{% endblock %}
+
+{% block content %}
+<h1>Отзыв № {{ review.id }}</h1>
+{% include "admin/_nav.html" %}
+
+<p class="breadcrumbs"><a href="/admin/reviews">← Ко всем отзывам</a></p>
+
+{% if review.anonymized_at %}
+  <p class="notice notice-warn">
+    Отзыв обезличен {{ review.anonymized_at[:10] }}: имя автора и текст затёрты,
+    отзыв снят с публикации.
+  </p>
+{% endif %}
+
+{% if markers %}
+  <p class="notice notice-warn">
+    В отзыве встречаются слова о здоровье: {{ markers|join(', ') }}.
+    Проверьте внимательнее: сведения о здоровье публиковать нельзя.
+  </p>
+{% endif %}
+
+<article class="provider">
+  <div class="card-head">
+    <span class="chip status-{{ review.status }}">
+      {% if review.status == 'published' %}Опубликован
+      {% elif review.status == 'rejected' %}Отклонён
+      {% else %}На модерации{% endif %}
+    </span>
+    <span class="review-rating">{{ '★' * review.rating }}{{ '☆' * (5 - review.rating) }}</span>
+    <span class="muted">Оставлен {{ review.created_at[:10] }}</span>
+  </div>
+
+  <h2>{{ review.author_name }}</h2>
+  <p class="provider-description">{{ review.text }}</p>
+
+  <dl class="info-grid">
+    <div><dt>Место занятий</dt>
+      <dd>
+        {% if review.provider_id %}
+          <a href="/providers/{{ review.provider_id }}">{{ review.provider_name }}</a>
+        {% else %}запись удалена{% endif %}
+      </dd></div>
+    <div><dt>Оценка</dt><dd>{{ review.rating }} из 5</dd></div>
+    <div><dt>Согласие на обработку</dt>
+      <dd>
+        {% if consent %}
+          дано {{ consent.given_at[:10] }}, политика версии {{ consent.policy_version }}
+          {% if consent.revoked_at %}<br>отозвано {{ consent.revoked_at[:10] }}{% endif %}
+        {% else %}
+          не записано (отзыв оставлен до введения журнала согласий)
+        {% endif %}
+      </dd></div>
+    <div><dt>Отпечаток адреса</dt><dd>{{ review.author_ip_hash|short_hash }}</dd></div>
+  </dl>
+
+  <h2>Модерация</h2>
+  <div class="row-actions">
+    <form method="post" action="/admin/reviews/{{ review.id }}/approve">
+      <input type="hidden" name="next" value="/admin/reviews/{{ review.id }}">
+      <button type="submit" class="btn btn-small btn-primary">
+        {{ 'Опубликовать' if review.status != 'published' else 'Оставить опубликованным' }}</button>
+    </form>
+    <form method="post" action="/admin/reviews/{{ review.id }}/reject">
+      <input type="hidden" name="next" value="/admin/reviews/{{ review.id }}">
+      <button type="submit" class="btn btn-small btn-danger">
+        {{ 'Снять с публикации' if review.status == 'published' else 'Отклонить' }}</button>
+    </form>
+  </div>
+
+  {% if consent %}
+    <h2>С чем согласился автор</h2>
+    <p class="consent-text">{{ consent.consent_text }}</p>
+    <p class="hint">
+      Цель: {{ consent.purpose }}. Политика версии {{ consent.policy_version }},
+      согласие дано {{ consent.given_at[:16]|replace('T', ' ') }}.
+    </p>
+  {% endif %}
+
+  {% with subject_type = 'review', record_id = review.id,
+          subject_name = review.author_name, back = '/admin/reviews' %}
+    {% include "admin/_data_actions.html" %}
+  {% endwith %}
+</article>
+{% endblock %}

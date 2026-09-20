@@ -180,6 +180,20 @@ h3 { font-size: var(--step-1); margin: 22px 0 8px; }
 .notice-ok { background: var(--green-bg); color: var(--green); }
 .notice-warn { background: var(--amber-bg); color: var(--amber); }
 
+/* Предупреждение о сведениях о здоровье. Это правило заполнения, а не
+   ошибка и не метка доказательности, поэтому цвета оно не занимает:
+   отличается вертикальной линией и отступом. */
+.data-warning {
+  margin: 0 0 16px;
+  padding: 10px 0 10px 14px;
+  border-left: 3px solid var(--accent);
+  color: var(--muted);
+  font-size: 0.93rem;
+  max-width: 70ch;
+}
+
+.policy-meta { margin: 8px 0 0; color: var(--muted); font-size: 0.9rem; }
+
 /* --- Фильтры --- */
 
 .filters-title {
@@ -943,6 +957,36 @@ input:focus, select:focus, textarea:focus {
 
 .moderation-text { font-size: 0.93rem; }
 
+/* --- Персональные данные в админке --- */
+
+.data-actions {
+  margin: 0 0 18px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.data-actions .field { margin-bottom: 12px; }
+.data-actions .hint { margin: 4px 0 0; }
+
+.data-log { list-style: none; margin: 0; padding: 0; }
+
+.data-log li {
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  font-size: 0.93rem;
+}
+
+.consent-text {
+  max-width: 70ch;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+  font-size: 0.93rem;
+}
+
 .admin-nav-flag { color: var(--amber); }
 .admin-nav-flag-clear { color: var(--muted); font-weight: 400; }
 
@@ -954,6 +998,10 @@ input:focus, select:focus, textarea:focus {
 
 .status-filter .chip { text-decoration: none; }
 .chip-active { background: var(--accent); color: #fff; }
+
+/* Запись, где встретились слова о здоровье. Метка живёт в админке рядом
+   со статусами и подчиняется их логике: жёлтое - «нужно посмотреть». */
+.chip-flag { background: var(--amber-bg); color: var(--amber); }
 
 .status-new { background: var(--amber-bg); color: var(--amber); }
 .status-in_progress { background: #e7eefb; color: var(--accent); }
