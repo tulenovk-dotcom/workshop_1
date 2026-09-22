@@ -465,6 +465,23 @@ def translate(text: str, lang: str) -> str:
     return TRANSLATIONS.get(lang, {}).get(text, text)
 
 
+def localized_field(row, field: str, lang: str) -> str:
+    """Поле справочника на языке страницы.
+
+    У методов есть парные колонки `name_kk` и `description_kk`. Если перевод
+    не заполнен, показывается русский вариант: лучше русское название, чем
+    пустая строка на месте метода.
+    """
+    if lang != DEFAULT_LANGUAGE:
+        try:
+            value = row[f"{field}_{lang}"]
+        except (IndexError, KeyError, TypeError):
+            value = ""
+        if value:
+            return value
+    return row[field]
+
+
 def missing_keys(lang: str, keys: set[str]) -> list[str]:
     """Какие строки ещё без перевода. Нужна для проверки, а не для работы."""
     known = TRANSLATIONS.get(lang, {})

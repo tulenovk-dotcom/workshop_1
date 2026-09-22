@@ -65,7 +65,7 @@
         {% set info = EVIDENCE_LEVELS[m.evidence_level] %}
         <li>
           <div class="method-head">
-            <strong>{{ m.name }}</strong>
+            <strong>{{ method_text(m) }}</strong>
             <span class="badge {{ info.css }}">{{ t(info.label) }}</span>
           </div>
           {% if info.note %}<p class="method-note">{{ t(info.note) }}</p>{% endif %}

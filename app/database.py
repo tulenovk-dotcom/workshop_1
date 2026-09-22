@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS methods (
     code TEXT NOT NULL UNIQUE,
     name TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
+    name_kk TEXT NOT NULL DEFAULT '',
+    description_kk TEXT NOT NULL DEFAULT '',
     evidence_level TEXT NOT NULL DEFAULT 'limited',
     sort_order INTEGER NOT NULL DEFAULT 100
 );
@@ -210,9 +212,42 @@ def migrate_ip_columns(conn: sqlite3.Connection) -> None:
             )
 
 
+def migrate_method_translations(conn: sqlite3.Connection) -> None:
+    """Казахские поля справочника методов.
+
+    Старым базам добавляются колонки, и туда один раз заливается черновой
+    перевод. Заливка идёт только в тот запуск, когда колонки появились:
+    иначе стёртый администратором перевод возвращался бы при каждом
+    перезапуске сервиса. Дальше справочник живёт своей жизнью и правится
+    в админке.
+    """
+    from .reference import METHOD_TRANSLATIONS_KK
+
+    columns = table_columns(conn, "methods")
+    added = [name for name in ("name_kk", "description_kk") if name not in columns]
+    for column in added:
+        conn.execute(
+            f"ALTER TABLE methods ADD COLUMN {column} TEXT NOT NULL DEFAULT ''"
+        )
+    if not added:
+        return
+
+    for code, (name_kk, description_kk) in METHOD_TRANSLATIONS_KK.items():
+        conn.execute(
+            "UPDATE methods SET name_kk = ? WHERE code = ? AND name_kk = ''",
+            (name_kk, code),
+        )
+        conn.execute(
+            "UPDATE methods SET description_kk = ?"
+            " WHERE code = ? AND description_kk = ''",
+            (description_kk, code),
+        )
+
+
 def init_db() -> None:
     from .reference import (
         DEFAULT_METHODS,
+        METHOD_TRANSLATIONS_KK,
         PROVIDER_TYPE_MIGRATION,
         SPECIALTY_MIGRATION,
     )
@@ -221,6 +256,7 @@ def init_db() -> None:
         conn.executescript(SCHEMA)
         migrate_ip_columns(conn)
         conn.executescript(INDEXES)
+        migrate_method_translations(conn)
         columns = {row["name"] for row in conn.execute("PRAGMA table_info(providers)")}
         if "logo_path" not in columns:
             conn.execute(
@@ -267,8 +303,11 @@ def init_db() -> None:
                 if code in known:
                     continue
                 next_order += 1
+                name_kk, description_kk = METHOD_TRANSLATIONS_KK.get(code, ("", ""))
                 conn.execute(
-                    "INSERT INTO methods (code, name, description, evidence_level,"
-                    " sort_order) VALUES (?, ?, ?, ?, ?)",
-                    (code, name, description, level, next_order),
+                    "INSERT INTO methods (code, name, description, name_kk,"
+                    " description_kk, evidence_level, sort_order)"
+                    " VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (code, name, description, name_kk, description_kk,
+                     level, next_order),
                 )

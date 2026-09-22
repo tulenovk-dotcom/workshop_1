@@ -22,7 +22,12 @@
         <tr>
           <td>{{ m.sort_order }}</td>
           <td><code>{{ m.code }}</code></td>
-          <td>{{ m.name }}<div class="muted">{{ m.description|truncate(120) }}</div></td>
+          <td>{{ m.name }}<div class="muted">{{ m.description|truncate(120) }}</div>
+            {% if m.name_kk %}
+              <div class="muted">Қаз: {{ m.name_kk }}</div>
+            {% else %}
+              <div><span class="chip chip-flag">нет перевода</span></div>
+            {% endif %}</td>
           <td><span class="badge {{ EVIDENCE_LEVELS[m.evidence_level].css }}">{{ EVIDENCE_LEVELS[m.evidence_level].label }}</span></td>
           <td class="row-actions">
             <a class="btn btn-small" href="/admin/methods/{{ m.id }}/edit">Изменить</a>
@@ -54,6 +59,14 @@
   </div>
 
   <div class="field">
+    <label for="name_kk">Название по-казахски</label>
+    <input type="text" id="name_kk" name="name_kk"
+           value="{{ method.name_kk if method else '' }}">
+    <p class="hint">Пусто - на казахской версии сайта покажется русское
+      название.</p>
+  </div>
+
+  <div class="field">
     <label for="evidence_level">Уровень доказательности</label>
     <select id="evidence_level" name="evidence_level">
       {% for code, info in EVIDENCE_LEVELS.items() %}
@@ -72,6 +85,13 @@
   <div class="field field-wide">
     <label for="description">Описание простым языком</label>
     <textarea id="description" name="description" rows="4">{{ method.description if method else '' }}</textarea>
+  </div>
+
+  <div class="field field-wide">
+    <label for="description_kk">Описание по-казахски</label>
+    <textarea id="description_kk" name="description_kk" rows="4">{{ method.description_kk if method else '' }}</textarea>
+    <p class="hint">Пусто - на казахской версии сайта покажется русское
+      описание. Черновой перевод сделал ассистент: его стоит вычитать.</p>
   </div>
 
   <div class="filter-actions">

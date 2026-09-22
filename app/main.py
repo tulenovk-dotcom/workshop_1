@@ -22,6 +22,7 @@ from .i18n import (
     LANG_COOKIE_MAX_AGE,
     LANGUAGES,
     is_supported,
+    localized_field,
     translate,
 )
 from .personal_data import (
@@ -423,6 +424,9 @@ def render(request: Request, template: str, context: dict) -> HTMLResponse:
         # Функция перевода привязана к языку запроса и поэтому не может
         # быть глобальной: у каждого посетителя свой язык.
         "t": lambda text: translate(text, lang),
+        # Название и описание метода лежат в базе двумя парами колонок,
+        # поэтому берутся не из словаря переводов, а из самой записи.
+        "method_text": lambda row, field="name": localized_field(row, field, lang),
         "LANGUAGES": LANGUAGES,
         "current_path": current_path(request),
     }
@@ -1324,6 +1328,8 @@ def method_form_data(form) -> dict:
         "code": form["code"].strip(),
         "name": form["name"].strip(),
         "description": form["description"].strip(),
+        "name_kk": form["name_kk"].strip(),
+        "description_kk": form["description_kk"].strip(),
         "evidence_level": level if level in EVIDENCE_LEVELS else "limited",
         "sort_order": parse_int(form["sort_order"]) or 100,
     }

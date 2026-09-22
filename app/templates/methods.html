@@ -22,10 +22,10 @@
       <div class="method-cards">
         {% for m in items %}
           <article class="method-card">
-            {# Название и описание метода лежат в базе и правятся в админке,
-               поэтому здесь они не переводятся. #}
-            <h3>{{ m.name }}</h3>
-            <p>{{ m.description }}</p>
+            {# Название и описание берутся из базы: на казахской версии -
+               поля name_kk и description_kk, если они заполнены. #}
+            <h3>{{ method_text(m) }}</h3>
+            <p>{{ method_text(m, 'description') }}</p>
             <p class="method-links">
               <a href="/?method={{ m.code }}">{{ t('Найти, где занимаются этим методом') }}</a>
             </p>

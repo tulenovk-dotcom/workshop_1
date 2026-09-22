@@ -47,20 +47,32 @@ def get_method(conn: sqlite3.Connection, method_id: int) -> sqlite3.Row | None:
     return conn.execute("SELECT * FROM methods WHERE id = ?", (method_id,)).fetchone()
 
 
+METHOD_FIELDS = (
+    "code",
+    "name",
+    "description",
+    "name_kk",
+    "description_kk",
+    "evidence_level",
+    "sort_order",
+)
+
+
 def create_method(conn: sqlite3.Connection, data: dict) -> int:
+    columns = ", ".join(METHOD_FIELDS)
+    placeholders = ", ".join(f":{name}" for name in METHOD_FIELDS)
     cur = conn.execute(
-        "INSERT INTO methods (code, name, description, evidence_level, sort_order)"
-        " VALUES (:code, :name, :description, :evidence_level, :sort_order)",
-        data,
+        f"INSERT INTO methods ({columns}) VALUES ({placeholders})",
+        {"name_kk": "", "description_kk": "", **data},
     )
     return int(cur.lastrowid)
 
 
 def update_method(conn: sqlite3.Connection, method_id: int, data: dict) -> None:
+    assignments = ", ".join(f"{name} = :{name}" for name in METHOD_FIELDS)
     conn.execute(
-        "UPDATE methods SET code = :code, name = :name, description = :description,"
-        " evidence_level = :evidence_level, sort_order = :sort_order WHERE id = :id",
-        {**data, "id": method_id},
+        f"UPDATE methods SET {assignments} WHERE id = :id",
+        {"name_kk": "", "description_kk": "", **data, "id": method_id},
     )
 
 

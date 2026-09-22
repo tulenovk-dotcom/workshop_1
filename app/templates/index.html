@@ -75,7 +75,7 @@
     <select id="method" name="method">
       <option value="">{{ t('Все методы') }}</option>
       {% for m in filter_methods %}
-        <option value="{{ m.code }}" {% if raw.method == m.code %}selected{% endif %}>{{ m.name }}</option>
+        <option value="{{ m.code }}" {% if raw.method == m.code %}selected{% endif %}>{{ method_text(m) }}</option>
       {% endfor %}
     </select>
   </div>
@@ -130,7 +130,7 @@
         <div class="badges">
           {% for m in methods_map.get(p.id, []) %}
             <span class="badge {{ EVIDENCE_LEVELS[m.evidence_level].css }}"
-                  title="{{ EVIDENCE_LEVELS[m.evidence_level].label }}">{{ m.name }}</span>
+                  title="{{ t(EVIDENCE_LEVELS[m.evidence_level].label) }}">{{ method_text(m) }}</span>
           {% endfor %}
         </div>
 

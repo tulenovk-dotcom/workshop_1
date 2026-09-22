@@ -111,7 +111,7 @@
       <label class="checkbox">
         <input type="checkbox" name="methods" value="{{ m.code }}"
                {% if m.code in selected_methods %}checked{% endif %}>
-        {{ m.name }}
+        {{ method_text(m) }}
         <span class="badge {{ EVIDENCE_LEVELS[m.evidence_level].css }}">{{ t(EVIDENCE_LEVELS[m.evidence_level].label) }}</span>
       </label>
     {% endfor %}

@@ -2,7 +2,7 @@
 
 from . import crud
 from .database import db_session
-from .reference import DEFAULT_METHODS
+from .reference import DEFAULT_METHODS, METHOD_TRANSLATIONS_KK
 
 # Все записи ниже — выдуманные, нужны только для проверки интерфейса.
 TEST_PROVIDERS = [
@@ -291,12 +291,15 @@ def seed_if_empty() -> None:
             for order, (code, name, level, description) in enumerate(
                 DEFAULT_METHODS, start=1
             ):
+                name_kk, description_kk = METHOD_TRANSLATIONS_KK.get(code, ("", ""))
                 crud.create_method(
                     conn,
                     {
                         "code": code,
                         "name": name,
                         "description": description,
+                        "name_kk": name_kk,
+                        "description_kk": description_kk,
                         "evidence_level": level,
                         "sort_order": order,
                     },
