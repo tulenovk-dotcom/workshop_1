@@ -35,15 +35,16 @@
       <a href="/methods">{{ t('Методы помощи') }}</a>
     </nav>
     <div class="header-auth">
-      {# Выбор языка: текущий язык показан, но не ведёт никуда. #}
-      <p class="lang-switch">
-        {% for code, label in LANGUAGES.items() %}
+      {# Выбор языка одной плашкой из двух половинок. Текущий язык залит
+         и не ведёт никуда, вторая половинка - обычная ссылка. #}
+      <p class="lang-switch" role="group" aria-label="{{ t('Язык сайта') }}">
+        {%- for code, label in LANGUAGES.items() -%}
           {% if code == lang %}
             <span class="lang-current" aria-current="true">{{ label }}</span>
           {% else %}
             <a href="/lang/{{ code }}?next={{ current_path|urlencode }}">{{ label }}</a>
           {% endif %}
-        {% endfor %}
+        {%- endfor -%}
       </p>
       <a class="btn-outline" href="/dlya-specialistov">{{ t('Разместиться в каталоге') }}</a>
       {% if request.session.get('admin') %}
