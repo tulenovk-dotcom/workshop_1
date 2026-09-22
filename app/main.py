@@ -16,6 +16,14 @@ from starlette.middleware.sessions import SessionMiddleware
 from . import crud
 from .database import DB_PATH, db_session, init_db, read_or_create_secret
 from .notifications import notify_new_application
+from .i18n import (
+    DEFAULT_LANGUAGE,
+    LANG_COOKIE,
+    LANG_COOKIE_MAX_AGE,
+    LANGUAGES,
+    is_supported,
+    translate,
+)
 from .personal_data import (
     CONSENT_PURPOSES,
     CONSENT_TEXTS,
@@ -394,8 +402,52 @@ def parse_int(value: str | None) -> int | None:
         return None
 
 
+def request_lang(request: Request) -> str:
+    """Язык страницы: из cookie, а если её нет - русский."""
+    code = request.cookies.get(LANG_COOKIE, "")
+    return code if is_supported(code) else DEFAULT_LANGUAGE
+
+
+def current_path(request: Request) -> str:
+    """Текущий адрес с параметрами - чтобы вернуться на ту же страницу
+    после переключения языка."""
+    query = request.url.query
+    return f"{request.url.path}?{query}" if query else request.url.path
+
+
 def render(request: Request, template: str, context: dict) -> HTMLResponse:
+    lang = request_lang(request)
+    context = {
+        **context,
+        "lang": lang,
+        # Функция перевода привязана к языку запроса и поэтому не может
+        # быть глобальной: у каждого посетителя свой язык.
+        "t": lambda text: translate(text, lang),
+        "LANGUAGES": LANGUAGES,
+        "current_path": current_path(request),
+    }
     return templates.TemplateResponse(request, template, context)
+
+
+@app.get("/lang/{code}")
+def set_language(request: Request, code: str, next: str = "/"):
+    """Переключение языка: запоминаем выбор и возвращаем на ту же страницу.
+
+    Адрес возврата принимаем только свой: «//чужой-сайт» - это тоже
+    относительный на вид адрес, но уводит он наружу.
+    """
+    if not is_supported(code):
+        raise HTTPException(status_code=404, detail="Неизвестный язык")
+    back = next if next.startswith("/") and not next.startswith("//") else "/"
+    response = RedirectResponse(back, status_code=REDIRECT)
+    response.set_cookie(
+        LANG_COOKIE,
+        code,
+        max_age=LANG_COOKIE_MAX_AGE,
+        httponly=True,
+        samesite="lax",
+    )
+    return response
 
 
 # --- Публичная часть --------------------------------------------------------

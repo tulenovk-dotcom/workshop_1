@@ -1,52 +1,49 @@
 {% extends "base.html" %}
-{% import "_macros.html" as ui %}
+{% import "_macros.html" as ui with context %}
 
 {% block content %}
 <section class="intro">
-  <h1>Где получить помощь ребёнку с РАС в Казахстане</h1>
+  <h1>{{ t('Где получить помощь ребёнку с РАС в Казахстане') }}</h1>
   <p>
-    Реабилитационные центры, медицинские клиники, частные специалисты,
-    коррекционные детские сады, школы и государственные организации.
-    У каждого метода указан уровень доказательности, чтобы родителям было
-    проще выбирать программу помощи.
+    {{ t('Реабилитационные центры, медицинские клиники, частные специалисты, коррекционные детские сады, школы и государственные организации. У каждого метода указан уровень доказательности, чтобы родителям было проще выбирать программу помощи.') }}
   </p>
 </section>
 
 <section class="evidence-key">
-  <h2>Что значат метки у методов</h2>
+  <h2>{{ t('Что значат метки у методов') }}</h2>
   <dl>
     <div>
-      <dt><span class="badge ev-proven">Доказано</span></dt>
-      <dd>Эффективность при РАС подтверждена исследованиями.</dd>
+      <dt><span class="badge ev-proven">{{ t('Доказано') }}</span></dt>
+      <dd>{{ t('Эффективность при РАС подтверждена исследованиями.') }}</dd>
     </div>
     <div>
-      <dt><span class="badge ev-limited">Ограниченные данные</span></dt>
-      <dd>Метод изучен мало, надёжных выводов пока нет.</dd>
+      <dt><span class="badge ev-limited">{{ t('Ограниченные данные') }}</span></dt>
+      <dd>{{ t('Метод изучен мало, надёжных выводов пока нет.') }}</dd>
     </div>
     <div>
-      <dt><span class="badge ev-none">Без доказательств при РАС</span></dt>
-      <dd>Исследования влияния на проявления РАС не подтверждают.</dd>
+      <dt><span class="badge ev-none">{{ t('Без доказательств при РАС') }}</span></dt>
+      <dd>{{ t('Исследования влияния на проявления РАС не подтверждают.') }}</dd>
     </div>
   </dl>
   <p class="hint">
-    Метка говорит о состоянии исследований, а не о качестве работы
-    конкретного специалиста. <a href="/methods">Подробнее о методах</a>
+    {{ t('Метка говорит о состоянии исследований, а не о качестве работы конкретного специалиста.') }}
+    <a href="/methods">{{ t('Подробнее о методах') }}</a>
   </p>
 </section>
 
-<h2 class="filters-title">Подобрать помощь</h2>
+<h2 class="filters-title">{{ t('Подобрать помощь') }}</h2>
 
 <form class="filters" method="get" action="/">
   <div class="field field-wide">
-    <label for="q">Поиск по названию или ФИО</label>
+    <label for="q">{{ t('Поиск по названию или ФИО') }}</label>
     <input type="search" id="q" name="q" value="{{ raw.q }}"
-           placeholder="Например: центр, логопед, фамилия">
+           placeholder="{{ t('Например: центр, логопед, фамилия') }}">
   </div>
 
   <div class="field">
-    <label for="city">Город</label>
+    <label for="city">{{ t('Город') }}</label>
     <select id="city" name="city">
-      <option value="">Все города</option>
+      <option value="">{{ t('Все города') }}</option>
       {% for c in cities %}
         <option value="{{ c }}" {% if raw.city == c %}selected{% endif %}>{{ c }}</option>
       {% endfor %}
@@ -54,29 +51,29 @@
   </div>
 
   <div class="field">
-    <label for="provider_type">Где заниматься</label>
+    <label for="provider_type">{{ t('Где заниматься') }}</label>
     <select id="provider_type" name="provider_type">
-      <option value="">Все варианты</option>
+      <option value="">{{ t('Все варианты') }}</option>
       {% for code, label in PROVIDER_TYPES.items() %}
-        <option value="{{ code }}" {% if raw.provider_type == code %}selected{% endif %}>{{ label }}</option>
+        <option value="{{ code }}" {% if raw.provider_type == code %}selected{% endif %}>{{ t(label) }}</option>
       {% endfor %}
     </select>
   </div>
 
   <div class="field">
-    <label for="specialty">Специальность</label>
+    <label for="specialty">{{ t('Специальность') }}</label>
     <select id="specialty" name="specialty">
-      <option value="">Все специальности</option>
+      <option value="">{{ t('Все специальности') }}</option>
       {% for s in SPECIALTIES %}
-        <option value="{{ s }}" {% if raw.specialty == s %}selected{% endif %}>{{ s }}</option>
+        <option value="{{ s }}" {% if raw.specialty == s %}selected{% endif %}>{{ t(s) }}</option>
       {% endfor %}
     </select>
   </div>
 
   <div class="field">
-    <label for="method">Метод</label>
+    <label for="method">{{ t('Метод') }}</label>
     <select id="method" name="method">
-      <option value="">Все методы</option>
+      <option value="">{{ t('Все методы') }}</option>
       {% for m in filter_methods %}
         <option value="{{ m.code }}" {% if raw.method == m.code %}selected{% endif %}>{{ m.name }}</option>
       {% endfor %}
@@ -84,11 +81,11 @@
   </div>
 
   <div class="field">
-    <label for="age">Возраст ребёнка</label>
+    <label for="age">{{ t('Возраст ребёнка') }}</label>
     <select id="age" name="age">
-      <option value="">Любой возраст</option>
+      <option value="">{{ t('Любой возраст') }}</option>
       {% for code, label, low, high in age_ranges %}
-        <option value="{{ code }}" {% if raw.age == code %}selected{% endif %}>{{ label }}</option>
+        <option value="{{ code }}" {% if raw.age == code %}selected{% endif %}>{{ t(label) }}</option>
       {% endfor %}
     </select>
   </div>
@@ -100,23 +97,23 @@
                {% if raw.proven_only %}checked{% endif %}>
         <span class="switch-track"></span>
       </span>
-      <span class="switch-label">Только доказательные методы</span>
+      <span class="switch-label">{{ t('Только доказательные методы') }}</span>
     </label>
-    <p class="hint">Без методов без доказательств.</p>
+    <p class="hint">{{ t('Без методов без доказательств.') }}</p>
   </div>
 
   <div class="filter-actions">
-    <button type="submit" class="btn btn-primary">Найти</button>
-    <a class="btn btn-ghost" href="/">Сбросить</a>
+    <button type="submit" class="btn btn-primary">{{ t('Найти') }}</button>
+    <a class="btn btn-ghost" href="/">{{ t('Сбросить') }}</a>
   </div>
 </form>
 
 <p class="results-count">
-  Найдено: {{ providers|length }}
+  {{ t('Найдено') }}: {{ providers|length }}
 </p>
 
 {% if not providers %}
-  <p class="empty">По заданным условиям ничего не найдено. Попробуйте изменить фильтры.</p>
+  <p class="empty">{{ t('По заданным условиям ничего не найдено. Попробуйте изменить фильтры.') }}</p>
 {% endif %}
 
 <div class="cards">
@@ -138,13 +135,13 @@
         </div>
 
         <p class="pc-line">
-          <span class="pc-key">Где заниматься:</span>
-          {{ PROVIDER_TYPES.get(p.provider_type, p.provider_type) }}{% if p.specialty %}, {{ p.specialty }}{% endif %}
-          {% if p.is_test %}<span class="chip chip-test">тестовая запись</span>{% endif %}
+          <span class="pc-key">{{ t('Где заниматься') }}:</span>
+          {{ t(PROVIDER_TYPES.get(p.provider_type, p.provider_type)) }}{% if p.specialty %}, {{ t(p.specialty) }}{% endif %}
+          {% if p.is_test %}<span class="chip chip-test">{{ t('тестовая запись') }}</span>{% endif %}
         </p>
-        <p class="pc-line"><span class="pc-key">Возраст детей:</span> {{ ui.age_line(p) }}</p>
+        <p class="pc-line"><span class="pc-key">{{ t('Возраст детей') }}:</span> {{ ui.age_line(p) }}</p>
         {% if p.has_state_funding %}
-          <p class="pc-line pc-line-accent">Есть гос. финансирование</p>
+          <p class="pc-line pc-line-accent">{{ t('Есть гос. финансирование') }}</p>
         {% endif %}
 
         {% if p.description %}
@@ -158,15 +155,15 @@
 
         {% if p.whatsapp %}
           <a class="btn btn-cta" href="{{ p.whatsapp|wa_link }}" target="_blank" rel="noopener">
-            Написать в WhatsApp</a>
+            {{ t('Написать в WhatsApp') }}</a>
         {% elif p.phone %}
-          <a class="btn btn-cta" href="tel:{{ p.phone|replace(' ', '') }}">Позвонить</a>
+          <a class="btn btn-cta" href="tel:{{ p.phone|replace(' ', '') }}">{{ t('Позвонить') }}</a>
         {% else %}
-          <a class="btn btn-cta" href="/providers/{{ p.id }}">Открыть карточку</a>
+          <a class="btn btn-cta" href="/providers/{{ p.id }}">{{ t('Открыть карточку') }}</a>
         {% endif %}
 
-        {% if p.pricing == 'free' %}<p class="pc-hint">занятия бесплатные</p>{% endif %}
-        <a class="pc-more" href="/providers/{{ p.id }}">Подробнее</a>
+        {% if p.pricing == 'free' %}<p class="pc-hint">{{ t('занятия бесплатные') }}</p>{% endif %}
+        <a class="pc-more" href="/providers/{{ p.id }}">{{ t('Подробнее') }}</a>
       </div>
     </article>
   {% endfor %}

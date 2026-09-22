@@ -1,15 +1,15 @@
 {% extends "base.html" %}
-{% import "_macros.html" as ui %}
+{% import "_macros.html" as ui with context %}
 
-{% block title %}{{ provider.name }} - каталог помощи детям с РАС{% endblock %}
+{% block title %}{{ provider.name }} - {{ t('каталог помощи детям с РАС') }}{% endblock %}
 
 {% block content %}
-<p class="breadcrumbs"><a href="/">← Вернуться к каталогу</a></p>
+<p class="breadcrumbs"><a href="/">← {{ t('Вернуться к каталогу') }}</a></p>
 
 <article class="provider">
   <div class="card-head">
-    <span class="chip">{{ PROVIDER_TYPES.get(provider.provider_type, provider.provider_type) }}</span>
-    {% if provider.is_test %}<span class="chip chip-test">Тестовая запись</span>{% endif %}
+    <span class="chip">{{ t(PROVIDER_TYPES.get(provider.provider_type, provider.provider_type)) }}</span>
+    {% if provider.is_test %}<span class="chip chip-test">{{ t('Тестовая запись') }}</span>{% endif %}
     {{ ui.rating(provider.rating_avg, provider.reviews_count) }}
   </div>
 
@@ -17,7 +17,7 @@
     {{ ui.logo(provider, 'lg') }}
     <div>
       <h1>{{ provider.name }}</h1>
-      {% if provider.specialty %}<p class="provider-specialty">{{ provider.specialty }}</p>{% endif %}
+      {% if provider.specialty %}<p class="provider-specialty">{{ t(provider.specialty) }}</p>{% endif %}
     </div>
   </div>
 
@@ -27,23 +27,23 @@
 
   <div class="actions">
     {% if provider.phone %}
-      <a class="btn btn-primary" href="tel:{{ provider.phone|replace(' ', '') }}">Позвонить</a>
+      <a class="btn btn-primary" href="tel:{{ provider.phone|replace(' ', '') }}">{{ t('Позвонить') }}</a>
     {% endif %}
     {% if provider.whatsapp %}
       <a class="btn btn-whatsapp" href="{{ provider.whatsapp|wa_link }}"
-         target="_blank" rel="noopener">Написать в WhatsApp</a>
+         target="_blank" rel="noopener">{{ t('Написать в WhatsApp') }}</a>
     {% endif %}
   </div>
 
-  <h2>Информация</h2>
+  <h2>{{ t('Информация') }}</h2>
   <dl class="info-grid">
-    <div><dt>Город</dt><dd>{{ provider.city }}</dd></div>
-    {% if provider.district %}<div><dt>Район</dt><dd>{{ provider.district }}</dd></div>{% endif %}
-    {% if provider.address %}<div><dt>Адрес</dt><dd>{{ provider.address }}</dd></div>{% endif %}
-    {% if provider.phone %}<div><dt>Телефон</dt><dd>{{ provider.phone }}</dd></div>{% endif %}
+    <div><dt>{{ t('Город') }}</dt><dd>{{ provider.city }}</dd></div>
+    {% if provider.district %}<div><dt>{{ t('Район') }}</dt><dd>{{ provider.district }}</dd></div>{% endif %}
+    {% if provider.address %}<div><dt>{{ t('Адрес') }}</dt><dd>{{ provider.address }}</dd></div>{% endif %}
+    {% if provider.phone %}<div><dt>{{ t('Телефон') }}</dt><dd>{{ provider.phone }}</dd></div>{% endif %}
     {% if provider.whatsapp %}<div><dt>WhatsApp</dt><dd>{{ provider.whatsapp }}</dd></div>{% endif %}
     {% if provider.website %}
-      <div><dt>Сайт</dt><dd>
+      <div><dt>{{ t('Сайт') }}</dt><dd>
         <a href="{{ provider.website|site_link }}" target="_blank" rel="noopener">{{ provider.website }}</a>
       </dd></div>
     {% endif %}
@@ -52,13 +52,13 @@
         <a href="{{ provider.instagram|instagram_link }}" target="_blank" rel="noopener">{{ provider.instagram }}</a>
       </dd></div>
     {% endif %}
-    <div><dt>Возраст детей</dt><dd>{{ ui.age_line(provider) }}</dd></div>
-    <div><dt>Оплата</dt><dd>{{ ui.price_line(provider) }}</dd></div>
-    <div><dt>Гос. финансирование</dt>
-      <dd>{{ 'Есть' if provider.has_state_funding else 'Нет данных' }}</dd></div>
+    <div><dt>{{ t('Возраст детей') }}</dt><dd>{{ ui.age_line(provider) }}</dd></div>
+    <div><dt>{{ t('Оплата') }}</dt><dd>{{ ui.price_line(provider) }}</dd></div>
+    <div><dt>{{ t('Гос. финансирование') }}</dt>
+      <dd>{{ t('Есть') if provider.has_state_funding else t('Нет данных') }}</dd></div>
   </dl>
 
-  <h2>Методы</h2>
+  <h2>{{ t('Методы') }}</h2>
   {% if methods %}
     <ul class="method-list">
       {% for m in methods %}
@@ -66,28 +66,27 @@
         <li>
           <div class="method-head">
             <strong>{{ m.name }}</strong>
-            <span class="badge {{ info.css }}">{{ info.label }}</span>
+            <span class="badge {{ info.css }}">{{ t(info.label) }}</span>
           </div>
-          {% if info.note %}<p class="method-note">{{ info.note }}</p>{% endif %}
+          {% if info.note %}<p class="method-note">{{ t(info.note) }}</p>{% endif %}
         </li>
       {% endfor %}
     </ul>
   {% else %}
-    <p class="empty">Методы не указаны.</p>
+    <p class="empty">{{ t('Методы не указаны.') }}</p>
   {% endif %}
 
-  <h2 id="reviews">Отзывы</h2>
+  <h2 id="reviews">{{ t('Отзывы') }}</h2>
 
   {% if review_status == 'ok' %}
-    <p class="notice notice-ok">Спасибо! Отзыв отправлен на модерацию и появится после проверки.</p>
+    <p class="notice notice-ok">{{ t('Спасибо! Отзыв отправлен на модерацию и появится после проверки.') }}</p>
   {% elif review_status == 'limit' %}
-    <p class="notice notice-warn">С одного устройства можно оставить один отзыв о месте занятий в сутки.</p>
+    <p class="notice notice-warn">{{ t('С одного устройства можно оставить один отзыв о месте занятий в сутки.') }}</p>
   {% elif review_status == 'invalid' %}
-    <p class="notice notice-warn">Заполните имя, оценку и текст отзыва.</p>
+    <p class="notice notice-warn">{{ t('Заполните имя, оценку и текст отзыва.') }}</p>
   {% elif review_status == 'consent' %}
     <p class="notice notice-warn">
-      Отзыв не сохранён: без согласия на обработку данных опубликовать его
-      нельзя.
+      {{ t('Отзыв не сохранён: без согласия на обработку данных опубликовать его нельзя.') }}
     </p>
   {% endif %}
 
@@ -105,50 +104,47 @@
       {% endfor %}
     </ul>
   {% else %}
-    <p class="empty">Опубликованных отзывов пока нет.</p>
+    <p class="empty">{{ t('Опубликованных отзывов пока нет.') }}</p>
   {% endif %}
 
-  <h3>Оставить отзыв</h3>
+  <h3>{{ t('Оставить отзыв') }}</h3>
   <p class="data-warning">
-    Пишите о занятиях и о работе специалистов. Не указывайте диагнозы,
-    имена и фамилии детей и другие сведения о здоровье - ни о своём ребёнке,
-    ни о чужом. Такие отзывы модератор не опубликует.
+    {{ t('Пишите о занятиях и о работе специалистов. Не указывайте диагнозы, имена и фамилии детей и другие сведения о здоровье - ни о своём ребёнке, ни о чужом. Такие отзывы модератор не опубликует.') }}
   </p>
   <form class="review-form" method="post" action="/providers/{{ provider.id }}/reviews">
     <div class="field">
-      <label for="author_name">Ваше имя</label>
+      <label for="author_name">{{ t('Ваше имя') }}</label>
       <input type="text" id="author_name" name="author_name" maxlength="80" required>
     </div>
     <div class="field">
-      <label for="rating">Оценка</label>
+      <label for="rating">{{ t('Оценка') }}</label>
       <select id="rating" name="rating" required>
-        <option value="5">5 - отлично</option>
-        <option value="4">4 - хорошо</option>
-        <option value="3">3 - нормально</option>
-        <option value="2">2 - плохо</option>
-        <option value="1">1 - очень плохо</option>
+        <option value="5">5 - {{ t('отлично') }}</option>
+        <option value="4">4 - {{ t('хорошо') }}</option>
+        <option value="3">3 - {{ t('нормально') }}</option>
+        <option value="2">2 - {{ t('плохо') }}</option>
+        <option value="1">1 - {{ t('очень плохо') }}</option>
       </select>
     </div>
     <div class="field field-wide">
-      <label for="text">Текст отзыва</label>
+      <label for="text">{{ t('Текст отзыва') }}</label>
       <textarea id="text" name="text" rows="5" maxlength="2000" required
-                placeholder="Расскажите о занятиях, специалистах и результатах"></textarea>
+                placeholder="{{ t('Расскажите о занятиях, специалистах и результатах') }}"></textarea>
     </div>
     <div class="field field-wide consent-field">
       <label class="checkbox">
         <input type="checkbox" name="consent" value="1" required>
-        Я согласен на обработку персональных данных, указанных в отзыве,
-        и принимаю <a href="/privacy" target="_blank" rel="noopener">политику
-        конфиденциальности</a>
+        {% set policy = '<a href="/privacy" target="_blank" rel="noopener">' ~ t('политику конфиденциальности') ~ '</a>' %}
+        {{ t('Я согласен на обработку персональных данных, указанных в отзыве, и принимаю %s')|format(policy)|safe }}
       </label>
     </div>
 
     <div class="filter-actions">
-      <button type="submit" class="btn btn-primary">Отправить на модерацию</button>
+      <button type="submit" class="btn btn-primary">{{ t('Отправить на модерацию') }}</button>
     </div>
     <p class="hint">
-      Отзывы публикуются после проверки модератором. Отозвать согласие и
-      удалить отзыв можно <a href="/privacy/request">через обращение</a>.
+      {% set request_link = '<a href="/privacy/request">' ~ t('через обращение') ~ '</a>' %}
+      {{ t('Отзывы публикуются после проверки модератором. Отозвать согласие и удалить отзыв можно %s.')|format(request_link)|safe }}
     </p>
   </form>
 </article>

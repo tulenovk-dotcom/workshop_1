@@ -1,38 +1,34 @@
 {% extends "base.html" %}
 
-{% block title %}Разместите информацию о себе - каталог помощи детям с РАС{% endblock %}
+{% block title %}{{ t('Разместите информацию о себе') }} - {{ t('каталог помощи детям с РАС') }}{% endblock %}
 
 {% block content %}
 <section class="intro">
-  <h1>Разместите информацию о себе в каталоге</h1>
+  <h1>{{ t('Разместите информацию о себе в каталоге') }}</h1>
   <p>
-    Для реабилитационных центров, клиник, частных специалистов, детских садов
-    и школ, которые работают с детьми с РАС.
+    {{ t('Для реабилитационных центров, клиник, частных специалистов, детских садов и школ, которые работают с детьми с РАС.') }}
   </p>
 </section>
 
 <section class="steps">
-  <h2>Как проходит размещение</h2>
+  <h2>{{ t('Как проходит размещение') }}</h2>
   <ol class="steps-list">
-    <li><span class="step-num">1</span> Вы отправляете заявку.</li>
-    <li><span class="step-num">2</span> Мы проверяем информацию и можем
-      запросить лицензию или диплом.</li>
-    <li><span class="step-num">3</span> Публикуем карточку в каталоге.</li>
+    <li><span class="step-num">1</span> {{ t('Вы отправляете заявку.') }}</li>
+    <li><span class="step-num">2</span> {{ t('Мы проверяем информацию и можем запросить лицензию или диплом.') }}</li>
+    <li><span class="step-num">3</span> {{ t('Публикуем карточку в каталоге.') }}</li>
   </ol>
-  <p class="hint">Размещение бесплатное.</p>
+  <p class="hint">{{ t('Размещение бесплатное.') }}</p>
 </section>
 
 <p class="data-warning">
-  В анкете нужны сведения об организации или специалисте. Не указывайте
-  диагнозы, фамилии детей, номера справок и другие данные о здоровье - ни
-  в комментарии, ни в названии. Такие заявки мы возвращаем на доработку.
+  {{ t('В анкете нужны сведения об организации или специалисте. Не указывайте диагнозы, фамилии детей, номера справок и другие данные о здоровье - ни в комментарии, ни в названии. Такие заявки мы возвращаем на доработку.') }}
 </p>
 
 {% if errors %}
   <div class="notice notice-warn form-errors">
-    <p><strong>Заявка не отправлена. Проверьте, пожалуйста:</strong></p>
+    <p><strong>{{ t('Заявка не отправлена. Проверьте, пожалуйста:') }}</strong></p>
     <ul>
-      {% for error in errors %}<li>{{ error }}</li>{% endfor %}
+      {% for error in errors %}<li>{{ t(error) }}</li>{% endfor %}
     </ul>
   </div>
 {% endif %}
@@ -40,110 +36,107 @@
 <form class="admin-form application-form" method="post" action="/dlya-specialistov"
       enctype="multipart/form-data">
   <fieldset class="field field-wide kind-picker">
-    <legend>Вы заполняете анкету от имени *</legend>
+    <legend>{{ t('Вы заполняете анкету от имени') }} *</legend>
     <label class="radio">
       <input type="radio" name="applicant_kind" value="organization"
              {% if form.applicant_kind == 'organization' %}checked{% endif %}>
-      Организации (центр, клиника, детский сад, школа)
+      {{ t('Организации (центр, клиника, детский сад, школа)') }}
     </label>
     <label class="radio">
       <input type="radio" name="applicant_kind" value="specialist"
              {% if form.applicant_kind == 'specialist' %}checked{% endif %}>
-      Себя как частного специалиста (работаю сам)
+      {{ t('Себя как частного специалиста (работаю сам)') }}
     </label>
   </fieldset>
 
   <div class="field only-organization">
-    <label for="org_name">Название организации *</label>
+    <label for="org_name">{{ t('Название организации') }} *</label>
     <input type="text" id="org_name" name="org_name" maxlength="160"
            value="{{ form.org_name or '' }}">
   </div>
 
   <div class="field only-organization">
-    <label for="provider_type">Где заниматься</label>
+    <label for="provider_type">{{ t('Где заниматься') }}</label>
     <select id="provider_type" name="provider_type">
-      <option value="">Не указано</option>
+      <option value="">{{ t('Не указано') }}</option>
       {% for code, label in ORGANIZATION_TYPES.items() %}
-        <option value="{{ code }}" {% if form.provider_type == code %}selected{% endif %}>{{ label }}</option>
+        <option value="{{ code }}" {% if form.provider_type == code %}selected{% endif %}>{{ t(label) }}</option>
       {% endfor %}
     </select>
   </div>
 
   <div class="field only-specialist">
-    <label for="person_name">Фамилия, имя, отчество *</label>
+    <label for="person_name">{{ t('Фамилия, имя, отчество') }} *</label>
     <input type="text" id="person_name" name="person_name" maxlength="160"
            value="{{ form.person_name or '' }}">
   </div>
 
   <div class="field only-specialist">
-    <label for="specialty">Специальность</label>
+    <label for="specialty">{{ t('Специальность') }}</label>
     <select id="specialty" name="specialty">
-      <option value="">Не указана</option>
+      <option value="">{{ t('Не указана') }}</option>
       {% for s in SPECIALTIES %}
-        <option value="{{ s }}" {% if form.specialty == s %}selected{% endif %}>{{ s }}</option>
+        <option value="{{ s }}" {% if form.specialty == s %}selected{% endif %}>{{ t(s) }}</option>
       {% endfor %}
     </select>
   </div>
 
   <div class="field">
-    <label for="city">Город *</label>
+    <label for="city">{{ t('Город') }} *</label>
     <input type="text" id="city" name="city" maxlength="80" required
            value="{{ form.city or '' }}">
   </div>
 
   <div class="field">
-    <label for="address">Адрес</label>
+    <label for="address">{{ t('Адрес') }}</label>
     <input type="text" id="address" name="address" maxlength="200"
            value="{{ form.address or '' }}">
   </div>
 
   <div class="field field-wide logo-field">
-    <label for="logo">Фото или логотип</label>
+    <label for="logo">{{ t('Фото или логотип') }}</label>
     <div class="logo-field-row">
       <div class="logo-field-controls">
         <input type="file" id="logo" name="logo"
                accept="image/png,image/jpeg,image/webp,image/gif">
-        <p class="hint">PNG, JPEG, WebP или GIF, до 2 МБ. Логотип организации
-          или ваше рабочее фото - оно появится в карточке. Без него карточка
-          покажет инициалы.</p>
-        <p class="hint">Если форма вернётся с ошибками, файл придётся выбрать
-          заново: браузер не позволяет подставить его обратно.</p>
+        <p class="hint">{{ t('PNG, JPEG, WebP или GIF, до 2 МБ. Логотип организации или ваше рабочее фото - оно появится в карточке. Без него карточка покажет инициалы.') }}</p>
+        <p class="hint">{{ t('Если форма вернётся с ошибками, файл придётся выбрать заново: браузер не позволяет подставить его обратно.') }}</p>
       </div>
     </div>
   </div>
 
   <fieldset class="field field-wide methods-picker">
-    <legend>Методы, с которыми вы работаете</legend>
+    <legend>{{ t('Методы, с которыми вы работаете') }}</legend>
     {% for m in methods %}
       <label class="checkbox">
         <input type="checkbox" name="methods" value="{{ m.code }}"
                {% if m.code in selected_methods %}checked{% endif %}>
         {{ m.name }}
-        <span class="badge {{ EVIDENCE_LEVELS[m.evidence_level].css }}">{{ EVIDENCE_LEVELS[m.evidence_level].label }}</span>
+        <span class="badge {{ EVIDENCE_LEVELS[m.evidence_level].css }}">{{ t(EVIDENCE_LEVELS[m.evidence_level].label) }}</span>
       </label>
     {% endfor %}
   </fieldset>
 
   <div class="field">
-    <label for="age_from">Возраст детей от</label>
+    <label for="age_from">{{ t('Возраст детей от') }}</label>
     <input type="number" id="age_from" name="age_from" min="0" max="18"
            value="{{ form.age_from or '' }}">
   </div>
 
   <div class="field">
-    <label for="age_to">Возраст детей до</label>
+    <label for="age_to">{{ t('Возраст детей до') }}</label>
     <input type="number" id="age_to" name="age_to" min="0" max="18"
            value="{{ form.age_to or '' }}">
   </div>
 
   <div class="field">
-    <label for="price_from">Стоимость занятия от, ₸</label>
+    <label for="price_from">{{ t('Стоимость занятия от, ₸') }}</label>
     <input type="number" id="price_from" name="price_from" min="0" step="500"
            value="{{ form.price_from or '' }}">
   </div>
 
   <div class="field">
-    <label for="price_to">Стоимость занятия до, ₸</label>
+    <label for="price_to">{{ t('Стоимость занятия до, ₸') }}</label>
     <input type="number" id="price_to" name="price_to" min="0" step="500"
            value="{{ form.price_to or '' }}">
   </div>
@@ -155,25 +148,25 @@
                {% if form.pricing_free %}checked{% endif %}>
         <span class="switch-track"></span>
       </span>
-      <span class="switch-label">Занятия бесплатные</span>
+      <span class="switch-label">{{ t('Занятия бесплатные') }}</span>
     </label>
-    <p class="hint">Тогда стоимость заполнять не нужно.</p>
+    <p class="hint">{{ t('Тогда стоимость заполнять не нужно.') }}</p>
   </div>
 
   <div class="field">
-    <label for="link">Сайт или Instagram</label>
+    <label for="link">{{ t('Сайт или Instagram') }}</label>
     <input type="text" id="link" name="link" maxlength="200"
            placeholder="example.kz или @account" value="{{ form.link or '' }}">
   </div>
 
   <div class="field">
-    <label for="contact_person">Контактное лицо *</label>
+    <label for="contact_person">{{ t('Контактное лицо') }} *</label>
     <input type="text" id="contact_person" name="contact_person" maxlength="120"
            required value="{{ form.contact_person or '' }}">
   </div>
 
   <div class="field">
-    <label for="phone">Телефон *</label>
+    <label for="phone">{{ t('Телефон') }} *</label>
     <input type="tel" id="phone" name="phone" required
            placeholder="+7 701 234 56 78" value="{{ form.phone or '' }}">
   </div>
@@ -185,21 +178,21 @@
   </div>
 
   <div class="field">
-    <label for="email">Электронная почта</label>
+    <label for="email">{{ t('Электронная почта') }}</label>
     <input type="email" id="email" name="email" maxlength="120"
            value="{{ form.email or '' }}">
   </div>
 
   <div class="field field-wide">
-    <label for="comment">Комментарий</label>
+    <label for="comment">{{ t('Комментарий') }}</label>
     <textarea id="comment" name="comment" rows="5" maxlength="2000"
-              placeholder="Коротко о занятиях, программе и специалистах">{{ form.comment or '' }}</textarea>
-    <p class="hint">До 2000 символов.</p>
+              placeholder="{{ t('Коротко о занятиях, программе и специалистах') }}">{{ form.comment or '' }}</textarea>
+    <p class="hint">{{ t('До 2000 символов.') }}</p>
   </div>
 
   {# Honeypot: поле спрятано от людей, его заполняют только боты. #}
   <div class="trap" aria-hidden="true">
-    <label for="company_site">Не заполняйте это поле</label>
+    <label for="company_site">{{ t('Не заполняйте это поле') }}</label>
     <input type="text" id="company_site" name="company_site" tabindex="-1"
            autocomplete="off" value="">
   </div>
@@ -208,19 +201,17 @@
     <label class="checkbox">
       <input type="checkbox" name="consent" value="1" required
              {% if form.consent %}checked{% endif %}>
-      Я согласен на обработку персональных данных, указанных в заявке,
-      и принимаю
-      <a href="/privacy" target="_blank" rel="noopener">политику конфиденциальности</a> *
+      {% set policy = '<a href="/privacy" target="_blank" rel="noopener">' ~ t('политику конфиденциальности') ~ '</a>' %}
+      {{ t('Я согласен на обработку персональных данных, указанных в заявке, и принимаю %s')|format(policy)|safe }} *
     </label>
   </div>
 
   <div class="filter-actions">
-    <button type="submit" class="btn btn-primary">Отправить заявку</button>
+    <button type="submit" class="btn btn-primary">{{ t('Отправить заявку') }}</button>
   </div>
 
   <p class="hint field-wide">
-    Поля со звёздочкой обязательные. Мы проверим информацию и свяжемся
-    с вами в течение двух рабочих дней.
+    {{ t('Поля со звёздочкой обязательные. Мы проверим информацию и свяжемся с вами в течение двух рабочих дней.') }}
   </p>
 </form>
 {% endblock %}

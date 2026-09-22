@@ -1,6 +1,6 @@
 {% macro evidence_badge(level) %}
   {% set info = EVIDENCE_LEVELS.get(level, EVIDENCE_LEVELS['limited']) %}
-  <span class="badge {{ info.css }}">{{ info.label }}</span>
+  <span class="badge {{ info.css }}">{{ t(info.label) }}</span>
 {% endmacro %}
 
 {% macro logo(provider, size) %}
@@ -20,30 +20,30 @@
     <span class="rating"><span class="star">★</span>{{ '%.1f'|format(value) }}
       <span class="rating-count">({{ count }})</span></span>
   {% else %}
-    <span class="rating rating-empty">Нет отзывов</span>
+    <span class="rating rating-empty">{{ t('Нет отзывов') }}</span>
   {% endif %}
 {% endmacro %}
 
 {% macro price_line(provider) %}
   {% if provider.pricing == 'free' %}
-    Бесплатно
+    {{ t('Бесплатно') }}
   {% elif provider.price_from and provider.price_to and provider.price_from != provider.price_to %}
-    {{ provider.price_from|price }}–{{ provider.price_to|price }} ₸ за занятие
+    {{ provider.price_from|price }}–{{ provider.price_to|price }} ₸ {{ t('за занятие') }}
   {% elif provider.price_from or provider.price_to %}
-    {{ (provider.price_from or provider.price_to)|price }} ₸ за занятие
+    {{ (provider.price_from or provider.price_to)|price }} ₸ {{ t('за занятие') }}
   {% else %}
-    Цена не указана
+    {{ t('Цена не указана') }}
   {% endif %}
 {% endmacro %}
 
 {% macro age_line(provider) %}
   {% if provider.age_from is not none and provider.age_to is not none %}
-    {{ provider.age_from }}–{{ provider.age_to }} лет
+    {{ provider.age_from }}–{{ provider.age_to }} {{ t('лет') }}
   {% elif provider.age_from is not none %}
-    от {{ provider.age_from }} лет
+    {{ t('от %s лет')|format(provider.age_from) }}
   {% elif provider.age_to is not none %}
-    до {{ provider.age_to }} лет
+    {{ t('до %s лет')|format(provider.age_to) }}
   {% else %}
-    Возраст не указан
+    {{ t('Возраст не указан') }}
   {% endif %}
 {% endmacro %}

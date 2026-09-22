@@ -1,69 +1,63 @@
 {% extends "base.html" %}
 
-{% block title %}Обращение по персональным данным - каталог помощи детям с РАС{% endblock %}
+{% block title %}{{ t('Обращение по персональным данным') }} - {{ t('каталог помощи детям с РАС') }}{% endblock %}
 
 {% block content %}
 <section class="intro">
-  <h1>Отозвать согласие или удалить мои данные</h1>
+  <h1>{{ t('Отозвать согласие или удалить мои данные') }}</h1>
   <p>
-    Через эту форму можно отозвать согласие на обработку данных, попросить
-    удалить заявку или отзыв, исправить неточность в карточке или узнать,
-    какие ваши данные у нас есть.
+    {{ t('Через эту форму можно отозвать согласие на обработку данных, попросить удалить заявку или отзыв, исправить неточность в карточке или узнать, какие ваши данные у нас есть.') }}
   </p>
 </section>
 
 <p class="data-warning">
-  Мы отвечаем в течение {{ REQUEST_ANSWER_DAYS }} рабочих дней с момента
-  получения обращения.
+  {{ t('Мы отвечаем в течение %s рабочих дней с момента получения обращения.')|format(REQUEST_ANSWER_DAYS) }}
 </p>
 
 {% if errors %}
   <div class="notice notice-warn form-errors">
-    <p><strong>Обращение не отправлено. Проверьте, пожалуйста:</strong></p>
+    <p><strong>{{ t('Обращение не отправлено. Проверьте, пожалуйста:') }}</strong></p>
     <ul>
-      {% for error in errors %}<li>{{ error }}</li>{% endfor %}
+      {% for error in errors %}<li>{{ t(error) }}</li>{% endfor %}
     </ul>
   </div>
 {% endif %}
 
 <form class="admin-form" method="post" action="/privacy/request">
   <div class="field">
-    <label for="name">Как к вам обращаться *</label>
+    <label for="name">{{ t('Как к вам обращаться') }} *</label>
     <input type="text" id="name" name="name" maxlength="120" required
            value="{{ form.name or '' }}">
   </div>
 
   <div class="field">
-    <label for="contact">Телефон или почта для ответа *</label>
+    <label for="contact">{{ t('Телефон или почта для ответа') }} *</label>
     <input type="text" id="contact" name="contact" maxlength="160" required
            placeholder="+7 701 234 56 78 или name@mail.kz"
            value="{{ form.contact or '' }}">
-    <p class="hint">Лучше тот же контакт, который вы указывали в заявке или
-      отзыве: так мы быстрее найдём вашу запись.</p>
+    <p class="hint">{{ t('Лучше тот же контакт, который вы указывали в заявке или отзыве: так мы быстрее найдём вашу запись.') }}</p>
   </div>
 
   <div class="field field-wide">
-    <label for="message">Что нужно сделать *</label>
+    <label for="message">{{ t('Что нужно сделать') }} *</label>
     <textarea id="message" name="message" rows="6" maxlength="2000" required
-              placeholder="Например: удалите мою заявку и отзыв о центре в Астане">{{ form.message or '' }}</textarea>
-    <p class="hint">До 2000 символов. Диагнозы и сведения о здоровье писать
-      не нужно - для обращения они не требуются.</p>
+              placeholder="{{ t('Например: удалите мою заявку и отзыв о центре в Астане') }}">{{ form.message or '' }}</textarea>
+    <p class="hint">{{ t('До 2000 символов. Диагнозы и сведения о здоровье писать не нужно - для обращения они не требуются.') }}</p>
   </div>
 
   {# Honeypot: поле спрятано от людей, его заполняют только боты. #}
   <div class="trap" aria-hidden="true">
-    <label for="company_site">Не заполняйте это поле</label>
+    <label for="company_site">{{ t('Не заполняйте это поле') }}</label>
     <input type="text" id="company_site" name="company_site" tabindex="-1"
            autocomplete="off" value="">
   </div>
 
   <div class="filter-actions">
-    <button type="submit" class="btn btn-primary">Отправить обращение</button>
+    <button type="submit" class="btn btn-primary">{{ t('Отправить обращение') }}</button>
   </div>
 
   <p class="hint field-wide">
-    Имя и контакт нужны только для ответа на обращение. После ответа мы
-    храним обращение как подтверждение того, что просьбу выполнили.
+    {{ t('Имя и контакт нужны только для ответа на обращение. После ответа мы храним обращение как подтверждение того, что просьбу выполнили.') }}
   </p>
 </form>
 {% endblock %}

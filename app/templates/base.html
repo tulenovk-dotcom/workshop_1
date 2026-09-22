@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="ru">
+<html lang="{{ lang }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   {% if NOINDEX %}<meta name="robots" content="noindex, nofollow">{% endif %}
-  <title>{% block title %}Каталог помощи детям с РАС в Казахстане{% endblock %}</title>
+  <title>{% block title %}{{ t('Каталог помощи детям с РАС в Казахстане') }}{% endblock %}</title>
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,7 +14,7 @@
 <body>
 {% if SHOW_TEST_BANNER %}
   <p class="test-banner" role="status">
-    <strong>Тестовая версия сайта.</strong> Данные вымышленные.
+    <strong>{{ t('Тестовая версия сайта.') }}</strong> {{ t('Данные вымышленные.') }}
   </p>
 {% endif %}
 
@@ -28,17 +28,27 @@
          останется маленькой, а не развернётся во весь файл. #}
       <img class="logo-mark" src="{{ static_url('logo.webp') }}" alt=""
            width="49" height="46">
-      <span class="logo-text">Каталог помощи детям с РАС<span>Казахстан</span></span>
+      <span class="logo-text">{{ t('Каталог помощи детям с РАС') }}<span>{{ t('Казахстан') }}</span></span>
     </a>
     <nav class="site-nav">
-      <a href="/">Каталог</a>
-      <a href="/methods">Методы помощи</a>
+      <a href="/">{{ t('Каталог') }}</a>
+      <a href="/methods">{{ t('Методы помощи') }}</a>
     </nav>
     <div class="header-auth">
-      <a class="btn-outline" href="/dlya-specialistov">Разместиться в каталоге</a>
+      {# Выбор языка: текущий язык показан, но не ведёт никуда. #}
+      <p class="lang-switch">
+        {% for code, label in LANGUAGES.items() %}
+          {% if code == lang %}
+            <span class="lang-current" aria-current="true">{{ label }}</span>
+          {% else %}
+            <a href="/lang/{{ code }}?next={{ current_path|urlencode }}">{{ label }}</a>
+          {% endif %}
+        {% endfor %}
+      </p>
+      <a class="btn-outline" href="/dlya-specialistov">{{ t('Разместиться в каталоге') }}</a>
       {% if request.session.get('admin') %}
-        <a class="auth-link auth-link-quiet" href="/admin">Админка</a>
-        <a class="auth-link auth-link-quiet" href="/admin/logout">Выйти</a>
+        <a class="auth-link auth-link-quiet" href="/admin">{{ t('Админка') }}</a>
+        <a class="auth-link auth-link-quiet" href="/admin/logout">{{ t('Выйти') }}</a>
       {% endif %}
     </div>
   </div>
@@ -51,16 +61,15 @@
 <footer class="site-footer">
   <div class="container">
     <p class="disclaimer">
-      Сайт носит информационный характер и не заменяет консультацию врача.
+      {{ t('Сайт носит информационный характер и не заменяет консультацию врача.') }}
     </p>
     <p class="footer-note">
-      Данные о местах занятий и отзывы размещают пользователи. Уточняйте
-      актуальные цены, возраст детей и программу занятий напрямую на месте.
+      {{ t('Данные о местах занятий и отзывы размещают пользователи. Уточняйте актуальные цены, возраст детей и программу занятий напрямую на месте.') }}
     </p>
     <p class="footer-links">
-      <a href="/dlya-specialistov">Разместиться в каталоге</a>
-      <a href="/privacy">Политика конфиденциальности</a>
-      <a href="/privacy/request">Удалить мои данные</a>
+      <a href="/dlya-specialistov">{{ t('Разместиться в каталоге') }}</a>
+      <a href="/privacy">{{ t('Политика конфиденциальности') }}</a>
+      <a href="/privacy/request">{{ t('Удалить мои данные') }}</a>
     </p>
   </div>
 </footer>
