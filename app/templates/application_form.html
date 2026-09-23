@@ -81,10 +81,25 @@
     </select>
   </div>
 
+  {# Город выбирается из справочника; последний пункт открывает поле для
+     города, которого в списке нет. #}
+  {% set city_listed = form.city and form.city in CITY_NAMES %}
   <div class="field">
-    <label for="city">{{ t('Город') }} *</label>
-    <input type="text" id="city" name="city" maxlength="80" required
-           value="{{ form.city or '' }}">
+    <label for="city_choice">{{ t('Город') }} *</label>
+    <select id="city_choice" name="city_choice" required>
+      <option value="">{{ t('Выберите город') }}</option>
+      {% for c in CITIES %}
+        <option value="{{ c.name }}" {% if form.city == c.name %}selected{% endif %}>{{ city_text(c) }}</option>
+      {% endfor %}
+      <option value="{{ CITY_OTHER }}" {% if form.city and not city_listed %}selected{% endif %}>{{ t('Другой город') }}</option>
+    </select>
+  </div>
+
+  <div class="field city-other">
+    <label for="city_other">{{ t('Название города') }}</label>
+    <input type="text" id="city_other" name="city_other" maxlength="80"
+           placeholder="{{ t('Например: Жезказган') }}"
+           value="{{ '' if city_listed else (form.city or '') }}">
   </div>
 
   <div class="field">
@@ -120,28 +135,32 @@
   <div class="field">
     <label for="age_from">{{ t('Возраст детей от') }}</label>
     <input type="number" id="age_from" name="age_from" min="0" max="18"
+           placeholder="2"
            value="{{ form.age_from or '' }}">
   </div>
 
   <div class="field">
     <label for="age_to">{{ t('Возраст детей до') }}</label>
     <input type="number" id="age_to" name="age_to" min="0" max="18"
+           placeholder="7"
            value="{{ form.age_to or '' }}">
   </div>
 
   <div class="field">
     <label for="price_from">{{ t('Стоимость занятия от, ₸') }}</label>
     <input type="number" id="price_from" name="price_from" min="0" step="500"
+           placeholder="5000"
            value="{{ form.price_from or '' }}">
   </div>
 
   <div class="field">
     <label for="price_to">{{ t('Стоимость занятия до, ₸') }}</label>
     <input type="number" id="price_to" name="price_to" min="0" step="500"
+           placeholder="15000"
            value="{{ form.price_to or '' }}">
   </div>
 
-  <div class="field field-check">
+  <div class="field field-wide pricing-free">
     <label class="switch-row">
       <span class="switch">
         <input type="checkbox" id="pricing_free" name="pricing_free" value="1"

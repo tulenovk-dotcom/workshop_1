@@ -52,10 +52,26 @@
            value="{{ fd.name if fd else '' }}">
   </div>
 
+  {# Город из справочника; «Другой город» открывает поле для города,
+     которого в списке нет. #}
+  {% set city_value = fd.city if fd else '' %}
+  {% set city_listed = city_value and city_value in CITY_NAMES %}
   <div class="field">
-    <label for="city">Город *</label>
-    <input type="text" id="city" name="city" required
-           value="{{ fd.city if fd else '' }}">
+    <label for="city_choice">Город *</label>
+    <select id="city_choice" name="city_choice" required>
+      <option value="">Выберите город</option>
+      {% for c in CITIES %}
+        <option value="{{ c.name }}" {% if city_value == c.name %}selected{% endif %}>{{ c.name }}</option>
+      {% endfor %}
+      <option value="{{ CITY_OTHER }}" {% if city_value and not city_listed %}selected{% endif %}>Другой город</option>
+    </select>
+  </div>
+
+  <div class="field city-other">
+    <label for="city_other">Название города</label>
+    <input type="text" id="city_other" name="city_other" maxlength="80"
+           placeholder="Например: Жезказган"
+           value="{{ '' if city_listed else city_value }}">
   </div>
 
   <div class="field">

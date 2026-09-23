@@ -43,6 +43,9 @@ from .reference import (
     AGE_RANGES,
     APPLICANT_KINDS,
     APPLICATION_STATUSES,
+    CITIES,
+    CITY_NAMES,
+    CITY_OTHER,
     EVIDENCE_LEVELS,
     ORGANIZATION_TYPES,
     PRICING,
@@ -51,6 +54,7 @@ from .reference import (
     REQUEST_STATUSES,
     SPECIALTIES,
     TYPES_WITH_SPECIALTY,
+    normalize_city,
 )
 from .seed import seed_if_empty
 
@@ -358,6 +362,9 @@ def moderation_counts() -> dict:
 
 templates.env.globals.update(
     PROVIDER_TYPES=PROVIDER_TYPES,
+    CITIES=CITIES,
+    CITY_NAMES=CITY_NAMES,
+    CITY_OTHER=CITY_OTHER,
     EVIDENCE_LEVELS=EVIDENCE_LEVELS,
     PRICING=PRICING,
     SPECIALTIES=SPECIALTIES,
@@ -403,6 +410,17 @@ def parse_int(value: str | None) -> int | None:
         return None
 
 
+def city_from_form(form) -> str:
+    """Город из пары полей: выпадающий список и «Другой город».
+
+    В списке выбран город - берём его. Выбран последний пункт (или список
+    вообще не пришёл, например из старой закладки) - берём текстовое поле.
+    """
+    choice = form.get("city_choice", "")
+    raw = form.get("city_other", "") if choice in ("", CITY_OTHER) else choice
+    return normalize_city(raw)
+
+
 def request_lang(request: Request) -> str:
     """Язык страницы: из cookie, а если её нет - русский."""
     code = request.cookies.get(LANG_COOKIE, "")
@@ -427,6 +445,8 @@ def render(request: Request, template: str, context: dict) -> HTMLResponse:
         # Название и описание метода лежат в базе двумя парами колонок,
         # поэтому берутся не из словаря переводов, а из самой записи.
         "method_text": lambda row, field="name": localized_field(row, field, lang),
+        # Города берутся из справочника, у них тоже пара колонок name/name_kk.
+        "city_text": lambda row: localized_field(row, "name", lang),
         "LANGUAGES": LANGUAGES,
         "current_path": current_path(request),
     }
@@ -689,7 +709,7 @@ def clean_application(form: dict, known_codes: set[str]) -> tuple[dict, list[str
     if len(name) > 160:
         errors.append("Название или ФИО не длиннее 160 символов.")
 
-    city = form.get("city", "").strip()
+    city = city_from_form(form)
     if not city:
         errors.append("Укажите город.")
     if len(city) > 80:
@@ -951,7 +971,7 @@ def provider_form_data(
         "provider_type": form["provider_type"],
         "name": form["name"].strip(),
         "specialty": form["specialty"].strip(),
-        "city": form["city"].strip(),
+        "city": city_from_form(form),
         "district": form["district"].strip(),
         "address": form["address"].strip(),
         "phone": form["phone"].strip(),
