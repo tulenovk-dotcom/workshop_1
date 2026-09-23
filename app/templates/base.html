@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   {% if NOINDEX %}<meta name="robots" content="noindex, nofollow">{% endif %}
   <title>{% block title %}{{ t('Каталог помощи детям с РАС в Казахстане') }}{% endblock %}</title>
+  <meta name="description" content="{% block description %}{{ t('Где получить помощь ребёнку с РАС в Казахстане: реабилитационные центры, клиники, частные специалисты, детские сады и школы. У каждого метода указан уровень доказательности.') }}{% endblock %}">
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,6 +34,7 @@
     <nav class="site-nav">
       <a href="/">{{ t('Каталог') }}</a>
       <a href="/methods">{{ t('Методы помощи') }}</a>
+      <a href="/early-signs">{{ t('Ранние признаки') }}</a>
     </nav>
     <div class="header-auth">
       {# Выбор языка одной плашкой из двух половинок. Текущий язык залит

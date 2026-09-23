@@ -782,6 +782,77 @@ input:focus, select:focus, textarea:focus {
 
 .placeholder h2:first-child { margin-top: 0; }
 
+/* --- Ранние признаки --- */
+
+/* Возраст и наблюдения к нему - строками одной таблицы: линии между
+   строками показывают, где кончается один возраст и начинается другой.
+   Отдельными карточками это разваливалось бы на кучки, а тут важен
+   порядок - от девяти месяцев к трём годам. */
+.signs-table {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.signs-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 4px 24px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--line);
+}
+
+.signs-row:first-child { border-top: none; }
+
+.signs-age {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--step-0);
+}
+
+.signs-items { margin: 0; padding-left: 20px; }
+.signs-items li { margin-bottom: 4px; }
+.signs-items li:last-child { margin-bottom: 0; }
+
+.signs-behaviour { margin: 28px 0; }
+.signs-behaviour .hint { margin: 10px 0 0; }
+
+/* Регресс - единственное место страницы, набранное инверсно. Ждать тут
+   нельзя, и блок не должен потеряться между списками. Цветную плашку
+   не берём: цветом на сайте говорит только уровень доказательности. */
+.regress {
+  margin: 28px 0;
+  padding: 22px 24px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 14px;
+}
+
+.regress h2 { margin: 0 0 10px; color: #fff; font-size: var(--step-1); }
+.regress p { margin: 0 0 10px; max-width: 62ch; color: #e6eaec; }
+.regress .regress-action { margin-bottom: 0; color: #fff; font-weight: 600; }
+
+.next-steps { margin: 28px 0; }
+.next-steps p { max-width: 70ch; }
+.next-steps h3 { margin-bottom: 6px; font-size: var(--step-1); }
+
+.next-links {
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+
+.next-links a { font-weight: 500; }
+
+.sources { margin: 28px 0 0; }
+.sources ul { padding-left: 20px; color: var(--muted); }
+.sources li { margin-bottom: 8px; max-width: 78ch; }
+
 /* --- Админка --- */
 
 .admin-nav {
@@ -1142,6 +1213,8 @@ input:focus, select:focus, textarea:focus {
   h1 { font-size: 1.35rem; }
   .card, .provider, .admin-form { padding: 14px; }
   .filters-grid { grid-template-columns: 1fr; }
+  .signs-row { grid-template-columns: 1fr; padding: 14px 16px; }
+  .regress { padding: 18px 16px; }
   .filters-foot .filter-actions { margin-left: 0; width: 100%; }
   .method-cards, .admin-form, .review-form, .methods-picker,
   .info-grid { grid-template-columns: 1fr; }
