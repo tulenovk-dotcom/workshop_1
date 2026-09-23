@@ -259,21 +259,37 @@ h3 { font-size: var(--step-1); margin: 22px 0 8px; }
   font-size: 1.15rem;
 }
 
+/* Фильтры — одна панель, а не семь отдельных плиток. Внутри поля
+   разделены волосяными линиями: рамка вокруг говорит «это один блок
+   подбора», линии внутри — только где кончается одно поле и начинается
+   другое. */
 .filters {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  align-items: start;
-  gap: 14px;
-  margin: 20px 0;
-}
-
-/* Поля фильтров — белые «таблетки» с подписью внутри. Тень убрана:
-   скругление и граница уже отделяют поле от фона. */
-.filters .field {
+  margin: 16px 0 20px;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.filters .field {
   padding: 10px 16px;
+  min-width: 0;
+}
+
+.filters .filters-search { padding: 12px 16px; }
+
+/* Сетка сдвинута на пиксель влево: левая граница первой колонки уходит
+   под рамку панели и не двоится. */
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  width: calc(100% + 1px);
+  margin-left: -1px;
+}
+
+.filters-grid .field {
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
 }
 
 .filters .field label {
@@ -292,23 +308,23 @@ h3 { font-size: var(--step-1); margin: 22px 0 8px; }
 
 .filters .field input:focus,
 .filters .field select:focus {
-  outline: none;
-  border-color: transparent;
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }
 
-.filters .field:focus-within {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(34, 51, 63, 0.12);
-}
-
-.filters .field-check {
+/* Нижняя отбивка: переключатель слева, кнопки справа. */
+.filters-foot {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 14px 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
 }
 
-.filters .field-check .hint { font-size: 0.82rem; }
+.filters-toggle { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.filters-toggle .hint { margin: 0; font-size: 0.82rem; }
+.filters-foot .filter-actions { margin-left: auto; }
 
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .field-wide { grid-column: 1 / -1; }
@@ -1091,7 +1107,8 @@ input:focus, select:focus, textarea:focus {
   body { font-size: 15px; }
   h1 { font-size: 1.35rem; }
   .card, .provider, .admin-form { padding: 14px; }
-  .filters { grid-template-columns: 1fr; }
+  .filters-grid { grid-template-columns: 1fr; }
+  .filters-foot .filter-actions { margin-left: 0; width: 100%; }
   .method-cards, .admin-form, .review-form, .methods-picker,
   .info-grid { grid-template-columns: 1fr; }
   .card.provider-card { grid-template-columns: 1fr; padding: 16px; }
