@@ -338,11 +338,16 @@ h3 { font-size: var(--step-1); margin: 22px 0 8px; }
   color: var(--muted);
 }
 
+/* Перечислены все типы полей, которые встречаются в формах. Раньше
+   tel и email в список не попали, и «Телефон», «WhatsApp» и «Почта»
+   выходили уже и ниже соседей: у них оставались размеры от браузера. */
 input[type="text"], input[type="search"], input[type="number"],
-input[type="password"], select, textarea {
+input[type="password"], input[type="tel"], input[type="email"],
+input[type="url"], input[type="date"], select, textarea {
   width: 100%;
   padding: 10px 12px;
   font: inherit;
+  line-height: 1.4;
   color: var(--text);
   background: #fff;
   border: 1px solid var(--line);
@@ -800,6 +805,35 @@ input:focus, select:focus, textarea:focus {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   gap: 14px;
+}
+
+/* В ряду формы ячейки равны по высоте, а поля внутри стоят на одной
+   линии: подпись сверху, поле снизу. Иначе поле с подсказкой тянуло ряд
+   вверх, а соседи без подсказки висели посередине. */
+/* Chrome считает высоту select по-своему и не смотрит на line-height,
+   поэтому в ряду он выходил ниже соседних полей. Задаём ту же высоту, что
+   получается у input: строка плюс отступы сверху и снизу плюс рамки. */
+.admin-form select { height: calc(1.4em + 22px); }
+
+.admin-form > .field > input:last-child,
+.admin-form > .field > select:last-child,
+.admin-form > .field > textarea:last-child {
+  margin-top: auto;
+}
+
+/* Переключатель «Занятия бесплатные» - отдельной строкой под стоимостью.
+   В общем ряду подпись уезжала вниз и отрывалась от переключателя. */
+.pricing-free { gap: 6px; }
+.pricing-free .hint { margin: 0; font-size: var(--step--1); }
+
+/* Поле «Другой город» нужно, только когда в списке выбран этот пункт.
+   Браузер без поддержки :has() правило пропустит и покажет поле всегда -
+   форма останется рабочей, просто с лишним полем. */
+@supports selector(:has(*)) {
+  .admin-form .city-other { display: none; }
+  .admin-form:has(#city_choice option[value="other"]:checked) .city-other {
+    display: flex;
+  }
 }
 
 .methods-picker {
