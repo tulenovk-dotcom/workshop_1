@@ -34,77 +34,81 @@
 <h2 class="filters-title">{{ t('Подобрать помощь') }}</h2>
 
 <form class="filters" method="get" action="/">
-  <div class="field field-wide">
+  <div class="field filters-search">
     <label for="q">{{ t('Поиск по названию или ФИО') }}</label>
     <input type="search" id="q" name="q" value="{{ raw.q }}"
            placeholder="{{ t('Например: центр, логопед, фамилия') }}">
   </div>
 
-  <div class="field">
-    <label for="city">{{ t('Город') }}</label>
-    <select id="city" name="city">
-      <option value="">{{ t('Все города') }}</option>
-      {% for c in cities %}
-        <option value="{{ c }}" {% if raw.city == c %}selected{% endif %}>{{ c }}</option>
-      {% endfor %}
-    </select>
+  <div class="filters-grid">
+    <div class="field">
+      <label for="city">{{ t('Город') }}</label>
+      <select id="city" name="city">
+        <option value="">{{ t('Все города') }}</option>
+        {% for c in cities %}
+          <option value="{{ c }}" {% if raw.city == c %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="provider_type">{{ t('Где заниматься') }}</label>
+      <select id="provider_type" name="provider_type">
+        <option value="">{{ t('Все варианты') }}</option>
+        {% for code, label in PROVIDER_TYPES.items() %}
+          <option value="{{ code }}" {% if raw.provider_type == code %}selected{% endif %}>{{ t(label) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="specialty">{{ t('Специальность') }}</label>
+      <select id="specialty" name="specialty">
+        <option value="">{{ t('Все специальности') }}</option>
+        {% for s in SPECIALTIES %}
+          <option value="{{ s }}" {% if raw.specialty == s %}selected{% endif %}>{{ t(s) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="method">{{ t('Метод') }}</label>
+      <select id="method" name="method">
+        <option value="">{{ t('Все методы') }}</option>
+        {% for m in filter_methods %}
+          <option value="{{ m.code }}" {% if raw.method == m.code %}selected{% endif %}>{{ method_text(m) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="age">{{ t('Возраст ребёнка') }}</label>
+      <select id="age" name="age">
+        <option value="">{{ t('Любой возраст') }}</option>
+        {% for code, label, low, high in age_ranges %}
+          <option value="{{ code }}" {% if raw.age == code %}selected{% endif %}>{{ t(label) }}</option>
+        {% endfor %}
+      </select>
+    </div>
   </div>
 
-  <div class="field">
-    <label for="provider_type">{{ t('Где заниматься') }}</label>
-    <select id="provider_type" name="provider_type">
-      <option value="">{{ t('Все варианты') }}</option>
-      {% for code, label in PROVIDER_TYPES.items() %}
-        <option value="{{ code }}" {% if raw.provider_type == code %}selected{% endif %}>{{ t(label) }}</option>
-      {% endfor %}
-    </select>
-  </div>
+  <div class="filters-foot">
+    <div class="filters-toggle">
+      <label class="switch-row">
+        <span class="switch">
+          <input type="checkbox" name="proven_only" value="1"
+                 {% if raw.proven_only %}checked{% endif %}>
+          <span class="switch-track"></span>
+        </span>
+        <span class="switch-label">{{ t('Только доказательные методы') }}</span>
+      </label>
+      <p class="hint">{{ t('Без методов без доказательств.') }}</p>
+    </div>
 
-  <div class="field">
-    <label for="specialty">{{ t('Специальность') }}</label>
-    <select id="specialty" name="specialty">
-      <option value="">{{ t('Все специальности') }}</option>
-      {% for s in SPECIALTIES %}
-        <option value="{{ s }}" {% if raw.specialty == s %}selected{% endif %}>{{ t(s) }}</option>
-      {% endfor %}
-    </select>
-  </div>
-
-  <div class="field">
-    <label for="method">{{ t('Метод') }}</label>
-    <select id="method" name="method">
-      <option value="">{{ t('Все методы') }}</option>
-      {% for m in filter_methods %}
-        <option value="{{ m.code }}" {% if raw.method == m.code %}selected{% endif %}>{{ method_text(m) }}</option>
-      {% endfor %}
-    </select>
-  </div>
-
-  <div class="field">
-    <label for="age">{{ t('Возраст ребёнка') }}</label>
-    <select id="age" name="age">
-      <option value="">{{ t('Любой возраст') }}</option>
-      {% for code, label, low, high in age_ranges %}
-        <option value="{{ code }}" {% if raw.age == code %}selected{% endif %}>{{ t(label) }}</option>
-      {% endfor %}
-    </select>
-  </div>
-
-  <div class="field field-check">
-    <label class="switch-row">
-      <span class="switch">
-        <input type="checkbox" name="proven_only" value="1"
-               {% if raw.proven_only %}checked{% endif %}>
-        <span class="switch-track"></span>
-      </span>
-      <span class="switch-label">{{ t('Только доказательные методы') }}</span>
-    </label>
-    <p class="hint">{{ t('Без методов без доказательств.') }}</p>
-  </div>
-
-  <div class="filter-actions">
-    <button type="submit" class="btn btn-primary">{{ t('Найти') }}</button>
-    <a class="btn btn-ghost" href="/">{{ t('Сбросить') }}</a>
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-primary">{{ t('Найти') }}</button>
+      <a class="btn btn-ghost" href="/">{{ t('Сбросить') }}</a>
+    </div>
   </div>
 </form>
 
