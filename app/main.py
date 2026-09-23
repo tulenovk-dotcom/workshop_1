@@ -597,6 +597,12 @@ def methods_page(request: Request):
     return render(request, "methods.html", {"grouped": grouped})
 
 
+@app.get("/early-signs", response_class=HTMLResponse)
+def early_signs(request: Request):
+    """Ранние признаки: список наблюдений, без форм и без подсчётов."""
+    return render(request, "early_signs.html", {})
+
+
 @app.get("/free-help", response_class=HTMLResponse)
 def free_help(request: Request):
     return render(request, "free_help.html", {})
