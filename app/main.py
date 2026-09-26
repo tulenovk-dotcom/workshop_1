@@ -47,6 +47,8 @@ from .reference import (
     CITY_NAMES,
     CITY_OTHER,
     EVIDENCE_LEVELS,
+    MEDICAL_SPECIALTIES,
+    OFFERED_EVIDENCE_LEVELS,
     ORGANIZATION_TYPES,
     PRICING,
     PROVIDER_TYPES,
@@ -248,19 +250,38 @@ def minutes_word(minutes: int) -> str:
 
 
 def normalize_phone(value: str) -> str | None:
-    """Казахстанский номер к виду «+7 707 123 45 67».
+    """Номер к виду «+7 707 123 45 67».
 
-    Принимаются записи с +7, 8 и без кода страны. Все номера Казахстана
-    после кода страны начинаются с 6 или 7, этим и отсекаются чужие.
+    В форме слева от поля стоит статичный «+7», и человек вводит десять
+    цифр. Но вставить номер целиком тоже никто не мешает, поэтому здесь
+    принимаются и «+7 707...», и «8 707...», и «87071234567»: лишние
+    символы отбрасываются, код страны отрезается. Остаться должны ровно
+    десять цифр, иначе номер не принимается.
     """
     digits = re.sub(r"\D", "", value or "")
-    if len(digits) == 10 and digits[0] in "67":
-        digits = "7" + digits
-    elif len(digits) == 11 and digits[0] == "8":
-        digits = "7" + digits[1:]
-    if len(digits) != 11 or digits[0] != "7" or digits[1] not in "67":
+    if len(digits) == 11 and digits[0] in "78":
+        digits = digits[1:]
+    if len(digits) != 10:
         return None
-    return f"+7 {digits[1:4]} {digits[4:7]} {digits[7:9]} {digits[9:]}"
+    return f"+7 {digits[:3]} {digits[3:6]} {digits[6:8]} {digits[8:]}"
+
+
+def phone_national(value: str) -> str:
+    """Те самые десять цифр - чтобы вернуть их в поле, где «+7» уже нарисован
+    слева. Номер в базе хранится целиком, а поле ждёт только остаток."""
+    digits = re.sub(r"\D", "", value or "")
+    if len(digits) == 11 and digits[0] in "78":
+        digits = digits[1:]
+    if len(digits) != 10:
+        return value or ""
+    return f"{digits[:3]} {digits[3:6]} {digits[6:8]} {digits[8:]}"
+
+
+def normalize_phone_or_raw(value: str) -> str:
+    """Для админки: приводим номер к общему виду, а непонятную запись
+    оставляем как есть - лучше странный номер, чем потерянный."""
+    value = (value or "").strip()
+    return normalize_phone(value) or value
 
 
 def looks_like_email(value: str) -> bool:
@@ -323,6 +344,7 @@ templates.env.filters["instagram_link"] = instagram_link
 # Контакты в списках показываются замаскированными, поэтому маскирование -
 # такой же фильтр шаблона, как и остальное форматирование.
 templates.env.filters["mask_phone"] = mask_phone
+templates.env.filters["phone_national"] = phone_national
 templates.env.filters["mask_email"] = mask_email
 templates.env.filters["mask_contact"] = mask_contact
 templates.env.filters["short_hash"] = short_hash
@@ -368,6 +390,7 @@ templates.env.globals.update(
     EVIDENCE_LEVELS=EVIDENCE_LEVELS,
     PRICING=PRICING,
     SPECIALTIES=SPECIALTIES,
+    MEDICAL_SPECIALTIES=MEDICAL_SPECIALTIES,
     TYPES_WITH_SPECIALTY=TYPES_WITH_SPECIALTY,
     SHOW_TEST_BANNER=SHOW_TEST_BANNER,
     NOINDEX=NOINDEX,
@@ -408,6 +431,29 @@ def parse_int(value: str | None) -> int | None:
         return int(cleaned)
     except ValueError:
         return None
+
+
+def offered_methods(methods) -> list:
+    """Методы, которые предлагаем в анкете и в фильтре и показываем в
+    карточках. Методы без доказательств при РАС остаются в справочнике и на
+    странице «Методы помощи», но выбирать и рекламировать их незачем."""
+    return [m for m in methods if m["evidence_level"] in OFFERED_EVIDENCE_LEVELS]
+
+
+def specialty_from_form(form, kind: str) -> str:
+    """Специальность из той ветки анкеты, которую человек заполнял.
+
+    У частного специалиста и у врача списки разные, поэтому и поля разные:
+    иначе браузер отправил бы оба, и сервер не понял бы, какое из них
+    настоящее.
+    """
+    if kind == "specialist":
+        value = form.get("specialty", "")
+        return value if value in SPECIALTIES else ""
+    if kind == "doctor":
+        value = form.get("doctor_specialty", "")
+        return value if value in MEDICAL_SPECIALTIES else ""
+    return ""
 
 
 def city_from_form(form) -> str:
@@ -500,13 +546,19 @@ def index(
     }
     with db_session() as conn:
         providers = crud.search_providers(conn, filters)
-        methods_map = crud.methods_for_providers(conn, [p["id"] for p in providers])
+        methods_map = {
+            pid: offered_methods(rows)
+            for pid, rows in crud.methods_for_providers(
+                conn, [p["id"] for p in providers]
+            ).items()
+        }
         context = {
             "providers": providers,
             "methods_map": methods_map,
-            # В фильтре весь справочник, в порядке справочника: раньше список
-            # был урезан до семи методов, и остальные было нечем искать.
-            "filter_methods": crud.list_methods(conn),
+            # В фильтре весь справочник, кроме методов без доказательств:
+            # искать место занятий по ним незачем, а прочитать о них можно
+            # на странице «Методы помощи».
+            "filter_methods": offered_methods(crud.list_methods(conn)),
             "age_ranges": AGE_RANGES,
             "cities": crud.cities(conn),
             "specialties": crud.specialties_in_use(conn),
@@ -532,7 +584,9 @@ def provider_detail(request: Request, provider_id: int, review: str = ""):
             raise HTTPException(status_code=404, detail="Запись не найдена")
         context = {
             "provider": provider,
-            "methods": crud.methods_for_providers(conn, [provider_id])[provider_id],
+            "methods": offered_methods(
+                crud.methods_for_providers(conn, [provider_id])[provider_id]
+            ),
             "reviews": crud.published_reviews(conn, provider_id),
             "review_status": review,
         }
@@ -690,7 +744,7 @@ def robots() -> str:
 
 def application_form_context(conn, form: dict, errors: list[str]) -> dict:
     return {
-        "methods": crud.list_methods(conn),
+        "methods": offered_methods(crud.list_methods(conn)),
         "form": form,
         "errors": errors,
         "selected_methods": set(form.get("methods", [])),
@@ -702,7 +756,10 @@ def clean_application(form: dict, known_codes: set[str]) -> tuple[dict, list[str
     errors: list[str] = []
     kind = form.get("applicant_kind", "")
     if kind not in APPLICANT_KINDS:
-        errors.append("Выберите, кто вы: организация или частный специалист.")
+        errors.append(
+            "Выберите, кто вы: организация, частный специалист"
+            " или медицинский работник."
+        )
         kind = ""
 
     name = form.get("org_name" if kind == "organization" else "person_name", "").strip()
@@ -729,14 +786,12 @@ def clean_application(form: dict, known_codes: set[str]) -> tuple[dict, list[str
 
     phone = normalize_phone(form.get("phone", ""))
     if phone is None:
-        errors.append(
-            "Телефон должен быть казахстанским номером, например +7 701 234 56 78."
-        )
+        errors.append("Введите 10 цифр номера после +7.")
 
     whatsapp_raw = form.get("whatsapp", "").strip()
     whatsapp = normalize_phone(whatsapp_raw) if whatsapp_raw else ""
     if whatsapp_raw and whatsapp is None:
-        errors.append("WhatsApp должен быть казахстанским номером или остаться пустым.")
+        errors.append("В WhatsApp введите 10 цифр номера после +7 или оставьте поле пустым.")
         whatsapp = ""
 
     email = form.get("email", "").strip()
@@ -763,7 +818,13 @@ def clean_application(form: dict, known_codes: set[str]) -> tuple[dict, list[str
     if price_from is not None and price_to is not None and price_from > price_to:
         errors.append("Стоимость «от» больше, чем «до».")
 
-    codes = [code for code in form.get("methods", []) if code in known_codes]
+    # Врач ведёт приём и диагностику, а не занятия по методикам: блок
+    # методов ему не показывается, и присланные коды не принимаем.
+    codes = (
+        []
+        if kind == "doctor"
+        else [code for code in form.get("methods", []) if code in known_codes]
+    )
 
     data = {
         "applicant_kind": kind,
@@ -771,7 +832,7 @@ def clean_application(form: dict, known_codes: set[str]) -> tuple[dict, list[str
         "provider_type": (
             form.get("provider_type", "") if kind == "organization" else ""
         ),
-        "specialty": form.get("specialty", "") if kind == "specialist" else "",
+        "specialty": specialty_from_form(form, kind),
         "city": city[:80],
         "address": form.get("address", "").strip()[:200],
         "method_codes": json.dumps(codes, ensure_ascii=False),
@@ -823,7 +884,7 @@ async def application_create(request: Request):
     image = await read_image(upload)
 
     with db_session() as conn:
-        known_codes = {row["code"] for row in crud.list_methods(conn)}
+        known_codes = {row["code"] for row in offered_methods(crud.list_methods(conn))}
         data, errors = clean_application(form, known_codes)
         if sent_file and image is None:
             errors.append(
@@ -944,8 +1005,12 @@ def provider_prefill(conn, application) -> tuple[dict, set[int]]:
     того, как администратор нажмёт «Сохранить» в форме."""
     kind = application["applicant_kind"]
     data = {
+        # Отдельного места занятий «врач» в справочнике нет - и не было:
+        # код doctor когда-то убрали, а записи перенесли в specialist.
+        # Врач из анкеты попадает туда же, а что он врач, видно по его
+        # специальности и по самой заявке.
         "provider_type": application["provider_type"] or (
-            "specialist" if kind == "specialist" else "center"
+            "specialist" if kind in ("specialist", "doctor") else "center"
         ),
         "name": application["name"],
         "specialty": application["specialty"],
@@ -980,8 +1045,8 @@ def provider_form_data(
         "city": city_from_form(form),
         "district": form["district"].strip(),
         "address": form["address"].strip(),
-        "phone": form["phone"].strip(),
-        "whatsapp": form["whatsapp"].strip(),
+        "phone": normalize_phone_or_raw(form["phone"]),
+        "whatsapp": normalize_phone_or_raw(form["whatsapp"]),
         "website": form["website"].strip(),
         "instagram": form["instagram"].strip(),
         "age_from": parse_int(form["age_from"]),

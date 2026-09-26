@@ -881,6 +881,27 @@ input:focus, select:focus, textarea:focus {
 /* В ряду формы ячейки равны по высоте, а поля внутри стоят на одной
    линии: подпись сверху, поле снизу. Иначе поле с подсказкой тянуло ряд
    вверх, а соседи без подсказки висели посередине. */
+/* Телефон: «+7» нарисован слева от поля и не редактируется - человек
+   вводит только десять цифр. Приставка и поле выглядят одной деталью,
+   поэтому рамка между ними убрана, а скругления - только по краям. */
+.phone-input { display: flex; align-items: stretch; min-width: 0; }
+
+.phone-prefix {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  background: var(--bg);
+  color: var(--muted);
+  font-weight: 500;
+  border: 1px solid var(--line);
+  border-right: none;
+  border-radius: 10px 0 0 10px;
+}
+
+.phone-input input { border-radius: 0 10px 10px 0; min-width: 0; }
+.phone-input:focus-within .phone-prefix { border-color: var(--accent); }
+.admin-form > .field > .phone-input:last-child { margin-top: auto; }
+
 /* Chrome считает высоту select по-своему и не смотрит на line-height,
    поэтому в ряду он выходил ниже соседних полей. Задаём ту же высоту, что
    получается у input: строка плюс отступы сверху и снизу плюс рамки. */
@@ -1069,12 +1090,26 @@ input:focus, select:focus, textarea:focus {
   .kind-picker input[type="radio"] { transition: none; }
 }
 
-/* Показываем только поля выбранного варианта. Браузер без поддержки :has()
-   правило не применит и покажет все поля — форма всё равно работает. */
-.application-form:has(input[name="applicant_kind"][value="organization"]:checked)
-  .only-specialist { display: none; }
-.application-form:has(input[name="applicant_kind"][value="specialist"]:checked)
-  .only-organization { display: none; }
+/* Показываем только поля выбранного варианта. Правила написаны от
+   обратного - что прятать при каждом выборе: браузер без поддержки :has()
+   ни одно из них не применит и покажет все поля, и форма всё равно
+   работает, потому что нужную ветку выбирает сервер. */
+.application-form:has(input[name="applicant_kind"][value="organization"]:checked) .only-person,
+.application-form:has(input[name="applicant_kind"][value="organization"]:checked) .only-specialist,
+.application-form:has(input[name="applicant_kind"][value="organization"]:checked) .only-doctor,
+.application-form:has(input[name="applicant_kind"][value="specialist"]:checked) .only-organization,
+.application-form:has(input[name="applicant_kind"][value="specialist"]:checked) .only-doctor,
+.application-form:has(input[name="applicant_kind"][value="doctor"]:checked) .only-organization,
+.application-form:has(input[name="applicant_kind"][value="doctor"]:checked) .only-specialist,
+.application-form:has(input[name="applicant_kind"][value="doctor"]:checked) .except-doctor {
+  display: none;
+}
+
+/* Пока вариант не выбран, у парных подписей («Стоимость занятия» и
+   «Стоимость приёма») показываем основную, иначе обе стояли бы рядом. */
+.application-form:not(:has(input[name="applicant_kind"]:checked)) .only-doctor {
+  display: none;
+}
 
 .consent-field {
   background: var(--surface);
