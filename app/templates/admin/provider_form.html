@@ -88,14 +88,22 @@
 
   <div class="field">
     <label for="phone">Телефон</label>
-    <input type="text" id="phone" name="phone" placeholder="+7 7xx xxx xx xx"
-           value="{{ fd.phone if fd else '' }}">
+    <div class="phone-input">
+      <span class="phone-prefix">+7</span>
+      <input type="tel" id="phone" name="phone" inputmode="tel"
+             placeholder="701 234 56 78"
+             value="{{ fd.phone|phone_national if fd and fd.phone else '' }}">
+    </div>
   </div>
 
   <div class="field">
     <label for="whatsapp">WhatsApp</label>
-    <input type="text" id="whatsapp" name="whatsapp" placeholder="+7 7xx xxx xx xx"
-           value="{{ fd.whatsapp if fd else '' }}">
+    <div class="phone-input">
+      <span class="phone-prefix">+7</span>
+      <input type="tel" id="whatsapp" name="whatsapp" inputmode="tel"
+             placeholder="701 234 56 78"
+             value="{{ fd.whatsapp|phone_national if fd and fd.whatsapp else '' }}">
+    </div>
   </div>
 
   <div class="field">
@@ -191,6 +199,8 @@
 
   <fieldset class="field field-wide methods-picker">
     <legend>Методы</legend>
+    <p class="hint">Методы с меткой «Без доказательств при РАС» отметить можно,
+      но в карточке и в каталоге они не показываются.</p>
     {% for m in methods %}
       <label class="checkbox">
         <input type="checkbox" name="methods" value="{{ m.id }}"

@@ -84,6 +84,9 @@
         <span class="badge {{ EVIDENCE_LEVELS[m.evidence_level].css }}">{{ m.name }}</span>
       {% endfor %}
     </div>
+  {% elif application.applicant_kind == 'doctor' %}
+    <p class="empty">Медицинский работник методы не указывает: в анкете этого
+      блока у него нет - он ведёт приём и диагностику, а не занятия.</p>
   {% else %}
     <p class="empty">Методы не указаны.</p>
   {% endif %}

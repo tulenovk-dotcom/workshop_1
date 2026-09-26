@@ -47,6 +47,11 @@
              {% if form.applicant_kind == 'specialist' %}checked{% endif %}>
       {{ t('Себя как частного специалиста (работаю сам)') }}
     </label>
+    <label class="radio">
+      <input type="radio" name="applicant_kind" value="doctor"
+             {% if form.applicant_kind == 'doctor' %}checked{% endif %}>
+      {{ t('Себя как медицинского работника (врач)') }}
+    </label>
   </fieldset>
 
   <div class="field only-organization">
@@ -65,7 +70,10 @@
     </select>
   </div>
 
-  <div class="field only-specialist">
+  {# ФИО нужно и частному специалисту, и врачу, а вот списки специальностей
+     у них разные. Поля называются по-разному: браузер отправляет и скрытые
+     поля тоже, и с одинаковым именем сервер не понял бы, какое настоящее. #}
+  <div class="field only-person">
     <label for="person_name">{{ t('Фамилия, имя, отчество') }} *</label>
     <input type="text" id="person_name" name="person_name" maxlength="160"
            value="{{ form.person_name or '' }}">
@@ -77,6 +85,16 @@
       <option value="">{{ t('Не указана') }}</option>
       {% for s in SPECIALTIES %}
         <option value="{{ s }}" {% if form.specialty == s %}selected{% endif %}>{{ t(s) }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="field only-doctor">
+    <label for="doctor_specialty">{{ t('Специальность') }}</label>
+    <select id="doctor_specialty" name="doctor_specialty">
+      <option value="">{{ t('Не указана') }}</option>
+      {% for s in MEDICAL_SPECIALTIES %}
+        <option value="{{ s }}" {% if form.doctor_specialty == s %}selected{% endif %}>{{ t(s) }}</option>
       {% endfor %}
     </select>
   </div>
@@ -120,7 +138,9 @@
     </div>
   </div>
 
-  <fieldset class="field field-wide methods-picker">
+  {# Врачу блок методов не показываем: он ведёт приём и диагностику,
+     а не занятия по методикам. #}
+  <fieldset class="field field-wide methods-picker except-doctor">
     <legend>{{ t('Методы, с которыми вы работаете') }}</legend>
     {% for m in methods %}
       <label class="checkbox">
@@ -147,14 +167,16 @@
   </div>
 
   <div class="field">
-    <label for="price_from">{{ t('Стоимость занятия от, ₸') }}</label>
+    <label class="except-doctor" for="price_from">{{ t('Стоимость занятия от, ₸') }}</label>
+    <label class="only-doctor" for="price_from">{{ t('Стоимость приёма от, ₸') }}</label>
     <input type="number" id="price_from" name="price_from" min="0" step="500"
            placeholder="5000"
            value="{{ form.price_from or '' }}">
   </div>
 
   <div class="field">
-    <label for="price_to">{{ t('Стоимость занятия до, ₸') }}</label>
+    <label class="except-doctor" for="price_to">{{ t('Стоимость занятия до, ₸') }}</label>
+    <label class="only-doctor" for="price_to">{{ t('Стоимость приёма до, ₸') }}</label>
     <input type="number" id="price_to" name="price_to" min="0" step="500"
            placeholder="15000"
            value="{{ form.price_to or '' }}">
@@ -167,7 +189,8 @@
                {% if form.pricing_free %}checked{% endif %}>
         <span class="switch-track"></span>
       </span>
-      <span class="switch-label">{{ t('Занятия бесплатные') }}</span>
+      <span class="switch-label except-doctor">{{ t('Занятия бесплатные') }}</span>
+      <span class="switch-label only-doctor">{{ t('Приём бесплатный') }}</span>
     </label>
     <p class="hint">{{ t('Тогда стоимость заполнять не нужно.') }}</p>
   </div>
@@ -184,16 +207,26 @@
            required value="{{ form.contact_person or '' }}">
   </div>
 
+  {# «+7» нарисован слева от поля и не редактируется: человек вводит
+     десять цифр. Вставленный целиком номер сервер тоже разберёт. #}
   <div class="field">
     <label for="phone">{{ t('Телефон') }} *</label>
-    <input type="tel" id="phone" name="phone" required
-           placeholder="+7 701 234 56 78" value="{{ form.phone or '' }}">
+    <div class="phone-input">
+      <span class="phone-prefix">+7</span>
+      <input type="tel" id="phone" name="phone" required inputmode="tel"
+             autocomplete="tel-national" placeholder="701 234 56 78"
+             value="{{ form.phone|phone_national if form.phone else '' }}">
+    </div>
   </div>
 
   <div class="field">
     <label for="whatsapp">WhatsApp</label>
-    <input type="tel" id="whatsapp" name="whatsapp"
-           placeholder="+7 701 234 56 78" value="{{ form.whatsapp or '' }}">
+    <div class="phone-input">
+      <span class="phone-prefix">+7</span>
+      <input type="tel" id="whatsapp" name="whatsapp" inputmode="tel"
+             autocomplete="tel-national" placeholder="701 234 56 78"
+             value="{{ form.whatsapp|phone_national if form.whatsapp else '' }}">
+    </div>
   </div>
 
   <div class="field">
