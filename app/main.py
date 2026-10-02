@@ -5,10 +5,16 @@ import re
 import secrets
 import time
 import zlib
+from html import escape
 from pathlib import Path
 
 from fastapi import FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import (
+    HTMLResponse,
+    PlainTextResponse,
+    RedirectResponse,
+    Response,
+)
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -84,26 +90,31 @@ LOGIN_BLOCK_SECONDS = 15 * 60
 SHOW_TEST_BANNER = os.environ.get("SHOW_TEST_BANNER") == "1"
 NOINDEX = os.environ.get("NOINDEX") == "1"
 
+# Демонстрационные записи наливаются в пустую базу только по явной просьбе.
+# На боевом сервере переменной нет, и каталог начинается с чистого листа.
+SEED_DEMO = os.environ.get("SEED_DEMO") == "1"
+
+# Cookie администратора уходит только по HTTPS, когда сайт за TLS.
+# Локально по http флаг выключен, иначе вход не работал бы.
+COOKIE_SECURE = os.environ.get("COOKIE_SECURE") == "1"
+
+# Адрес сайта: нужен для ссылок в sitemap.xml и для Open Graph, где
+# относительные адреса не годятся.
+SITE_URL = (os.environ.get("SITE_URL") or "https://erekshe.kz").rstrip("/")
+
 MAX_REQUESTS_PER_HOUR = 3
 
 
-def detect_proxy() -> bool:
-    """Стоит ли верить заголовку X-Forwarded-For.
-
-    На хостинге запросы приходят не напрямую, а через балансировщик, и адрес
-    подключения у всех посетителей один; настоящий адрес лежит в заголовке.
-    Render задаёт переменную RENDER сам, поэтому там доверие включается без
-    ручной настройки. Напрямую заголовку верить нельзя: его подделает кто
-    угодно и обойдёт все счётчики, поэтому по умолчанию доверия нет.
-    TRUST_PROXY_HEADERS перебивает определение в обе стороны.
-    """
-    manual = os.environ.get("TRUST_PROXY_HEADERS")
-    if manual is not None:
-        return manual == "1"
-    return bool(os.environ.get("RENDER"))
-
-
-TRUST_PROXY_HEADERS = detect_proxy()
+# Стоит ли верить заголовку X-Forwarded-For.
+#
+# За nginx или балансировщиком адрес подключения у всех посетителей один -
+# настоящий лежит в заголовке. Напрямую заголовку верить нельзя: его
+# подделает кто угодно и обойдёт счётчики заявок, отзывов и блокировку
+# перебора пароля. Поэтому доверие включается только вручную, и включать
+# его можно, лишь когда до приложения действительно нельзя достучаться
+# мимо прокси. Раньше оно включалось само по переменной RENDER - для
+# своего сервера такой подсказки нет, и угадывать мы не беремся.
+TRUST_PROXY_HEADERS = os.environ.get("TRUST_PROXY_HEADERS") == "1"
 
 REDIRECT = 303
 
@@ -129,8 +140,17 @@ def load_secret_key() -> str:
 
 SECRET_KEY = load_secret_key()
 
-app = FastAPI(title="Каталог помощи детям с РАС в Казахстане")
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+# Схема API и страницы /docs, /redoc выключены: публичному каталогу они
+# не нужны, а показывать посторонним список админских адресов незачем.
+app = FastAPI(
+    title="Каталог помощи детям с РАС в Казахстане",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
+app.add_middleware(
+    SessionMiddleware, secret_key=SECRET_KEY, https_only=COOKIE_SECURE
+)
 # Папка загрузок монтируется первой: иначе её перехватит общий /static,
 # который смотрит только внутрь проекта.
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -394,6 +414,7 @@ templates.env.globals.update(
     TYPES_WITH_SPECIALTY=TYPES_WITH_SPECIALTY,
     SHOW_TEST_BANNER=SHOW_TEST_BANNER,
     NOINDEX=NOINDEX,
+    SITE_URL=SITE_URL,
     ADMIN_ENABLED=ADMIN_ENABLED,
     APPLICANT_KINDS=APPLICANT_KINDS,
     APPLICATION_STATUSES=APPLICATION_STATUSES,
@@ -412,7 +433,7 @@ templates.env.globals.update(
 @app.on_event("startup")
 def on_startup() -> None:
     init_db()
-    seed_if_empty()
+    seed_if_empty(with_demo=SEED_DEMO)
     # Сроки хранения проверяются при запуске: отдельного планировщика в
     # проекте нет, а сервис на хостинге и так перезапускается регулярно.
     with db_session() as conn:
@@ -485,6 +506,9 @@ def render(request: Request, template: str, context: dict) -> HTMLResponse:
     context = {
         **context,
         "lang": lang,
+        # Адрес страницы без параметров: для canonical и og:url. Параметры
+        # фильтров в них не нужны - это одна и та же страница каталога.
+        "page_url": SITE_URL + request.url.path,
         # Функция перевода привязана к языку запроса и поэтому не может
         # быть глобальной: у каждого посетителя свой язык.
         "t": lambda text: translate(text, lang),
@@ -734,10 +758,42 @@ def privacy_request_sent(request: Request):
 @app.get("/robots.txt", response_class=PlainTextResponse)
 def robots() -> str:
     """Тестовый стенд закрыт от поисковиков той же переменной, что и
-    мета-тег noindex: включили NOINDEX=1 - закрыт и файл, и страницы."""
+    мета-тег noindex: включили NOINDEX=1 - закрыт и файл, и страницы.
+    Карту сайта показываем только открытому сайту: закрытому она ни к чему."""
     if NOINDEX:
         return "User-agent: *\nDisallow: /\n"
-    return "User-agent: *\nDisallow:\n"
+    return f"User-agent: *\nDisallow:\nSitemap: {SITE_URL}/sitemap.xml\n"
+
+
+# Страницы, которые есть всегда и не зависят от содержимого базы.
+# «Помощь бесплатно» в список не входит: страница пустая и из меню убрана.
+SITEMAP_PAGES = ("/", "/methods", "/early-signs", "/dlya-specialistov", "/privacy")
+
+
+@app.get("/sitemap.xml")
+def sitemap() -> Response:
+    """Карта сайта: постоянные страницы и карточки мест занятий.
+
+    Тестовые записи в карту не попадают - в поиске им делать нечего.
+    Закрытый от поисковиков сайт отдаёт пустую карту: так ответ остаётся
+    валидным XML, а приглашать робота на закрытые страницы незачем.
+    """
+    urls = []
+    if not NOINDEX:
+        urls = [SITE_URL + path for path in SITEMAP_PAGES]
+        with db_session() as conn:
+            urls += [
+                f"{SITE_URL}/providers/{row['id']}"
+                for row in crud.list_providers_admin(conn)
+                if not row["is_test"]
+            ]
+    body = "".join(f"<url><loc>{escape(url)}</loc></url>" for url in urls)
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        f"{body}</urlset>"
+    )
+    return Response(content=xml, media_type="application/xml")
 
 
 # --- Заявки на размещение ---------------------------------------------------

@@ -6,6 +6,24 @@
   {% if NOINDEX %}<meta name="robots" content="noindex, nofollow">{% endif %}
   <title>{% block title %}{{ t('Каталог помощи детям с РАС в Казахстане') }}{% endblock %}</title>
   <meta name="description" content="{% block description %}{{ t('Где получить помощь ребёнку с РАС в Казахстане: реабилитационные центры, клиники, частные специалисты, детские сады и школы. У каждого метода указан уровень доказательности.') }}{% endblock %}">
+
+  {# Канонический адрес - без параметров фильтров: каталог с фильтрами и без
+     них это одна страница, и поисковику незачем считать их разными. #}
+  <link rel="canonical" href="{{ page_url }}">
+
+  {# Open Graph: заголовок и описание берём из тех же блоков, что и мета-теги,
+     чтобы ссылка в мессенджере показывала ровно то же, что и страница.
+     Язык здесь тот, на котором страница открыта: он хранится в cookie, а не
+     в адресе, поэтому отдельного адреса у казахской версии нет. #}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ t('Каталог помощи детям с РАС в Казахстане') }}">
+  <meta property="og:title" content="{{ self.title() }}">
+  <meta property="og:description" content="{{ self.description() }}">
+  <meta property="og:url" content="{{ page_url }}">
+  <meta property="og:locale" content="{{ 'kk_KZ' if lang == 'kk' else 'ru_RU' }}">
+  <meta property="og:image" content="{{ SITE_URL }}{{ static_url('logo.webp') }}">
+  <meta name="twitter:card" content="summary">
+
   <link rel="icon" href="data:,">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

@@ -1,0 +1,37 @@
+[Unit]
+# Юнит systemd для боевого сервера. Копируется в /etc/systemd/system/.
+# Приложение слушает только локальный адрес: наружу его пускает nginx,
+# и достучаться до порта 8000 мимо nginx нельзя.
+Description=Каталог помощи детям с РАС (erekshe.kz)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=erekshe
+Group=erekshe
+WorkingDirectory=/srv/erekshe
+
+# Переменные лежат отдельным файлом с правами 600: в юните их держать
+# нельзя, его читают все. Образец - deploy/erekshe.env.example.
+EnvironmentFile=/etc/erekshe/erekshe.env
+
+ExecStart=/srv/erekshe/.venv/bin/python -m uvicorn app.main:app \
+    --host 127.0.0.1 --port 8000 --proxy-headers --forwarded-allow-ips 127.0.0.1
+
+Restart=always
+RestartSec=3
+
+# Приложению нужны на запись только база и папка загрузок.
+ProtectSystem=strict
+ReadWritePaths=/srv/erekshe/data
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=erekshe
+
+[Install]
+WantedBy=multi-user.target
