@@ -285,7 +285,17 @@ TEST_REVIEWS = [
 ]
 
 
-def seed_if_empty() -> None:
+def seed_if_empty(with_demo: bool = False) -> None:
+    """Наполнение пустой базы.
+
+    Справочник методов нужен всегда: без него не работают ни метки
+    доказательности, ни фильтр, ни страница «Методы помощи».
+
+    Демонстрационные места занятий и отзывы - дело другое: на боевом сайте
+    им не место, поэтому они наливаются только при `with_demo=True`
+    (переменная окружения SEED_DEMO=1). Без неё каталог начинается пустым,
+    и первые записи заводит администратор.
+    """
     with db_session() as conn:
         if not crud.list_methods(conn):
             for order, (code, name, level, description) in enumerate(
@@ -304,6 +314,9 @@ def seed_if_empty() -> None:
                         "sort_order": order,
                     },
                 )
+
+        if not with_demo:
+            return
 
         already_seeded = conn.execute(
             "SELECT COUNT(*) AS n FROM providers"
