@@ -759,3 +759,49 @@ def average_published_rating(conn: sqlite3.Connection) -> float | None:
         " WHERE status = 'published'"
     ).fetchone()
     return row["avg"]
+
+
+# --- Посещения --------------------------------------------------------------
+
+# В Казахстане одно время, UTC+5. Сутки для статистики нарезаются по нему,
+# а не по UTC: иначе «вчерашние» вечерние посещения попадали бы в сегодня.
+KZ_TIME = timezone(timedelta(hours=5))
+
+
+def visit_day(moment: datetime | None = None) -> str:
+    return (moment or datetime.now(KZ_TIME)).astimezone(KZ_TIME).strftime("%Y-%m-%d")
+
+
+def record_visit(conn: sqlite3.Connection, day: str) -> None:
+    """Прибавить одно открытие страницы к счётчику дня.
+
+    Посетитель не помечается никак: повторное открытие с того же устройства
+    считается наравне с первым. Так и задумано - страница отвечает на вопрос
+    «сколько раз сайт открывали», а не «сколько разных людей приходило».
+    """
+    conn.execute(
+        "INSERT INTO visit_days (day, views) VALUES (?, 1)"
+        " ON CONFLICT(day) DO UPDATE SET views = views + 1",
+        (day,),
+    )
+
+
+def visit_series(conn: sqlite3.Connection, days: int) -> list[dict]:
+    """Посещения по дням за последние `days` суток, включая сегодня.
+
+    Дни без посещений не пропускаются, а возвращаются с нулями: на графике
+    провал должен быть виден как провал, а не как отсутствие столбика.
+    """
+    today = datetime.now(KZ_TIME)
+    rows = {
+        row["day"]: int(row["views"])
+        for row in conn.execute(
+            "SELECT day, views FROM visit_days WHERE day >= ?",
+            (visit_day(today - timedelta(days=days - 1)),),
+        )
+    }
+    series = []
+    for back in range(days - 1, -1, -1):
+        day = visit_day(today - timedelta(days=back))
+        series.append({"day": day, "views": rows.get(day, 0)})
+    return series

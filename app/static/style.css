@@ -1036,6 +1036,71 @@ input:focus, select:focus, textarea:focus {
   background: var(--accent);
 }
 
+/* Выбор срока: та же плашка из половинок, что у переключателя языка в
+   шапке, - второй вид переключателя заводить незачем. */
+.stat-periods {
+  display: inline-flex;
+  margin: 0 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.stat-period {
+  padding: 7px 14px;
+  font-size: 0.87rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--muted);
+  border-left: 1px solid var(--line);
+}
+
+.stat-period:first-child { border-left: 0; }
+.stat-period:hover { background: #eceeed; color: var(--text); }
+.stat-period-current { background: var(--accent); color: #fff; }
+
+/* График. Рисуется обычным SVG: JavaScript в проекте нет, и ради столбиков
+   заводить его незачем. Подпись дня всплывает по наведению сама - её
+   показывает браузер из <title> внутри столбика. */
+.stat-chart {
+  margin: 0 0 20px;
+  padding: 16px 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.stat-chart svg { display: block; width: 100%; height: auto; }
+
+.stat-chart-bar { fill: var(--accent); }
+
+/* Сетка волосяная и сплошная: пунктир читался бы как «прогноз». */
+.stat-chart-grid { stroke: var(--line); stroke-width: 1; }
+
+.stat-chart-axis {
+  fill: var(--muted);
+  font-family: var(--font-text);
+  font-size: 11px;
+}
+
+.stat-chart-value {
+  fill: var(--text);
+  font-family: var(--font-text);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.stat-details { margin: 0 0 20px; }
+
+.stat-details summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 4px 0;
+}
+
+.stat-details .table-wrap { margin-top: 10px; }
+
 /* --- Заявки на размещение --- */
 
 .btn-outline {

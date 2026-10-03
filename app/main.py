@@ -210,6 +210,66 @@ def user_agent(request: Request) -> str:
     return request.headers.get("user-agent", "")[:300]
 
 
+# --- Счётчик посещений ------------------------------------------------------
+
+# Считаются открытия страниц, а не посетители: посетитель не помечается ни
+# в базе, ни в памяти, и второе открытие с того же устройства идёт наравне
+# с первым. Отличить одного человека от другого сайт при этом не может -
+# и не должен.
+
+# Роботы ходят по сайту чаще людей. Пустой User-Agent тоже считаем роботом:
+# у обычного браузера он всегда есть.
+BOT_MARKERS = (
+    "bot",
+    "crawler",
+    "spider",
+    "slurp",
+    "curl",
+    "wget",
+    "python-requests",
+    "httpx",
+    "headless",
+    "monitor",
+    "uptime",
+    "lighthouse",
+)
+
+# Админка - это администратор, а не посетитель, и в счёт не идёт.
+UNCOUNTED_PREFIXES = ("/static", "/admin", "/favicon", "/robots.txt", "/sitemap.xml")
+
+
+def looks_like_bot(agent: str) -> bool:
+    low = agent.lower()
+    return not low or any(mark in low for mark in BOT_MARKERS)
+
+
+@app.middleware("http")
+async def count_visit(request: Request, call_next):
+    """Считает открытия страниц сайта по дням.
+
+    Считаются только успешно открытые страницы: не картинки, не формы,
+    не перенаправления и не ошибки.
+    """
+    response = await call_next(request)
+    if request.method != "GET" or response.status_code != 200:
+        return response
+    if request.url.path.startswith(UNCOUNTED_PREFIXES):
+        return response
+    if not response.headers.get("content-type", "").startswith("text/html"):
+        return response
+    if looks_like_bot(user_agent(request)):
+        return response
+
+    try:
+        with db_session() as conn:
+            crud.record_visit(conn, crud.visit_day())
+    except Exception:
+        # Счётчик не должен ронять страницу: лучше потерять одно число,
+        # чем показать человеку ошибку вместо каталога.
+        log.warning("Не удалось записать посещение", exc_info=True)
+    return response
+
+
 def consent_data(subject_type: str, record_id: int, request: Request) -> dict:
     """Отметка о согласии: что человек видел, когда и с какой страницы."""
     return {
@@ -1046,8 +1106,115 @@ def admin_dashboard(request: Request):
     return render(request, "admin/providers.html", context)
 
 
+# --- График посещений -------------------------------------------------------
+
+MONTHS_SHORT = ("янв", "фев", "мар", "апр", "мая", "июн",
+                "июл", "авг", "сен", "окт", "ноя", "дек")
+MONTHS_FULL = ("января", "февраля", "марта", "апреля", "мая", "июня",
+               "июля", "августа", "сентября", "октября", "ноября", "декабря")
+
+# За какие сроки можно посмотреть график.
+VISIT_PERIODS = (7, 30, 90)
+
+# Размеры картинки. Она тянется по ширине страницы, но считается в этих
+# числах: так столбики остаются одинаковой толщины и не плывут.
+CHART_WIDTH = 720
+CHART_TOP = 16
+CHART_PLOT = 130
+CHART_BASE = CHART_TOP + CHART_PLOT
+CHART_HEIGHT = CHART_BASE + 24
+CHART_GAP = 2
+
+
+def plural_views(count: int) -> str:
+    """«1 открытие», «2 открытия», «5 открытий»."""
+    if 11 <= count % 100 <= 14:
+        return "открытий"
+    tail = count % 10
+    if tail == 1:
+        return "открытие"
+    if tail in (2, 3, 4):
+        return "открытия"
+    return "открытий"
+
+
+def day_parts(day: str) -> tuple[int, int]:
+    """«2026-10-04» -> (4, 9): число и номер месяца с нуля."""
+    _, month, number = day.split("-")
+    return int(number), int(month) - 1
+
+
+def nice_ceiling(value: int) -> int:
+    """Круглая величина сверху для шкалы: 34 -> 50, 7 -> 10, 0 -> 5.
+
+    Без этого верхняя подпись шкалы была бы вроде «34», и глазу не на что
+    опереться при сравнении соседних дней.
+    """
+    if value <= 5:
+        return 5
+    step = 10 ** (len(str(value)) - 1)
+    for factor in (1, 2, 5):
+        if value <= step * factor:
+            return step * factor
+    return step * 10
+
+
+def visits_chart(series: list[dict]) -> dict:
+    """Готовая геометрия столбчатого графика: считать её в шаблоне неудобно.
+
+    Один ряд данных - один цвет у всех столбиков: высота уже говорит о
+    величине, красить её вторично незачем. Подписаны не все дни, а самый
+    высокий и последний: число у каждого столбика превращает график в кашу,
+    а точные числа и так есть в таблице под ним.
+    """
+    count = len(series)
+    top = nice_ceiling(max((point["views"] for point in series), default=0))
+    bar_width = (CHART_WIDTH - CHART_GAP * (count - 1)) / count
+    step = max(1, count // 6)
+
+    bars = []
+    for index, point in enumerate(series):
+        height = point["views"] / top * CHART_PLOT
+        number, month = day_parts(point["day"])
+        bars.append({
+            "x": round(index * (bar_width + CHART_GAP), 2),
+            "width": round(bar_width, 2),
+            "y": round(CHART_BASE - height, 2),
+            "height": round(height, 2),
+            "radius": round(min(3, bar_width / 2), 2),
+            "views": point["views"],
+            "middle": round(index * (bar_width + CHART_GAP) + bar_width / 2, 2),
+            "label": f"{number} {MONTHS_SHORT[month]}",
+            "show_label": index % step == 0 or index == count - 1,
+            "title": (
+                f"{number} {MONTHS_FULL[month]} - "
+                f"{point['views']} {plural_views(point['views'])}"
+            ),
+        })
+
+    # Подписываем самый высокий день и последний. Если это один и тот же
+    # столбик, подпись остаётся одна.
+    best = max(range(count), key=lambda i: series[i]["views"])
+    marked = {best, count - 1}
+    for index in marked:
+        if bars[index]["views"]:
+            bars[index]["value_label"] = True
+
+    return {
+        "width": CHART_WIDTH,
+        "height": CHART_HEIGHT,
+        "base": CHART_BASE,
+        "top": top,
+        "bars": bars,
+        "lines": [
+            {"y": round(CHART_BASE - part * CHART_PLOT, 2), "value": round(top * part)}
+            for part in (0, 0.5, 1)
+        ],
+    }
+
+
 @app.get("/admin/stats", response_class=HTMLResponse)
-def admin_stats(request: Request):
+def admin_stats(request: Request, days: int = 30):
     """Числа по каталогу, заявкам, отзывам и обращениям.
 
     Страница закрытая: на ней видно, сколько обращений просрочено и сколько
@@ -1056,7 +1223,10 @@ def admin_stats(request: Request):
     """
     if guard := require_admin(request):
         return guard
+    if days not in VISIT_PERIODS:
+        days = 30
     with db_session() as conn:
+        visits = crud.visit_series(conn, days)
         by_type = crud.provider_counts_by(conn, "provider_type")
         by_city = crud.provider_counts_by(conn, "city")
         methods = crud.provider_counts_by_method(conn)
@@ -1085,6 +1255,13 @@ def admin_stats(request: Request):
                 conn, REQUEST_ANSWER_DAYS
             ),
         }
+    views = [point["views"] for point in visits]
+    context["visits"] = list(reversed(visits))
+    context["visits_days"] = days
+    context["visits_periods"] = VISIT_PERIODS
+    context["visits_total"] = sum(views)
+    context["visits_per_day"] = round(sum(views) / days, 1)
+    context["visits_chart"] = visits_chart(visits)
     # Длина полосок считается от самого большого значения в своей таблице:
     # иначе короткие ряды выглядят одинаково, а длинные упираются в край.
     context["max_type"] = max((row["n"] for row in by_type), default=0)
