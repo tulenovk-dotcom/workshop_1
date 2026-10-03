@@ -1122,7 +1122,15 @@ CHART_WIDTH = 720
 CHART_TOP = 16
 CHART_PLOT = 130
 CHART_BASE = CHART_TOP + CHART_PLOT
-CHART_HEIGHT = CHART_BASE + 24
+# Под столбиками - строка с числами месяца, слева - полоса под подписи шкалы.
+# На телефоне картинка сжимается, а шрифт в ней задаётся крупнее, поэтому
+# места заложено с запасом: иначе «100» обрезается, а дни налезают на столбики.
+CHART_LABEL_Y = CHART_BASE + 20
+CHART_HEIGHT = CHART_BASE + 34
+CHART_GUTTER = 60
+# Поле справа: подпись последнего дня стоит по центру столбика и выступает
+# за его край, иначе у неё срезается хвост.
+CHART_RIGHT = 28
 CHART_GAP = 2
 
 
@@ -1204,6 +1212,9 @@ def visits_chart(series: list[dict]) -> dict:
         "width": CHART_WIDTH,
         "height": CHART_HEIGHT,
         "base": CHART_BASE,
+        "label_y": CHART_LABEL_Y,
+        "gutter": CHART_GUTTER,
+        "right": CHART_RIGHT,
         "top": top,
         "bars": bars,
         "lines": [
