@@ -962,6 +962,147 @@ input:focus, select:focus, textarea:focus {
 .row-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
 .row-actions form { margin: 0; }
 
+/* --- Статистика ---
+   Главные числа стоят одной полосой, разделённые волосяной линией, а не
+   четырьмя одинаковыми плитками: это один ряд цифр, а не четыре карточки.
+   Распределения показаны полосками внутри обычной таблицы - полоса даёт
+   сравнение на глаз, число рядом даёт точность. Цвет у полос один на всех:
+   длина уже говорит о величине, и красить её вторично незачем. */
+
+/* Разделители - зазоры в сетке, а не рамки у ячеек. С рамкой на узком
+   экране, где числа переносятся на второй ряд, слева оставалась висячая
+   чёрточка: у первой ячейки ряда рамку убрать нечем. */
+.stat-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 0 0 20px;
+}
+
+.stat-figure {
+  margin: 0;
+  padding: 16px 20px;
+  background: var(--surface);
+}
+
+.stat-num {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--step-3);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-label {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: var(--step--1);
+}
+
+/* Две таблицы рядом, пока ширина позволяет. */
+.stat-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.stat-cols h3 { margin-top: 0; }
+
+.stat-table td { vertical-align: middle; }
+.stat-table .stat-col-bar { width: 40%; }
+
+.stat-table .stat-col-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.stat-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.stat-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--accent);
+}
+
+/* Выбор срока: та же плашка из половинок, что у переключателя языка в
+   шапке, - второй вид переключателя заводить незачем. */
+.stat-periods {
+  display: inline-flex;
+  margin: 0 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.stat-period {
+  padding: 7px 14px;
+  font-size: 0.87rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--muted);
+  border-left: 1px solid var(--line);
+}
+
+.stat-period:first-child { border-left: 0; }
+.stat-period:hover { background: #eceeed; color: var(--text); }
+.stat-period-current { background: var(--accent); color: #fff; }
+
+/* График. Рисуется обычным SVG: JavaScript в проекте нет, и ради столбиков
+   заводить его незачем. Подпись дня всплывает по наведению сама - её
+   показывает браузер из <title> внутри столбика. */
+.stat-chart {
+  margin: 0 0 20px;
+  padding: 16px 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.stat-chart svg { display: block; width: 100%; height: auto; }
+
+.stat-chart-bar { fill: var(--accent); }
+
+/* Сетка волосяная и сплошная: пунктир читался бы как «прогноз». */
+.stat-chart-grid { stroke: var(--line); stroke-width: 1; }
+
+.stat-chart-axis {
+  fill: var(--muted);
+  font-family: var(--font-text);
+  font-size: 11px;
+}
+
+.stat-chart-value {
+  fill: var(--text);
+  font-family: var(--font-text);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.stat-details { margin: 0 0 20px; }
+
+.stat-details summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 4px 0;
+}
+
+.stat-details .table-wrap { margin-top: 10px; }
+
 /* --- Заявки на размещение --- */
 
 .btn-outline {
@@ -1225,6 +1366,7 @@ input:focus, select:focus, textarea:focus {
 /* --- Телефоны --- */
 
 @media (max-width: 900px) {
+  .stat-cols { grid-template-columns: 1fr; }
   .card.provider-card { grid-template-columns: 108px minmax(0, 1fr); gap: 14px; }
   .pc-side {
     grid-column: 1 / -1;
@@ -1244,6 +1386,12 @@ input:focus, select:focus, textarea:focus {
 }
 
 @media (max-width: 640px) {
+  /* График сжимается по ширине экрана, и текст внутри картинки сжимается
+     вместе с ним. Поэтому на телефоне подписи задаются крупнее: после
+     сжатия они читаются так же, как на большом экране. */
+  .stat-chart-axis { font-size: 22px; }
+  .stat-chart-value { font-size: 24px; }
+  .stat-chart { padding: 14px 12px; }
   body { font-size: 15px; }
   h1 { font-size: 1.35rem; }
   .card, .provider, .admin-form { padding: 14px; }

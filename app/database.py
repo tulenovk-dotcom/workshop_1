@@ -129,6 +129,17 @@ CREATE TABLE IF NOT EXISTS data_actions (
     created_at TEXT NOT NULL
 );
 
+-- Посещения: сколько раз в день открывали страницы сайта.
+--
+-- Посетитель никак не помечается - ни в базе, ни в памяти. Одно открытие
+-- прибавляет единицу, и всё равно, тот же это человек или новый. Значит,
+-- о людях здесь не хранится ничего: нечему утечь и нечего удалять по
+-- просьбе человека.
+CREATE TABLE IF NOT EXISTS visit_days (
+    day TEXT PRIMARY KEY,
+    views INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,

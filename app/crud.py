@@ -629,3 +629,179 @@ def requests_from_ip_last_hour(conn: sqlite3.Connection, ip_hash: str) -> int:
         (ip_hash, since),
     ).fetchone()
     return int(row["n"])
+
+
+# --- Статистика -------------------------------------------------------------
+
+# Названия столбцов и таблиц в SQL подставляются текстом, поэтому берутся
+# только из этих перечней. Значение, пришедшее со стороны, сюда не попадёт.
+_COUNTABLE_PROVIDER_COLUMNS = ("city", "provider_type")
+_COUNTABLE_STATUS_TABLES = ("applications", "requests", "reviews")
+
+
+def provider_counts_by(conn: sqlite3.Connection, column: str) -> list[sqlite3.Row]:
+    """Сколько мест занятий приходится на каждое значение столбца.
+
+    Пустое значение не теряется, а попадает в строку «не указан»: иначе
+    сумма по таблице не сходится с общим числом, и это каждый раз
+    приходится объяснять.
+    """
+    if column not in _COUNTABLE_PROVIDER_COLUMNS:
+        raise ValueError(f"нельзя считать по столбцу {column!r}")
+    return conn.execute(
+        f"SELECT COALESCE(NULLIF(TRIM({column}), ''), '') AS value,"
+        "       COUNT(*) AS n"
+        "  FROM providers"
+        " GROUP BY value"
+        " ORDER BY n DESC, value"
+    ).fetchall()
+
+
+def provider_counts_by_method(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Сколько мест предлагает каждый метод. Порядок - как в справочнике,
+    чтобы страница статистики и фильтр на главной читались одинаково."""
+    return conn.execute(
+        "SELECT m.id, m.name, m.evidence_level,"
+        "       COUNT(pm.provider_id) AS n"
+        "  FROM methods m"
+        "  LEFT JOIN provider_methods pm ON pm.method_id = m.id"
+        " GROUP BY m.id"
+        " ORDER BY m.sort_order, m.name"
+    ).fetchall()
+
+
+def providers_without_methods(conn: sqlite3.Connection) -> int:
+    """Карточки, у которых не отмечен ни один метод: в фильтре по методу
+    они не находятся, поэтому их полезно видеть отдельно."""
+    row = conn.execute(
+        "SELECT COUNT(*) AS n FROM providers p"
+        " WHERE NOT EXISTS (SELECT 1 FROM provider_methods pm"
+        "                    WHERE pm.provider_id = p.id)"
+    ).fetchone()
+    return int(row["n"])
+
+
+def test_providers_count(conn: sqlite3.Connection) -> int:
+    row = conn.execute(
+        "SELECT COUNT(*) AS n FROM providers WHERE is_test = 1"
+    ).fetchone()
+    return int(row["n"])
+
+
+def counts_by_status(conn: sqlite3.Connection, table: str) -> dict:
+    if table not in _COUNTABLE_STATUS_TABLES:
+        raise ValueError(f"нельзя считать статусы таблицы {table!r}")
+    rows = conn.execute(
+        f"SELECT status, COUNT(*) AS n FROM {table} GROUP BY status"
+    ).fetchall()
+    return {row["status"]: int(row["n"]) for row in rows}
+
+
+def created_since(conn: sqlite3.Connection, table: str, days: int) -> int:
+    """Сколько записей появилось за последние сутки * days."""
+    if table not in _COUNTABLE_STATUS_TABLES:
+        raise ValueError(f"нельзя считать таблицу {table!r}")
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat(
+        timespec="seconds"
+    )
+    row = conn.execute(
+        f"SELECT COUNT(*) AS n FROM {table} WHERE created_at > ?", (since,)
+    ).fetchone()
+    return int(row["n"])
+
+
+def working_days_ago(days: int) -> datetime:
+    """Момент, отстоящий на `days` рабочих дней назад.
+
+    Суббота и воскресенье не считаются. Праздники не учитываются: их
+    календарь в проекте не заведён, и ради одной строки статистики заводить
+    его незачем. Значит, счёт получается чуть строже обещанного срока,
+    а не мягче - в пользу человека, который ждёт ответа.
+    """
+    moment = datetime.now(timezone.utc)
+    left = days
+    while left:
+        moment -= timedelta(days=1)
+        if moment.weekday() < 5:
+            left -= 1
+    return moment
+
+
+def requests_waiting_longer_than(conn: sqlite3.Connection, days: int) -> int:
+    """Обращения, на которые не ответили дольше обещанного срока.
+
+    Срок обещан человеку на странице «Отозвать согласие или удалить мои
+    данные», и обещан в рабочих днях - поэтому и считаем в рабочих.
+    Просрочка здесь - не статистика ради статистики, а невыполненное
+    обещание конкретному человеку.
+    """
+    deadline = working_days_ago(days).isoformat(timespec="seconds")
+    row = conn.execute(
+        "SELECT COUNT(*) AS n FROM requests"
+        " WHERE status != 'done' AND created_at < ?",
+        (deadline,),
+    ).fetchone()
+    return int(row["n"])
+
+
+def review_ratings(conn: sqlite3.Connection) -> dict:
+    """Распределение оценок по опубликованным отзывам: оценка -> сколько."""
+    rows = conn.execute(
+        "SELECT rating, COUNT(*) AS n FROM reviews"
+        " WHERE status = 'published' GROUP BY rating"
+    ).fetchall()
+    return {int(row["rating"]): int(row["n"]) for row in rows}
+
+
+def average_published_rating(conn: sqlite3.Connection) -> float | None:
+    row = conn.execute(
+        "SELECT ROUND(AVG(rating), 1) AS avg FROM reviews"
+        " WHERE status = 'published'"
+    ).fetchone()
+    return row["avg"]
+
+
+# --- Посещения --------------------------------------------------------------
+
+# В Казахстане одно время, UTC+5. Сутки для статистики нарезаются по нему,
+# а не по UTC: иначе «вчерашние» вечерние посещения попадали бы в сегодня.
+KZ_TIME = timezone(timedelta(hours=5))
+
+
+def visit_day(moment: datetime | None = None) -> str:
+    return (moment or datetime.now(KZ_TIME)).astimezone(KZ_TIME).strftime("%Y-%m-%d")
+
+
+def record_visit(conn: sqlite3.Connection, day: str) -> None:
+    """Прибавить одно открытие страницы к счётчику дня.
+
+    Посетитель не помечается никак: повторное открытие с того же устройства
+    считается наравне с первым. Так и задумано - страница отвечает на вопрос
+    «сколько раз сайт открывали», а не «сколько разных людей приходило».
+    """
+    conn.execute(
+        "INSERT INTO visit_days (day, views) VALUES (?, 1)"
+        " ON CONFLICT(day) DO UPDATE SET views = views + 1",
+        (day,),
+    )
+
+
+def visit_series(conn: sqlite3.Connection, days: int) -> list[dict]:
+    """Посещения по дням за последние `days` суток, включая сегодня.
+
+    Дни без посещений не пропускаются, а возвращаются с нулями: на графике
+    провал должен быть виден как провал, а не как отсутствие столбика.
+    """
+    today = datetime.now(KZ_TIME)
+    rows = {
+        row["day"]: int(row["views"])
+        for row in conn.execute(
+            "SELECT day, views FROM visit_days WHERE day >= ?",
+            (visit_day(today - timedelta(days=days - 1)),),
+        )
+    }
+    series = []
+    for back in range(days - 1, -1, -1):
+        day = visit_day(today - timedelta(days=back))
+        series.append({"day": day, "views": rows.get(day, 0)})
+    return series

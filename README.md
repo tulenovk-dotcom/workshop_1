@@ -79,7 +79,11 @@ ADMIN_LOGIN=ваш-логин ADMIN_PASSWORD=ваш-пароль \
 ## Публикация на Render
 
 **Тестовый стенд:** https://erekshe-test.onrender.com - на нём работает это же
-приложение из ветки `main`. Админка там по адресу `/admin`.
+приложение из ветки `test`. Админка там по адресу `/admin`.
+
+Порядок работы: любая правка сначала идёт в `test` и проверяется на стенде,
+перенос в `main` и выкат живого сайта - только с разрешения владельца.
+Подробно это описано в `CLAUDE.md`, раздел «Порядок выката».
 
 Как стенд устроен на самом деле:
 
@@ -87,7 +91,7 @@ ADMIN_LOGIN=ваш-логин ADMIN_PASSWORD=ваш-пароль \
 |---|---|
 | Имя сервиса | `erekshe-test` |
 | Как создан | руками через **New → Web Service**, не из `render.yaml` |
-| Ветка | `main`, Auto-Deploy включён: коммит в `main` выкатывается сам |
+| Ветка | задаётся в панели Render, а не в репозитории; по порядку работы это `test`. Auto-Deploy включён: коммит в выбранную ветку выкатывается сам |
 | Регион и тариф | Frankfurt, Free |
 | Build Command | `pip install -r requirements.txt` |
 | Start Command | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
@@ -132,7 +136,7 @@ ADMIN_LOGIN=ваш-логин ADMIN_PASSWORD=ваш-пароль \
 ### Если сервис придётся создавать заново
 
 1. https://dashboard.render.com, вход через GitHub.
-2. **New → Blueprint**, репозиторий `workshop_1`, ветка `main` - Render
+2. **New → Blueprint**, репозиторий `workshop_1`, ветка `test` - Render
    прочитает `render.yaml` и покажет, какой сервис будет создан. Либо
    **New → Web Service** и те же команды сборки и запуска, что в таблице выше.
 3. **Apply**. Первая сборка занимает несколько минут.

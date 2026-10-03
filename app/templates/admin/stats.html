@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui with context %}
+
+{% block title %}Админка - статистика{% endblock %}
+
+{% block content %}
+<h1>Статистика</h1>
+{% include "admin/_nav.html" %}
+
+<p class="admin-summary">Счётчики по базе на эту минуту. Имён, телефонов и
+  адресов здесь нет - только числа.</p>
+
+<section class="stat-strip">
+  <p class="stat-figure">
+    <span class="stat-num">{{ providers_total }}</span>
+    <span class="stat-label">мест занятий</span>
+  </p>
+  <p class="stat-figure">
+    <span class="stat-num">{{ applications_total }}</span>
+    <span class="stat-label">заявок на размещение</span>
+  </p>
+  <p class="stat-figure">
+    <span class="stat-num">{{ reviews_total }}</span>
+    <span class="stat-label">отзывов</span>
+  </p>
+  <p class="stat-figure">
+    <span class="stat-num">{{ requests_total }}</span>
+    <span class="stat-label">обращений</span>
+  </p>
+</section>
+
+{% if requests_overdue %}
+  <p class="notice notice-warn">Обращений без ответа дольше
+    {{ REQUEST_ANSWER_DAYS }} рабочих дней: {{ requests_overdue }}. Столько
+    мы обещаем на странице «Отозвать согласие или удалить мои данные».
+    <a href="/admin/requests?status=new">Посмотреть</a></p>
+{% endif %}
+
+<h2>Посещения</h2>
+
+<p class="hint">Сколько раз открывали страницы сайта. Считается каждое
+  открытие: вернулся тот же человек или пришёл новый - сайт этого не
+  различает и посетителя никак не помечает. Админка, картинки и поисковые
+  роботы в счёт не идут.</p>
+
+<nav class="stat-periods">
+  {% for period in visits_periods %}
+    {% if period == visits_days %}
+      <span class="stat-period stat-period-current">{{ period }} дней</span>
+    {% else %}
+      <a class="stat-period" href="/admin/stats?days={{ period }}">{{ period }} дней</a>
+    {% endif %}
+  {% endfor %}
+</nav>
+
+<section class="stat-strip">
+  <p class="stat-figure">
+    <span class="stat-num">{{ visits_total }}</span>
+    <span class="stat-label">открытий за {{ visits_days }} дней</span>
+  </p>
+  <p class="stat-figure">
+    <span class="stat-num">{{ visits_per_day }}</span>
+    <span class="stat-label">в среднем за день</span>
+  </p>
+</section>
+
+{% set chart = visits_chart %}
+<figure class="stat-chart">
+  <svg viewBox="-{{ chart.gutter }} 0 {{ chart.width + chart.gutter + chart.right }} {{ chart.height }}"
+       preserveAspectRatio="xMidYMid meet" role="img"
+       aria-label="Открытия страниц по дням за {{ visits_days }} дней.
+                   Всего {{ visits_total }}. Точные числа - в таблице ниже.">
+    {% for line in chart.lines %}
+      <line class="stat-chart-grid" x1="0" x2="{{ chart.width }}"
+            y1="{{ line.y }}" y2="{{ line.y }}"></line>
+      <text class="stat-chart-axis" x="-8" y="{{ line.y + 4 }}"
+            text-anchor="end">{{ line.value }}</text>
+    {% endfor %}
+
+    {% for bar in chart.bars %}
+      {% if bar.height %}
+        <rect class="stat-chart-bar" x="{{ bar.x }}" y="{{ bar.y }}"
+              width="{{ bar.width }}" height="{{ bar.height }}"
+              rx="{{ bar.radius }}"><title>{{ bar.title }}</title></rect>
+      {% endif %}
+      {% if bar.value_label %}
+        <text class="stat-chart-value" x="{{ bar.middle }}" y="{{ bar.y - 5 }}"
+              text-anchor="middle">{{ bar.views }}</text>
+      {% endif %}
+      {% if bar.show_label %}
+        <text class="stat-chart-axis" x="{{ bar.middle }}"
+              y="{{ chart.label_y }}" text-anchor="middle">{{ bar.label }}</text>
+      {% endif %}
+    {% endfor %}
+  </svg>
+</figure>
+
+<details class="stat-details">
+  <summary>Числа по дням</summary>
+  <div class="table-wrap">
+    <table class="admin-table stat-table">
+      <thead>
+        <tr><th>День</th><th class="stat-col-num">Открытий</th></tr>
+      </thead>
+      <tbody>
+        {% for point in visits %}
+          <tr>
+            <td>{{ point.day }}</td>
+            <td class="stat-col-num">{{ point.views }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</details>
+
+<h2>Каталог</h2>
+
+<p class="hint">Из них тестовых записей: {{ providers_test }}.
+  Без единого отмеченного метода: {{ providers_without_methods }} - такие
+  карточки не находятся фильтром по методу.</p>
+
+<div class="stat-cols">
+  <div>
+    <h3>По типу места</h3>
+    {% if by_type %}
+      <div class="table-wrap">
+        <table class="admin-table stat-table">
+          <thead>
+            <tr><th>Тип</th><th class="stat-col-bar">Доля</th><th class="stat-col-num">Мест</th></tr>
+          </thead>
+          <tbody>
+            {% for row in by_type %}
+              <tr>
+                <td>{{ PROVIDER_TYPES.get(row.value, row.value or 'не указан') }}</td>
+                <td class="stat-col-bar">{{ ui.stat_bar(row.n, max_type) }}</td>
+                <td class="stat-col-num">{{ row.n }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="hint">Пока ни одного места не заведено.</p>
+    {% endif %}
+  </div>
+
+  <div>
+    <h3>По городам</h3>
+    {% if by_city %}
+      <div class="table-wrap">
+        <table class="admin-table stat-table">
+          <thead>
+            <tr><th>Город</th><th class="stat-col-bar">Доля</th><th class="stat-col-num">Мест</th></tr>
+          </thead>
+          <tbody>
+            {% for row in by_city %}
+              <tr>
+                <td>{{ row.value or 'не указан' }}</td>
+                <td class="stat-col-bar">{{ ui.stat_bar(row.n, max_city) }}</td>
+                <td class="stat-col-num">{{ row.n }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="hint">Пока ни одного места не заведено.</p>
+    {% endif %}
+  </div>
+</div>
+
+<h2>Методы</h2>
+
+<p class="hint">Сколько мест предлагает каждый метод. Порядок - как в
+  справочнике и в фильтре на главной.</p>
+
+<div class="table-wrap">
+  <table class="admin-table stat-table">
+    <thead>
+      <tr>
+        <th>Метод</th>
+        <th>Доказательность</th>
+        <th class="stat-col-bar">Доля</th>
+        <th class="stat-col-num">Мест</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in methods %}
+        <tr>
+          <td>{{ m.name }}</td>
+          <td>{{ ui.evidence_badge(m.evidence_level) }}</td>
+          <td class="stat-col-bar">{{ ui.stat_bar(m.n, max_method) }}</td>
+          <td class="stat-col-num">{{ m.n }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h2>Заявки на размещение</h2>
+
+<p class="hint">За последние 30 дней пришло: {{ applications_month }}.</p>
+
+<div class="table-wrap">
+  <table class="admin-table stat-table">
+    <thead>
+      <tr><th>Состояние</th><th class="stat-col-num">Заявок</th></tr>
+    </thead>
+    <tbody>
+      {% for code, label in APPLICATION_STATUSES.items() %}
+        <tr>
+          <td>{{ label }}</td>
+          <td class="stat-col-num">{{ applications.get(code, 0) }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h2>Отзывы</h2>
+
+<p class="hint">За последние 30 дней оставлено: {{ reviews_month }}.
+  Средняя оценка опубликованных:
+  {% if rating_avg %}{{ rating_avg }} из 5{% else %}пока не из чего считать{% endif %}.</p>
+
+<div class="stat-cols">
+  <div>
+    <h3>По состоянию</h3>
+    <div class="table-wrap">
+      <table class="admin-table stat-table">
+        <thead>
+          <tr><th>Состояние</th><th class="stat-col-num">Отзывов</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Ждут проверки</td><td class="stat-col-num">{{ reviews.get('pending', 0) }}</td></tr>
+          <tr><td>Опубликованы</td><td class="stat-col-num">{{ reviews.get('published', 0) }}</td></tr>
+          <tr><td>Отклонены</td><td class="stat-col-num">{{ reviews.get('rejected', 0) }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div>
+    <h3>Оценки опубликованных</h3>
+    <div class="table-wrap">
+      <table class="admin-table stat-table">
+        <thead>
+          <tr><th>Оценка</th><th class="stat-col-bar">Доля</th><th class="stat-col-num">Отзывов</th></tr>
+        </thead>
+        <tbody>
+          {% for score in [5, 4, 3, 2, 1] %}
+            <tr>
+              <td>{{ '★' * score }}{{ '☆' * (5 - score) }}</td>
+              <td class="stat-col-bar">{{ ui.stat_bar(ratings.get(score, 0), max_rating) }}</td>
+              <td class="stat-col-num">{{ ratings.get(score, 0) }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<h2>Обращения по персональным данным</h2>
+
+<p class="hint">Письма со страницы «Отозвать согласие или удалить мои данные»:
+  человек просит забрать согласие, исправить или удалить свою запись.</p>
+
+<div class="table-wrap">
+  <table class="admin-table stat-table">
+    <thead>
+      <tr><th>Состояние</th><th class="stat-col-num">Обращений</th></tr>
+    </thead>
+    <tbody>
+      {% for code, label in REQUEST_STATUSES.items() %}
+        <tr>
+          <td>{{ label }}</td>
+          <td class="stat-col-num">{{ requests.get(code, 0) }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
