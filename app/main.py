@@ -1046,6 +1046,54 @@ def admin_dashboard(request: Request):
     return render(request, "admin/providers.html", context)
 
 
+@app.get("/admin/stats", response_class=HTMLResponse)
+def admin_stats(request: Request):
+    """Числа по каталогу, заявкам, отзывам и обращениям.
+
+    Страница закрытая: на ней видно, сколько обращений просрочено и сколько
+    отзывов ждёт проверки, а это внутренняя кухня. Персональных данных здесь
+    нет - только счётчики, ни одного имени и ни одного телефона.
+    """
+    if guard := require_admin(request):
+        return guard
+    with db_session() as conn:
+        by_type = crud.provider_counts_by(conn, "provider_type")
+        by_city = crud.provider_counts_by(conn, "city")
+        methods = crud.provider_counts_by_method(conn)
+        applications = crud.counts_by_status(conn, "applications")
+        reviews = crud.counts_by_status(conn, "reviews")
+        requests = crud.counts_by_status(conn, "requests")
+        ratings = crud.review_ratings(conn)
+        context = {
+            "providers_total": sum(row["n"] for row in by_type),
+            "providers_test": crud.test_providers_count(conn),
+            "providers_without_methods": crud.providers_without_methods(conn),
+            "by_type": by_type,
+            "by_city": by_city,
+            "methods": methods,
+            "applications": applications,
+            "applications_total": sum(applications.values()),
+            "applications_month": crud.created_since(conn, "applications", 30),
+            "reviews": reviews,
+            "reviews_total": sum(reviews.values()),
+            "reviews_month": crud.created_since(conn, "reviews", 30),
+            "rating_avg": crud.average_published_rating(conn),
+            "ratings": ratings,
+            "requests": requests,
+            "requests_total": sum(requests.values()),
+            "requests_overdue": crud.requests_waiting_longer_than(
+                conn, REQUEST_ANSWER_DAYS
+            ),
+        }
+    # Длина полосок считается от самого большого значения в своей таблице:
+    # иначе короткие ряды выглядят одинаково, а длинные упираются в край.
+    context["max_type"] = max((row["n"] for row in by_type), default=0)
+    context["max_city"] = max((row["n"] for row in by_city), default=0)
+    context["max_method"] = max((row["n"] for row in methods), default=0)
+    context["max_rating"] = max(ratings.values(), default=0)
+    return render(request, "admin/stats.html", context)
+
+
 def application_methods(conn, application) -> list:
     """Методы заявки: в базе они лежат списком кодов."""
     try:

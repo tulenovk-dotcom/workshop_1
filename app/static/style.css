@@ -962,6 +962,80 @@ input:focus, select:focus, textarea:focus {
 .row-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
 .row-actions form { margin: 0; }
 
+/* --- Статистика ---
+   Главные числа стоят одной полосой, разделённые волосяной линией, а не
+   четырьмя одинаковыми плитками: это один ряд цифр, а не четыре карточки.
+   Распределения показаны полосками внутри обычной таблицы - полоса даёт
+   сравнение на глаз, число рядом даёт точность. Цвет у полос один на всех:
+   длина уже говорит о величине, и красить её вторично незачем. */
+
+.stat-strip {
+  display: flex;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin: 0 0 20px;
+}
+
+.stat-figure {
+  flex: 1 1 140px;
+  margin: 0;
+  padding: 16px 20px;
+  border-left: 1px solid var(--line);
+}
+
+.stat-figure:first-child { border-left: 0; }
+
+.stat-num {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--step-3);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-label {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: var(--step--1);
+}
+
+/* Две таблицы рядом, пока ширина позволяет. */
+.stat-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.stat-cols h3 { margin-top: 0; }
+
+.stat-table td { vertical-align: middle; }
+.stat-table .stat-col-bar { width: 40%; }
+
+.stat-table .stat-col-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.stat-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.stat-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--accent);
+}
+
 /* --- Заявки на размещение --- */
 
 .btn-outline {
@@ -1225,6 +1299,7 @@ input:focus, select:focus, textarea:focus {
 /* --- Телефоны --- */
 
 @media (max-width: 900px) {
+  .stat-cols { grid-template-columns: 1fr; }
   .card.provider-card { grid-template-columns: 108px minmax(0, 1fr); gap: 14px; }
   .pc-side {
     grid-column: 1 / -1;

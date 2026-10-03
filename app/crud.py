@@ -629,3 +629,116 @@ def requests_from_ip_last_hour(conn: sqlite3.Connection, ip_hash: str) -> int:
         (ip_hash, since),
     ).fetchone()
     return int(row["n"])
+
+
+# --- Статистика -------------------------------------------------------------
+
+# Названия столбцов и таблиц в SQL подставляются текстом, поэтому берутся
+# только из этих перечней. Значение, пришедшее со стороны, сюда не попадёт.
+_COUNTABLE_PROVIDER_COLUMNS = ("city", "provider_type")
+_COUNTABLE_STATUS_TABLES = ("applications", "requests", "reviews")
+
+
+def provider_counts_by(conn: sqlite3.Connection, column: str) -> list[sqlite3.Row]:
+    """Сколько мест занятий приходится на каждое значение столбца.
+
+    Пустое значение не теряется, а попадает в строку «не указан»: иначе
+    сумма по таблице не сходится с общим числом, и это каждый раз
+    приходится объяснять.
+    """
+    if column not in _COUNTABLE_PROVIDER_COLUMNS:
+        raise ValueError(f"нельзя считать по столбцу {column!r}")
+    return conn.execute(
+        f"SELECT COALESCE(NULLIF(TRIM({column}), ''), '') AS value,"
+        "       COUNT(*) AS n"
+        "  FROM providers"
+        " GROUP BY value"
+        " ORDER BY n DESC, value"
+    ).fetchall()
+
+
+def provider_counts_by_method(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Сколько мест предлагает каждый метод. Порядок - как в справочнике,
+    чтобы страница статистики и фильтр на главной читались одинаково."""
+    return conn.execute(
+        "SELECT m.id, m.name, m.evidence_level,"
+        "       COUNT(pm.provider_id) AS n"
+        "  FROM methods m"
+        "  LEFT JOIN provider_methods pm ON pm.method_id = m.id"
+        " GROUP BY m.id"
+        " ORDER BY m.sort_order, m.name"
+    ).fetchall()
+
+
+def providers_without_methods(conn: sqlite3.Connection) -> int:
+    """Карточки, у которых не отмечен ни один метод: в фильтре по методу
+    они не находятся, поэтому их полезно видеть отдельно."""
+    row = conn.execute(
+        "SELECT COUNT(*) AS n FROM providers p"
+        " WHERE NOT EXISTS (SELECT 1 FROM provider_methods pm"
+        "                    WHERE pm.provider_id = p.id)"
+    ).fetchone()
+    return int(row["n"])
+
+
+def test_providers_count(conn: sqlite3.Connection) -> int:
+    row = conn.execute(
+        "SELECT COUNT(*) AS n FROM providers WHERE is_test = 1"
+    ).fetchone()
+    return int(row["n"])
+
+
+def counts_by_status(conn: sqlite3.Connection, table: str) -> dict:
+    if table not in _COUNTABLE_STATUS_TABLES:
+        raise ValueError(f"нельзя считать статусы таблицы {table!r}")
+    rows = conn.execute(
+        f"SELECT status, COUNT(*) AS n FROM {table} GROUP BY status"
+    ).fetchall()
+    return {row["status"]: int(row["n"]) for row in rows}
+
+
+def created_since(conn: sqlite3.Connection, table: str, days: int) -> int:
+    """Сколько записей появилось за последние сутки * days."""
+    if table not in _COUNTABLE_STATUS_TABLES:
+        raise ValueError(f"нельзя считать таблицу {table!r}")
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat(
+        timespec="seconds"
+    )
+    row = conn.execute(
+        f"SELECT COUNT(*) AS n FROM {table} WHERE created_at > ?", (since,)
+    ).fetchone()
+    return int(row["n"])
+
+
+def requests_waiting_longer_than(conn: sqlite3.Connection, days: int) -> int:
+    """Обращения, на которые не ответили дольше обещанного срока.
+
+    Срок обещан на странице обратной связи, поэтому просрочка - не
+    статистика ради статистики, а невыполненное обещание человеку.
+    """
+    deadline = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat(
+        timespec="seconds"
+    )
+    row = conn.execute(
+        "SELECT COUNT(*) AS n FROM requests"
+        " WHERE status != 'done' AND created_at < ?",
+        (deadline,),
+    ).fetchone()
+    return int(row["n"])
+
+
+def review_ratings(conn: sqlite3.Connection) -> dict:
+    """Распределение оценок по опубликованным отзывам: оценка -> сколько."""
+    rows = conn.execute(
+        "SELECT rating, COUNT(*) AS n FROM reviews"
+        " WHERE status = 'published' GROUP BY rating"
+    ).fetchall()
+    return {int(row["rating"]): int(row["n"]) for row in rows}
+
+
+def average_published_rating(conn: sqlite3.Connection) -> float | None:
+    row = conn.execute(
+        "SELECT ROUND(AVG(rating), 1) AS avg FROM reviews"
+        " WHERE status = 'published'"
+    ).fetchone()
+    return row["avg"]
