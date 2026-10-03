@@ -31,8 +31,8 @@
 
 {% if requests_overdue %}
   <p class="notice notice-warn">Обращений без ответа дольше
-    {{ REQUEST_ANSWER_DAYS }} дней: {{ requests_overdue }}. Срок обещан
-    людям на странице обратной связи.
+    {{ REQUEST_ANSWER_DAYS }} рабочих дней: {{ requests_overdue }}. Столько
+    мы обещаем на странице «Отозвать согласие или удалить мои данные».
     <a href="/admin/requests?status=new">Посмотреть</a></p>
 {% endif %}
 
@@ -184,7 +184,10 @@
   </div>
 </div>
 
-<h2>Обращения</h2>
+<h2>Обращения по персональным данным</h2>
+
+<p class="hint">Письма со страницы «Отозвать согласие или удалить мои данные»:
+  человек просит забрать согласие, исправить или удалить свою запись.</p>
 
 <div class="table-wrap">
   <table class="admin-table stat-table">

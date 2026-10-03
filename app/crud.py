@@ -710,15 +710,32 @@ def created_since(conn: sqlite3.Connection, table: str, days: int) -> int:
     return int(row["n"])
 
 
+def working_days_ago(days: int) -> datetime:
+    """Момент, отстоящий на `days` рабочих дней назад.
+
+    Суббота и воскресенье не считаются. Праздники не учитываются: их
+    календарь в проекте не заведён, и ради одной строки статистики заводить
+    его незачем. Значит, счёт получается чуть строже обещанного срока,
+    а не мягче - в пользу человека, который ждёт ответа.
+    """
+    moment = datetime.now(timezone.utc)
+    left = days
+    while left:
+        moment -= timedelta(days=1)
+        if moment.weekday() < 5:
+            left -= 1
+    return moment
+
+
 def requests_waiting_longer_than(conn: sqlite3.Connection, days: int) -> int:
     """Обращения, на которые не ответили дольше обещанного срока.
 
-    Срок обещан на странице обратной связи, поэтому просрочка - не
-    статистика ради статистики, а невыполненное обещание человеку.
+    Срок обещан человеку на странице «Отозвать согласие или удалить мои
+    данные», и обещан в рабочих днях - поэтому и считаем в рабочих.
+    Просрочка здесь - не статистика ради статистики, а невыполненное
+    обещание конкретному человеку.
     """
-    deadline = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat(
-        timespec="seconds"
-    )
+    deadline = working_days_ago(days).isoformat(timespec="seconds")
     row = conn.execute(
         "SELECT COUNT(*) AS n FROM requests"
         " WHERE status != 'done' AND created_at < ?",
