@@ -242,10 +242,31 @@ BOT_MARKERS = (
 # Админка - это администратор, а не посетитель, и в счёт не идёт.
 UNCOUNTED_PREFIXES = ("/static", "/admin", "/favicon", "/robots.txt", "/sitemap.xml")
 
+# День, в который журнал посещений чистили в последний раз.
+_visit_cleanup_day = ""
+
 
 def looks_like_bot(agent: str) -> bool:
     low = agent.lower()
     return not low or any(mark in low for mark in BOT_MARKERS)
+
+
+def device_from_agent(agent: str) -> str:
+    """Телефон, планшет или компьютер - по подписи браузера.
+
+    Это догадка, а не точное знание: подпись можно подделать, а некоторые
+    браузеры врут нарочно. Для статистики этого довольно, для чего-то
+    серьёзнее - нет.
+    """
+    low = agent.lower()
+    if "ipad" in low or "tablet" in low:
+        return "планшет"
+    if "android" in low and "mobi" not in low:
+        # Android без пометки Mobi - обычно планшет.
+        return "планшет"
+    if "mobi" in low or "android" in low or "iphone" in low:
+        return "телефон"
+    return "компьютер"
 
 
 @app.middleware("http")
@@ -265,11 +286,29 @@ async def count_visit(request: Request, call_next):
     if looks_like_bot(user_agent(request)):
         return response
 
+    global _visit_cleanup_day
+    agent = user_agent(request)
+    day = crud.visit_day()
     try:
         with db_session() as conn:
-            crud.record_visit(conn, crud.visit_day())
+            crud.record_visit(conn, day)
+            crud.record_page_view(
+                conn,
+                request_ip(request),
+                request.url.path,
+                agent,
+                device_from_agent(agent),
+            )
+            # Чистка журнала - раз в сутки, при первом посещении нового дня.
+            # Отдельного планировщика в проекте нет, а привязка к запуску
+            # сайта срок хранения не выдержит: сервер работает неделями.
+            if day != _visit_cleanup_day:
+                _visit_cleanup_day = day
+                removed = crud.cleanup_visit_log(conn)
+                if removed:
+                    log.info("Удалено записей журнала посещений: %s", removed)
     except Exception:
-        # Счётчик не должен ронять страницу: лучше потерять одно число,
+        # Счётчик не должен ронять страницу: лучше потерять одну запись,
         # чем показать человеку ошибку вместо каталога.
         log.warning("Не удалось записать посещение", exc_info=True)
     return response
@@ -504,8 +543,13 @@ def on_startup() -> None:
     # проекте нет, а сервис на хостинге и так перезапускается регулярно.
     with db_session() as conn:
         cleaned = crud.cleanup_personal_data(conn)
+        # Журнал посещений чистится и при запуске, и раз в сутки из счётчика:
+        # если сайт долго не перезапускали, срок хранения всё равно соблюдён.
+        removed = crud.cleanup_visit_log(conn)
     if cleaned:
         log.info("Обезличено записей по истечении срока хранения: %s", cleaned)
+    if removed:
+        log.info("Удалено записей журнала посещений: %s", removed)
 
 
 def parse_int(value: str | None) -> int | None:
@@ -1294,6 +1338,41 @@ def admin_stats(request: Request, days: int = 30):
     context["max_method"] = max((row["n"] for row in methods), default=0)
     context["max_rating"] = max(ratings.values(), default=0)
     return render(request, "admin/stats.html", context)
+
+
+# Сроки, за которые можно смотреть посетителей. Дольше журнала не бывает:
+# записи старше VISIT_LOG_DAYS удаляются.
+VISITOR_PERIODS = ((1, "Сегодня"), (7, "7 дней"), (30, "30 дней"))
+
+
+@app.get("/admin/visitors", response_class=HTMLResponse)
+def admin_visitors(request: Request, days: int = 7, ip: str = ""):
+    """Уникальные посетители за период, по адресам.
+
+    Здесь видны персональные данные, поэтому страница закрытая, как и вся
+    админка. Записи старше срока хранения сюда не попадают - их уже нет.
+    """
+    if guard := require_admin(request):
+        return guard
+    if days not in {period for period, _ in VISITOR_PERIODS}:
+        days = 7
+    with db_session() as conn:
+        context = {
+            "days": days,
+            "periods": VISITOR_PERIODS,
+            "retention_days": crud.VISIT_LOG_DAYS,
+            "gap_minutes": crud.VISIT_GAP_MINUTES,
+            "ip": ip,
+            "unique_count": crud.visitors_count(conn, days),
+        }
+        if ip:
+            context["pages"] = crud.visitor_pages(conn, ip, days)
+        else:
+            rows = crud.visitors(conn, days)
+            context["rows"] = rows
+            context["views_total"] = sum(int(row["views"]) for row in rows)
+            context["visits_total"] = sum(int(row["visits"]) for row in rows)
+    return render(request, "admin/visitors.html", context)
 
 
 def application_methods(conn, application) -> list:

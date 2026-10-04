@@ -140,6 +140,22 @@ CREATE TABLE IF NOT EXISTS visit_days (
     views INTEGER NOT NULL DEFAULT 0
 );
 
+-- Журнал посещений: по записи на каждое открытие публичной страницы.
+--
+-- Здесь, в отличие от visit_days, лежат персональные данные: настоящий
+-- IP-адрес посетителя, время, страница и подпись браузера. Поэтому записи
+-- живут 30 дней и удаляются сами - срок обещан человеку на странице
+-- /privacy. Таблица visit_days остаётся: в ней только числа, она ведёт
+-- долгую историю и после чистки журнала не теряет прошлые дни.
+CREATE TABLE IF NOT EXISTS visit_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ip TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    path TEXT NOT NULL,
+    user_agent TEXT NOT NULL DEFAULT '',
+    device TEXT NOT NULL DEFAULT ''
+);
+
 CREATE TABLE IF NOT EXISTS requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -163,6 +179,8 @@ CREATE INDEX IF NOT EXISTS idx_applications_ip ON applications(author_ip_hash, c
 CREATE INDEX IF NOT EXISTS idx_consents_record ON consents(subject_type, record_id);
 CREATE INDEX IF NOT EXISTS idx_data_actions_record ON data_actions(subject_type, record_id);
 CREATE INDEX IF NOT EXISTS idx_requests_status ON requests(status, created_at);
+CREATE INDEX IF NOT EXISTS idx_visit_log_time ON visit_log(created_at);
+CREATE INDEX IF NOT EXISTS idx_visit_log_ip ON visit_log(ip, created_at);
 """
 
 

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Админка - посетители{% endblock %}
+
+{% block content %}
+<h1>Посетители</h1>
+{% include "admin/_nav.html" %}
+
+<p class="notice notice-warn">На этой странице персональные данные: адреса
+  посетителей, время и страницы, которые они открывали. Записи хранятся
+  {{ retention_days }} дней и удаляются сами. Показывать эту страницу
+  посторонним и выносить адреса наружу нельзя.</p>
+
+<nav class="stat-periods">
+  {% for period, label in periods %}
+    {% if period == days %}
+      <span class="stat-period stat-period-current">{{ label }}</span>
+    {% else %}
+      <a class="stat-period" href="/admin/visitors?days={{ period }}">{{ label }}</a>
+    {% endif %}
+  {% endfor %}
+</nav>
+
+{% if ip %}
+  <p class="hint"><a href="/admin/visitors?days={{ days }}">← ко всем посетителям</a></p>
+
+  <h2>{{ ip }}</h2>
+
+  {% if pages %}
+    <p class="hint">Страницы по времени, новые сверху. Показано не больше 300
+      записей за выбранный период.</p>
+    <div class="table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Когда</th><th>Страница</th><th>Устройство</th><th>Браузер</th></tr>
+        </thead>
+        <tbody>
+          {% for row in pages %}
+            <tr>
+              <td class="visitor-when">{{ row.created_at[:10] }} {{ row.created_at[11:16] }}</td>
+              <td><a href="{{ row.path }}">{{ row.path }}</a></td>
+              <td>{{ row.device }}</td>
+              <td class="visitor-agent">{{ row.user_agent }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="empty">За этот период записей с такого адреса нет.</p>
+  {% endif %}
+
+{% else %}
+
+  <section class="stat-strip">
+    <p class="stat-figure">
+      <span class="stat-num">{{ unique_count }}</span>
+      <span class="stat-label">уникальных посетителей</span>
+    </p>
+    <p class="stat-figure">
+      <span class="stat-num">{{ visits_total }}</span>
+      <span class="stat-label">визитов</span>
+    </p>
+    <p class="stat-figure">
+      <span class="stat-num">{{ views_total }}</span>
+      <span class="stat-label">просмотров страниц</span>
+    </p>
+  </section>
+
+  <p class="hint">Уникальный посетитель здесь - это адрес, а не человек.
+    С одного домашнего адреса смотрит вся семья, а мобильный оператор прячет
+    за одним адресом тысячи абонентов. Визит - непрерывный заход: если между
+    открытиями прошло больше {{ gap_minutes }} минут, считается новый визит.
+    Админка, картинки и поисковые роботы в счёт не идут.</p>
+
+  {% if rows %}
+    <div class="table-wrap">
+      <table class="admin-table stat-table">
+        <thead>
+          <tr>
+            <th>Адрес</th>
+            <th>Первый визит</th>
+            <th>Последний визит</th>
+            <th class="stat-col-num">Визитов</th>
+            <th class="stat-col-num">Страниц</th>
+            <th>Устройство</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              <td><a href="/admin/visitors?days={{ days }}&ip={{ row.ip|urlencode }}">{{ row.ip }}</a></td>
+              <td class="visitor-when">{{ row.first_seen[:10] }} {{ row.first_seen[11:16] }}</td>
+              <td class="visitor-when">{{ row.last_seen[:10] }} {{ row.last_seen[11:16] }}</td>
+              <td class="stat-col-num">{{ row.visits }}</td>
+              <td class="stat-col-num">{{ row.views }}</td>
+              <td>{{ row.devices }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="empty">За выбранный период посещений не записано.</p>
+  {% endif %}
+
+{% endif %}
+{% endblock %}

@@ -805,3 +805,101 @@ def visit_series(conn: sqlite3.Connection, days: int) -> list[dict]:
         day = visit_day(today - timedelta(days=back))
         series.append({"day": day, "views": rows.get(day, 0)})
     return series
+
+
+# --- Журнал посещений -------------------------------------------------------
+
+# Сколько держим записи журнала. Срок обещан человеку на странице /privacy,
+# поэтому менять его здесь и там нужно вместе.
+VISIT_LOG_DAYS = 30
+
+# Перерыв, после которого считаем, что человек пришёл заново. Полчаса -
+# обычная мера: короткая пауза на чтение страницы визитом не считается.
+VISIT_GAP_MINUTES = 30
+
+
+def record_page_view(
+    conn: sqlite3.Connection, ip: str, path: str, agent: str, device: str
+) -> None:
+    """Запись в журнал посещений: адрес, время, страница, браузер.
+
+    В отличие от счётчика по дням, здесь лежат персональные данные. Записи
+    удаляются через VISIT_LOG_DAYS дней - см. cleanup_visit_log.
+    """
+    conn.execute(
+        "INSERT INTO visit_log (ip, created_at, path, user_agent, device)"
+        " VALUES (?, ?, ?, ?, ?)",
+        (ip[:64], now_iso(), path[:300], agent[:300], device[:20]),
+    )
+
+
+def cleanup_visit_log(conn: sqlite3.Connection) -> int:
+    """Удалить записи старше срока хранения. Возвращает сколько удалено."""
+    limit = (
+        datetime.now(timezone.utc) - timedelta(days=VISIT_LOG_DAYS)
+    ).isoformat(timespec="seconds")
+    cursor = conn.execute("DELETE FROM visit_log WHERE created_at < ?", (limit,))
+    return cursor.rowcount or 0
+
+
+def visit_log_since(days: int) -> str:
+    """Начало периода: «сегодня» - это с полуночи по времени Казахстана,
+    «7 дней» и «30 дней» - столько полных суток назад."""
+    now = datetime.now(KZ_TIME)
+    if days <= 1:
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    else:
+        start = (now - timedelta(days=days - 1)).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+    return start.astimezone(timezone.utc).isoformat(timespec="seconds")
+
+
+def visitors(conn: sqlite3.Connection, days: int) -> list[sqlite3.Row]:
+    """Уникальные посетители за период: по строке на адрес.
+
+    Визит и просмотр - разные вещи. Просмотр - одно открытие страницы.
+    Визит - непрерывный заход: если между открытиями прошло больше
+    VISIT_GAP_MINUTES, считаем, что человек пришёл заново.
+    """
+    return conn.execute(
+        """
+        WITH steps AS (
+          SELECT ip, created_at, device,
+                 LAG(created_at) OVER (PARTITION BY ip ORDER BY created_at) AS prev
+            FROM visit_log WHERE created_at >= ?
+        )
+        SELECT ip,
+               COUNT(*) AS views,
+               MIN(created_at) AS first_seen,
+               MAX(created_at) AS last_seen,
+               SUM(CASE WHEN prev IS NULL
+                          OR (julianday(created_at) - julianday(prev)) * 1440 > ?
+                        THEN 1 ELSE 0 END) AS visits,
+               GROUP_CONCAT(DISTINCT device) AS devices
+          FROM steps
+         GROUP BY ip
+         ORDER BY last_seen DESC
+        """,
+        (visit_log_since(days), VISIT_GAP_MINUTES),
+    ).fetchall()
+
+
+def visitors_count(conn: sqlite3.Connection, days: int) -> int:
+    row = conn.execute(
+        "SELECT COUNT(DISTINCT ip) AS n FROM visit_log WHERE created_at >= ?",
+        (visit_log_since(days),),
+    ).fetchone()
+    return int(row["n"])
+
+
+def visitor_pages(
+    conn: sqlite3.Connection, ip: str, days: int, limit: int = 300
+) -> list[sqlite3.Row]:
+    """Что смотрел один посетитель: страницы по времени, новые сверху."""
+    return conn.execute(
+        "SELECT created_at, path, device, user_agent FROM visit_log"
+        " WHERE ip = ? AND created_at >= ?"
+        " ORDER BY created_at DESC LIMIT ?",
+        (ip, visit_log_since(days), limit),
+    ).fetchall()
