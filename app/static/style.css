@@ -1173,6 +1173,20 @@ input:focus, select:focus, textarea:focus {
 
 .stat-details .table-wrap { margin-top: 10px; }
 
+/* Журнал посещений. Время и подпись браузера набраны машинным шрифтом:
+   их сравнивают глазами по столбцу, а не читают как текст. */
+.visitor-when {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.visitor-agent {
+  max-width: 320px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  word-break: break-word;
+}
+
 /* --- Заявки на размещение --- */
 
 .btn-outline {
