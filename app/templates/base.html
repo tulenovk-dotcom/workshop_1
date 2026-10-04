@@ -37,6 +37,10 @@
   </p>
 {% endif %}
 
+{% if notice_strip %}
+  <p class="mode-banner" role="status">{{ t('Сайт в тестовом режиме, информация пополняется') }}</p>
+{% endif %}
+
 <header class="site-header">
   <div class="container header-inner">
     <a class="logo" href="/">
@@ -94,5 +98,22 @@
     </p>
   </div>
 </footer>
+
+{% if notice_modal %}
+  {# Окно скрыто атрибутом hidden и открывается только скриптом. Если
+     скрипт не выполнится, посетитель просто его не увидит, а страница
+     останется рабочей: ничего поверх неё не висит. #}
+  <div class="notice-overlay" id="test-notice" hidden>
+    <div class="notice-box" role="dialog" aria-modal="true"
+         aria-labelledby="test-notice-text">
+      <button type="button" class="notice-close" data-notice-close
+              aria-label="{{ t('Закрыть') }}">×</button>
+      <p id="test-notice-text">{{ t('Сайт работает в тестовом режиме. Мы наполняем каталог и дорабатываем страницы, поэтому часть информации может быть неполной. Будем рады видеть вас снова!') }}</p>
+      <button type="button" class="btn btn-primary notice-ok"
+              data-notice-close>{{ t('Понятно') }}</button>
+    </div>
+  </div>
+  <script src="{{ static_url('notice.js') }}" defer></script>
+{% endif %}
 </body>
 </html>

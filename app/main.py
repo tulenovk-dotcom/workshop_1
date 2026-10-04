@@ -88,6 +88,11 @@ LOGIN_WINDOW_SECONDS = 15 * 60
 LOGIN_BLOCK_SECONDS = 15 * 60
 
 SHOW_TEST_BANNER = os.environ.get("SHOW_TEST_BANNER") == "1"
+
+# Уведомление о тестовом режиме: тонкая полоса над шапкой и окно при первом
+# визите. Включено по умолчанию; чтобы убрать, достаточно задать TEST_NOTICE=0
+# в настройках сервера - править код и выкатывать новую версию не нужно.
+TEST_NOTICE = os.environ.get("TEST_NOTICE", "1") != "0"
 NOINDEX = os.environ.get("NOINDEX") == "1"
 
 # Демонстрационные записи наливаются в пустую базу только по явной просьбе.
@@ -473,6 +478,7 @@ templates.env.globals.update(
     MEDICAL_SPECIALTIES=MEDICAL_SPECIALTIES,
     TYPES_WITH_SPECIALTY=TYPES_WITH_SPECIALTY,
     SHOW_TEST_BANNER=SHOW_TEST_BANNER,
+    TEST_NOTICE=TEST_NOTICE,
     NOINDEX=NOINDEX,
     SITE_URL=SITE_URL,
     ADMIN_ENABLED=ADMIN_ENABLED,
@@ -580,6 +586,14 @@ def render(request: Request, template: str, context: dict) -> HTMLResponse:
         "LANGUAGES": LANGUAGES,
         "current_path": current_path(request),
     }
+    # Уведомление о тестовом режиме показывается только посетителям: в
+    # админке оно ни к чему. На странице «Для специалистов» остаётся одна
+    # полоса, без окна, - там форма, и закрывать её нечем нельзя.
+    public = not request.url.path.startswith("/admin")
+    context["notice_strip"] = TEST_NOTICE and public
+    context["notice_modal"] = (
+        context["notice_strip"] and request.url.path != "/dlya-specialistov"
+    )
     return templates.TemplateResponse(request, template, context)
 
 
