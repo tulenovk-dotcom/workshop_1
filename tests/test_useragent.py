@@ -11,7 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.useragent import device_from_agent, looks_like_bot  # noqa: E402
+from app.useragent import BOT_MARKERS, device_from_agent, looks_like_bot  # noqa: E402
 
 # Подписи настоящих браузеров. Ни одна из них не должна быть принята за
 # робота: иначе счётчик перестанет видеть живых людей.
@@ -83,6 +83,20 @@ class ОтсевРоботов(unittest.TestCase):
     def test_google_lens_именно_тот_случай(self):
         """Подпись, из-за которой обход Google попал в счётчик как люди."""
         self.assertTrue(looks_like_bot("Google-Lens"))
+
+    def test_пробелы_библиотеки_закрыты_своим_списком(self):
+        """Этих подписей в списке crawlerdetect на 30.07.2026 нет.
+
+        Проверяем именно свой список, а не общую функцию: если однажды его
+        решат выбросить как лишний, тест упадёт и напомнит, почему он есть.
+        """
+        for подпись in ("Google-Lens", "Bytespider"):
+            with self.subTest(подпись):
+                низ = подпись.lower()
+                self.assertTrue(
+                    any(mark in низ for mark in BOT_MARKERS),
+                    f"{подпись} держится только на своём списке - не убирайте его",
+                )
 
     def test_подпись_отсутствует(self):
         self.assertTrue(looks_like_bot(None))
