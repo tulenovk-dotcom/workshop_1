@@ -904,3 +904,38 @@ def visitor_pages(
         " ORDER BY created_at DESC LIMIT ?",
         (ip, visit_log_since(days), limit),
     ).fetchall()
+
+
+def purge_bot_visits(conn: sqlite3.Connection) -> int:
+    """Разовая уборка: убрать из журнала записи роботов, попавшие туда
+    раньше, когда отсев их пропускал.
+
+    Ждать тридцати дней, пока они уйдут по сроку, незачем: подпись браузера
+    сохранена у каждой записи, значит робота видно и задним числом.
+
+    Счётчик по дням поправляется вместе с журналом - иначе график остался бы
+    завышенным, а таблица посетителей уже нет, и числа перестали бы сходиться
+    между собой.
+    """
+    from .useragent import looks_like_bot
+
+    rows = conn.execute("SELECT id, created_at, user_agent FROM visit_log").fetchall()
+    bots = [row for row in rows if looks_like_bot(row["user_agent"])]
+    if not bots:
+        return 0
+
+    by_day: dict = {}
+    for row in bots:
+        day = visit_day(datetime.fromisoformat(row["created_at"]))
+        by_day[day] = by_day.get(day, 0) + 1
+
+    conn.executemany(
+        "DELETE FROM visit_log WHERE id = ?", [(row["id"],) for row in bots]
+    )
+    # MAX(0, ...) - на случай, если часть записей журнала уже ушла по сроку
+    # хранения, а счётчик дня их ещё помнит. Отрицательным он быть не должен.
+    conn.executemany(
+        "UPDATE visit_days SET views = MAX(0, views - ?) WHERE day = ?",
+        [(count, day) for day, count in by_day.items()],
+    )
+    return len(bots)
