@@ -25,7 +25,7 @@
                   <strong>{{ a.name }}</strong>
                   <span class="muted">{{ a.city }} · {{ APPLICANT_KINDS.get(a.applicant_kind, a.applicant_kind) }}</span>
                 </div>
-                <p class="muted">{{ a.created_at[:10] }} · {{ a.contact_person }}
+                <p class="muted">{{ a.created_at|local_date }} · {{ a.contact_person }}
                   · {{ a.phone|mask_phone }}</p>
                 {% set marks = health_markers(a.name, a.comment) %}
                 {% if marks %}
@@ -53,7 +53,7 @@
                   <strong>{{ r.author_name }}</strong>
                   <span class="review-rating">{{ '★' * r.rating }}{{ '☆' * (5 - r.rating) }}</span>
                 </div>
-                <p class="muted">{{ r.created_at[:10] }} ·
+                <p class="muted">{{ r.created_at|local_date }} ·
                   <a href="/providers/{{ r.provider_id }}">{{ r.provider_name }}</a></p>
                 <p class="moderation-text">{{ r.text|truncate(160) }}</p>
                 {% set marks = health_markers(r.author_name, r.text) %}
@@ -90,7 +90,7 @@
                   <strong>{{ r.name }}</strong>
                   <span class="muted">{{ r.contact|mask_contact }}</span>
                 </div>
-                <p class="muted">{{ r.created_at[:10] }}</p>
+                <p class="muted">{{ r.created_at|local_date }}</p>
                 <p class="moderation-text">{{ r.message|truncate(160) }}</p>
                 <div class="row-actions">
                   <a class="btn btn-small" href="/admin/requests/{{ r.id }}">Открыть</a>

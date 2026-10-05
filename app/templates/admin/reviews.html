@@ -19,7 +19,7 @@
         <div class="review-head">
           <strong><a href="/admin/reviews/{{ r.id }}">{{ r.author_name }}</a></strong>
           <span class="review-rating">{{ '★' * r.rating }}{{ '☆' * (5 - r.rating) }}</span>
-          <span class="review-date">{{ r.created_at[:10] }}</span>
+          <span class="review-date">{{ r.created_at|local_date }}</span>
           {% set marks = health_markers(r.author_name, r.text) %}
           {% if marks %}<span class="chip chip-flag">о здоровье: {{ marks|join(', ') }}</span>{% endif %}
           {% if r.anonymized_at %}<span class="chip chip-test">обезличен</span>{% endif %}
@@ -52,7 +52,7 @@
         <div class="review-head">
           <strong><a href="/admin/reviews/{{ r.id }}">{{ r.author_name }}</a></strong>
           <span class="review-rating">{{ '★' * r.rating }}{{ '☆' * (5 - r.rating) }}</span>
-          <span class="review-date">{{ r.created_at[:10] }}</span>
+          <span class="review-date">{{ r.created_at|local_date }}</span>
           {% set marks = health_markers(r.author_name, r.text) %}
           {% if marks %}<span class="chip chip-flag">о здоровье: {{ marks|join(', ') }}</span>{% endif %}
           {% if r.anonymized_at %}<span class="chip chip-test">обезличен</span>{% endif %}
@@ -79,7 +79,7 @@
         <div class="review-head">
           <strong><a href="/admin/reviews/{{ r.id }}">{{ r.author_name }}</a></strong>
           <span class="review-rating">{{ '★' * r.rating }}{{ '☆' * (5 - r.rating) }}</span>
-          <span class="review-date">{{ r.created_at[:10] }}</span>
+          <span class="review-date">{{ r.created_at|local_date }}</span>
           {% set marks = health_markers(r.author_name, r.text) %}
           {% if marks %}<span class="chip chip-flag">о здоровье: {{ marks|join(', ') }}</span>{% endif %}
           {% if r.anonymized_at %}<span class="chip chip-test">обезличен</span>{% endif %}
