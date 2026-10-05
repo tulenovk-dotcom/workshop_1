@@ -5,7 +5,6 @@ import re
 import secrets
 import time
 import zlib
-from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
 
@@ -64,6 +63,7 @@ from .reference import (
     normalize_city,
 )
 from .seed import seed_if_empty
+from .timeutil import local_date, local_time
 
 log = logging.getLogger("app")
 
@@ -496,29 +496,6 @@ def store_image(data: bytes, extension: str) -> str:
 async def save_logo(upload, current: str) -> str:
     image = await read_image(upload)
     return store_image(*image) if image else current
-
-
-def local_time(value: str) -> str:
-    """Время из базы в том виде, в каком его читает человек.
-
-    В базе время хранится по Гринвичу - так у всех записей единый отсчёт,
-    и сравнение не зависит от перевода часов. Но показывать его в этом виде
-    нельзя: администратор в Казахстане увидит время на пять часов меньше
-    своего и решит, что счётчик врёт.
-    """
-    try:
-        moment = datetime.fromisoformat(value)
-    except (TypeError, ValueError):
-        return value or ""
-    if moment.tzinfo is None:
-        moment = moment.replace(tzinfo=timezone.utc)
-    return moment.astimezone(crud.KZ_TIME).strftime("%d.%m.%Y %H:%M")
-
-
-def local_date(value: str) -> str:
-    """Только дата, тоже по Казахстану. Для списков, где время не нужно."""
-    shown = local_time(value)
-    return shown.split(" ")[0] if " " in shown else shown
 
 
 templates.env.filters["local_time"] = local_time
