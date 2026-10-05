@@ -24,8 +24,6 @@ from .database import DB_PATH, db_session, init_db, read_or_create_secret
 from .notifications import notify_new_application
 from .i18n import (
     DEFAULT_LANGUAGE,
-    LANG_COOKIE,
-    LANG_COOKIE_MAX_AGE,
     LANGUAGES,
     is_supported,
     localized_field,
@@ -267,6 +265,46 @@ def device_from_agent(agent: str) -> str:
     if "mobi" in low or "android" in low or "iphone" in low:
         return "телефон"
     return "компьютер"
+
+
+@app.middleware("http")
+async def language_prefix(request: Request, call_next):
+    """Срезает «/kk» с начала адреса и помечает запрос как казахский.
+
+    Делается до выбора маршрута, поэтому все обработчики остаются прежними:
+    они видят адрес без префикса и не знают про языки вовсе.
+    """
+    path = request.scope["path"]
+
+    # Старый способ выбора языка - параметр ?lang=kk. Он успел побывать на
+    # боевом сайте, поэтому уводим с него постоянным редиректом, а не просто
+    # перестаём понимать: ссылки могли куда-то попасть.
+    if request.query_params.get("lang"):
+        rest = [
+            f"{key}={value}"
+            for key, value in request.query_params.multi_items()
+            if key != "lang"
+        ]
+        target = path
+        if request.query_params.get("lang") != DEFAULT_LANGUAGE:
+            target = f"{KK_PREFIX}/" if path == "/" else KK_PREFIX + path
+        if rest:
+            target += "?" + "&".join(rest)
+        return RedirectResponse(target, status_code=301)
+
+    if path == KK_PREFIX:
+        return RedirectResponse(KK_PREFIX + "/", status_code=301)
+
+    if path.startswith(KK_PREFIX + "/"):
+        rest = path[len(KK_PREFIX):]
+        # Админки, статики и служебных файлов на казахском не бывает: они
+        # одни на весь сайт. Иначе у каждой страницы появился бы двойник.
+        if rest.startswith(NO_PREFIX_PATHS):
+            return PlainTextResponse("Страница не найдена", status_code=404)
+        request.scope["path"] = rest
+        request.scope["lang_prefix"] = KK_PREFIX
+
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -598,37 +636,63 @@ def city_from_form(form) -> str:
     return normalize_city(raw)
 
 
-def lang_param(request: Request) -> str:
-    """Язык, заданный прямо в адресе параметром `?lang=`.
+# Префикс казахской версии. Русская версия живёт без префикса, казахская -
+# с ним: erekshe.kz/methods и erekshe.kz/kk/methods. Язык определяется только
+# по адресу, cookie и язык браузера на выбор не влияют - иначе поисковик
+# видел бы одну версию вместо двух, а посетитель по ссылке попадал бы не на
+# тот язык, на который ему дали ссылку.
+KK_PREFIX = "/kk"
 
-    Нужен поисковикам: они ходят без cookie, и без такого параметра у
-    казахской версии не было бы собственного адреса, а значит, и hreflang
-    ссылаться было бы не на что. Голый адрес - русская версия.
-    """
-    code = request.query_params.get("lang", "")
-    return code if is_supported(code) and code != DEFAULT_LANGUAGE else ""
+# Что под префиксом не живёт: админка, статика и служебные файлы. Они одни
+# на весь сайт, и второй их копии на казахском быть не должно.
+NO_PREFIX_PATHS = ("/admin", "/static", "/robots.txt", "/sitemap.xml", "/lang")
+
+
+def lang_prefix(request: Request) -> str:
+    """«/kk» для казахской версии, пустая строка для русской."""
+    return request.scope.get("lang_prefix", "")
 
 
 def request_lang(request: Request) -> str:
-    """Язык страницы: сначала адрес, потом cookie, иначе русский."""
-    code = request.query_params.get("lang", "")
-    if is_supported(code):
-        return code
-    code = request.cookies.get(LANG_COOKIE, "")
-    return code if is_supported(code) else DEFAULT_LANGUAGE
+    """Язык страницы. Решает только адрес."""
+    return "kk" if lang_prefix(request) else DEFAULT_LANGUAGE
+
+
+def local_path(request: Request, path: str) -> str:
+    """Внутренний адрес в текущей языковой версии.
+
+    На казахской странице все ссылки должны вести на казахские страницы,
+    иначе посетитель вываливается в русскую версию с первого же перехода.
+    """
+    prefix = lang_prefix(request)
+    if not prefix:
+        return path
+    return f"{prefix}/" if path == "/" else prefix + path
+
+
+def local_redirect(request: Request, path: str) -> RedirectResponse:
+    return RedirectResponse(local_path(request, path), status_code=REDIRECT)
 
 
 def language_urls(path: str) -> dict:
-    """Адреса этой же страницы на каждом языке - для canonical и hreflang."""
-    base = SITE_URL + path
-    return {"ru": base, "kk": f"{base}?lang=kk"}
+    """Адреса этой же страницы на обоих языках - для canonical и hreflang.
+
+    На вход идёт адрес без префикса, тот, что видит маршрут.
+    """
+    kk = f"{KK_PREFIX}/" if path == "/" else KK_PREFIX + path
+    return {"ru": SITE_URL + path, "kk": SITE_URL + kk}
 
 
-def current_path(request: Request) -> str:
-    """Текущий адрес с параметрами - чтобы вернуться на ту же страницу
-    после переключения языка."""
-    query = request.url.query
-    return f"{request.url.path}?{query}" if query else request.url.path
+def language_links(request: Request) -> dict:
+    """Куда ведёт переключатель языка: та же страница в другой версии.
+
+    Параметры фильтров сохраняем - человек переключает язык, а не сбрасывает
+    поиск.
+    """
+    path = request.url.path
+    query = f"?{request.url.query}" if request.url.query else ""
+    kk = f"{KK_PREFIX}/" if path == "/" else KK_PREFIX + path
+    return {"ru": path + query, "kk": kk + query}
 
 
 def render(request: Request, template: str, context: dict) -> HTMLResponse:
@@ -638,11 +702,16 @@ def render(request: Request, template: str, context: dict) -> HTMLResponse:
         "lang": lang,
         # Адрес страницы без параметров: для canonical и og:url. Параметры
         # фильтров в них не нужны - это одна и та же страница каталога.
-        "page_url": SITE_URL + request.url.path + (
-            "?lang=kk" if lang_param(request) else ""
-        ),
-        # Адреса обеих языковых версий: для тегов hreflang в шапке страницы.
+        # canonical указывает сам на себя: русская и казахская версии -
+        # разные страницы. Параметры фильтров в адрес не попадают: каталог
+        # с фильтрами и без них это одна страница.
+        "page_url": SITE_URL + local_path(request, request.url.path),
+        # Адреса обеих версий - для тегов hreflang в шапке страницы.
         "alt_urls": language_urls(request.url.path),
+        # Внутренняя ссылка в текущей языковой версии.
+        "url": lambda path: local_path(request, path),
+        # Куда ведёт переключатель языка.
+        "lang_links": language_links(request),
         # Функция перевода привязана к языку запроса и поэтому не может
         # быть глобальной: у каждого посетителя свой язык.
         "t": lambda text: translate(text, lang),
@@ -652,7 +721,6 @@ def render(request: Request, template: str, context: dict) -> HTMLResponse:
         # Города берутся из справочника, у них тоже пара колонок name/name_kk.
         "city_text": lambda row: localized_field(row, "name", lang),
         "LANGUAGES": LANGUAGES,
-        "current_path": current_path(request),
     }
     # Уведомление о тестовом режиме показывается только посетителям: в
     # админке оно ни к чему. На странице «Для специалистов» остаётся одна
@@ -667,7 +735,8 @@ def render(request: Request, template: str, context: dict) -> HTMLResponse:
 
 @app.get("/lang/{code}")
 def set_language(request: Request, code: str, next: str = "/"):
-    """Переключение языка: запоминаем выбор и возвращаем на ту же страницу.
+    """Старый переключатель языка. Остался ради ссылок, которые уже где-то
+    сохранены: теперь он просто отправляет на нужную версию адреса.
 
     Адрес возврата принимаем только свой: «//чужой-сайт» - это тоже
     относительный на вид адрес, но уводит он наружу.
@@ -675,15 +744,11 @@ def set_language(request: Request, code: str, next: str = "/"):
     if not is_supported(code):
         raise HTTPException(status_code=404, detail="Неизвестный язык")
     back = next if next.startswith("/") and not next.startswith("//") else "/"
-    response = RedirectResponse(back, status_code=REDIRECT)
-    response.set_cookie(
-        LANG_COOKIE,
-        code,
-        max_age=LANG_COOKIE_MAX_AGE,
-        httponly=True,
-        samesite="lax",
-    )
-    return response
+    if back.startswith(KK_PREFIX + "/") or back == KK_PREFIX:
+        back = back[len(KK_PREFIX):] or "/"
+    if code != DEFAULT_LANGUAGE:
+        back = f"{KK_PREFIX}/" if back == "/" else KK_PREFIX + back
+    return RedirectResponse(back, status_code=301)
 
 
 # --- Публичная часть --------------------------------------------------------
@@ -801,9 +866,7 @@ def add_review(
             },
         )
         crud.create_consent(conn, consent_data("review", review_id, request))
-    return RedirectResponse(
-        f"/providers/{provider_id}?review=ok#reviews", status_code=REDIRECT
-    )
+    return local_redirect(request, f"/providers/{provider_id}?review=ok#reviews")
 
 
 @app.get("/methods", response_class=HTMLResponse)
@@ -872,7 +935,7 @@ async def privacy_request_create(request: Request):
 
     # Та же ловушка для ботов, что и в заявке на размещение.
     if form.get("company_site", "").strip():
-        return RedirectResponse("/privacy/request/sent", status_code=REDIRECT)
+        return local_redirect(request, "/privacy/request/sent")
 
     data, errors = clean_request(form)
     with db_session() as conn:
@@ -889,7 +952,7 @@ async def privacy_request_create(request: Request):
             )
         data["author_ip_hash"] = ip_hash
         crud.create_request(conn, data)
-    return RedirectResponse("/privacy/request/sent", status_code=REDIRECT)
+    return local_redirect(request, "/privacy/request/sent")
 
 
 @app.get("/privacy/request/sent", response_class=HTMLResponse)
@@ -914,11 +977,12 @@ def robots() -> str:
 
 
 # Страницы, которые есть всегда и не зависят от содержимого базы.
+# «Помощь бесплатно» в карту не входит: страница пустая, и звать на неё
+# поисковик - значит самим показать ему пустышку. Вернуть, когда наполнится.
 SITEMAP_PAGES = (
     "/",
     "/methods",
     "/early-signs",
-    "/free-help",
     "/dlya-specialistov",
     "/privacy",
 )
@@ -1105,7 +1169,7 @@ async def application_create(request: Request):
 
     # Honeypot: поле спрятано от людей, его заполняют только боты.
     if form.get("company_site", "").strip():
-        return RedirectResponse("/dlya-specialistov/sent", status_code=REDIRECT)
+        return local_redirect(request, "/dlya-specialistov/sent")
 
     upload = raw.get("logo")
     sent_file = upload is not None and getattr(upload, "filename", "")
@@ -1144,7 +1208,7 @@ async def application_create(request: Request):
         # Оповещение не должно мешать приёму заявки.
         pass
 
-    return RedirectResponse("/dlya-specialistov/sent", status_code=REDIRECT)
+    return local_redirect(request, "/dlya-specialistov/sent")
 
 
 @app.get("/dlya-specialistov/sent", response_class=HTMLResponse)

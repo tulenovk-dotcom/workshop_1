@@ -12,7 +12,7 @@
 </section>
 
 <p class="actions">
-  <a class="btn btn-primary" href="/">{{ t('Вернуться в каталог') }}</a>
-  <a class="btn btn-ghost" href="/privacy">{{ t('Политика конфиденциальности') }}</a>
+  <a class="btn btn-primary" href="{{ url('/') }}">{{ t('Вернуться в каталог') }}</a>
+  <a class="btn btn-ghost" href="{{ url('/privacy') }}">{{ t('Политика конфиденциальности') }}</a>
 </p>
 {% endblock %}

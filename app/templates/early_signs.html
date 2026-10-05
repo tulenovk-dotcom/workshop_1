@@ -116,10 +116,10 @@
   </p>
 
   <ul class="next-links">
-    <li><a href="/?specialty={{ 'Детский психиатр'|urlencode }}">{{ t('Детские психиатры в каталоге') }}</a></li>
-    <li><a href="/?specialty={{ 'Детский невролог'|urlencode }}">{{ t('Детские неврологи в каталоге') }}</a></li>
-    <li><a href="/?specialty={{ 'Психолог'|urlencode }}">{{ t('Психологи в каталоге') }}</a></li>
-    <li><a href="/methods">{{ t('Методы помощи и их доказательность') }}</a></li>
+    <li><a href="{{ url('/') }}?specialty={{ 'Детский психиатр'|urlencode }}">{{ t('Детские психиатры в каталоге') }}</a></li>
+    <li><a href="{{ url('/') }}?specialty={{ 'Детский невролог'|urlencode }}">{{ t('Детские неврологи в каталоге') }}</a></li>
+    <li><a href="{{ url('/') }}?specialty={{ 'Психолог'|urlencode }}">{{ t('Психологи в каталоге') }}</a></li>
+    <li><a href="{{ url('/methods') }}">{{ t('Методы помощи и их доказательность') }}</a></li>
   </ul>
 </section>
 

@@ -50,7 +50,7 @@
 
 <header class="site-header">
   <div class="container header-inner">
-    <a class="logo" href="/">
+    <a class="logo" href="{{ url('/') }}">
       {# alt пустой: название сайта стоит рядом текстом, и читалка
          не должна произносить его дважды. #}
       {# Ширина и высота указаны в том размере, в каком знак стоит на
@@ -61,9 +61,9 @@
       <span class="logo-text">{{ t('Каталог помощи детям с РАС') }}<span>{{ t('Казахстан') }}</span></span>
     </a>
     <nav class="site-nav">
-      <a href="/">{{ t('Каталог') }}</a>
-      <a href="/methods">{{ t('Методы помощи') }}</a>
-      <a href="/early-signs">{{ t('Ранние признаки аутизма') }}</a>
+      <a href="{{ url('/') }}">{{ t('Каталог') }}</a>
+      <a href="{{ url('/methods') }}">{{ t('Методы помощи') }}</a>
+      <a href="{{ url('/early-signs') }}">{{ t('Ранние признаки аутизма') }}</a>
     </nav>
     <div class="header-auth">
       {# Выбор языка одной плашкой из двух половинок. Текущий язык залит
@@ -73,11 +73,11 @@
           {% if code == lang %}
             <span class="lang-current" aria-current="true">{{ label }}</span>
           {% else %}
-            <a href="/lang/{{ code }}?next={{ current_path|urlencode }}">{{ label }}</a>
+            <a href="{{ lang_links[code] }}" hreflang="{{ code }}">{{ label }}</a>
           {% endif %}
         {%- endfor -%}
       </p>
-      <a class="btn-outline" href="/dlya-specialistov">{{ t('Разместиться в каталоге') }}</a>
+      <a class="btn-outline" href="{{ url('/dlya-specialistov') }}">{{ t('Разместиться в каталоге') }}</a>
       {% if request.session.get('admin') %}
         <a class="auth-link auth-link-quiet" href="/admin">{{ t('Админка') }}</a>
         <a class="auth-link auth-link-quiet" href="/admin/logout">{{ t('Выйти') }}</a>
@@ -99,9 +99,9 @@
       {{ t('Данные о местах занятий и отзывы размещают пользователи. Уточняйте актуальные цены, возраст детей и программу занятий напрямую на месте.') }}
     </p>
     <p class="footer-links">
-      <a href="/dlya-specialistov">{{ t('Разместиться в каталоге') }}</a>
-      <a href="/privacy">{{ t('Политика конфиденциальности') }}</a>
-      <a href="/privacy/request">{{ t('Удалить мои данные') }}</a>
+      <a href="{{ url('/dlya-specialistov') }}">{{ t('Разместиться в каталоге') }}</a>
+      <a href="{{ url('/privacy') }}">{{ t('Политика конфиденциальности') }}</a>
+      <a href="{{ url('/privacy/request') }}">{{ t('Удалить мои данные') }}</a>
     </p>
   </div>
 </footer>

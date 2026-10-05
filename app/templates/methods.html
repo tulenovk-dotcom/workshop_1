@@ -28,7 +28,7 @@
             <h3>{{ method_text(m) }}</h3>
             <p>{{ method_text(m, 'description') }}</p>
             <p class="method-links">
-              <a href="/?method={{ m.code }}">{{ t('Найти, где занимаются этим методом') }}</a>
+              <a href="{{ url('/') }}?method={{ m.code }}">{{ t('Найти, где занимаются этим методом') }}</a>
             </p>
           </article>
         {% endfor %}
