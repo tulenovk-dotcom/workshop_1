@@ -98,7 +98,7 @@
           <div class="review-head">
             <strong>{{ r.author_name }}</strong>
             <span class="review-rating">{{ '★' * r.rating }}{{ '☆' * (5 - r.rating) }}</span>
-            <span class="review-date">{{ r.created_at[:10] }}</span>
+            <span class="review-date">{{ r.created_at|local_date }}</span>
           </div>
           <p>{{ r.text }}</p>
         </li>

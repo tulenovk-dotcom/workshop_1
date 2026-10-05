@@ -15,7 +15,7 @@
 <article class="provider">
   <div class="card-head">
     <span class="chip status-{{ item.status }}">{{ REQUEST_STATUSES.get(item.status, item.status) }}</span>
-    <span class="muted">Получено {{ item.created_at[:10] }}</span>
+    <span class="muted">Получено {{ item.created_at|local_date }}</span>
   </div>
 
   <h2>{{ item.name }}</h2>
@@ -24,7 +24,7 @@
   <dl class="info-grid">
     <div><dt>Контакт для ответа</dt><dd>{{ item.contact }}</dd></div>
     <div><dt>Отпечаток адреса</dt><dd>{{ item.author_ip_hash|short_hash }}</dd></div>
-    <div><dt>Обновлено</dt><dd>{{ item.updated_at[:10] }}</dd></div>
+    <div><dt>Обновлено</dt><dd>{{ item.updated_at|local_date }}</dd></div>
   </dl>
 
   <p class="hint">

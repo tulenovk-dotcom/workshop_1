@@ -10,7 +10,7 @@
 
 {% if review.anonymized_at %}
   <p class="notice notice-warn">
-    Отзыв обезличен {{ review.anonymized_at[:10] }}: имя автора и текст затёрты,
+    Отзыв обезличен {{ review.anonymized_at|local_date }}: имя автора и текст затёрты,
     отзыв снят с публикации.
   </p>
 {% endif %}
@@ -30,7 +30,7 @@
       {% else %}На модерации{% endif %}
     </span>
     <span class="review-rating">{{ '★' * review.rating }}{{ '☆' * (5 - review.rating) }}</span>
-    <span class="muted">Оставлен {{ review.created_at[:10] }}</span>
+    <span class="muted">Оставлен {{ review.created_at|local_date }}</span>
   </div>
 
   <h2>{{ review.author_name }}</h2>
@@ -47,8 +47,8 @@
     <div><dt>Согласие на обработку</dt>
       <dd>
         {% if consent %}
-          дано {{ consent.given_at[:10] }}, политика версии {{ consent.policy_version }}
-          {% if consent.revoked_at %}<br>отозвано {{ consent.revoked_at[:10] }}{% endif %}
+          дано {{ consent.given_at|local_date }}, политика версии {{ consent.policy_version }}
+          {% if consent.revoked_at %}<br>отозвано {{ consent.revoked_at|local_date }}{% endif %}
         {% else %}
           не записано (отзыв оставлен до введения журнала согласий)
         {% endif %}

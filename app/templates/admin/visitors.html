@@ -37,7 +37,7 @@
         <tbody>
           {% for row in pages %}
             <tr>
-              <td class="visitor-when">{{ row.created_at[:10] }} {{ row.created_at[11:16] }}</td>
+              <td class="visitor-when">{{ row.created_at|local_time }}</td>
               <td><a href="{{ row.path }}">{{ row.path }}</a></td>
               <td>{{ row.device }}</td>
               <td class="visitor-agent">{{ row.user_agent }}</td>
@@ -90,8 +90,8 @@
           {% for row in rows %}
             <tr>
               <td><a href="/admin/visitors?days={{ days }}&ip={{ row.ip|urlencode }}">{{ row.ip }}</a></td>
-              <td class="visitor-when">{{ row.first_seen[:10] }} {{ row.first_seen[11:16] }}</td>
-              <td class="visitor-when">{{ row.last_seen[:10] }} {{ row.last_seen[11:16] }}</td>
+              <td class="visitor-when">{{ row.first_seen|local_time }}</td>
+              <td class="visitor-when">{{ row.last_seen|local_time }}</td>
               <td class="stat-col-num">{{ row.visits }}</td>
               <td class="stat-col-num">{{ row.views }}</td>
               <td>{{ row.devices }}</td>

@@ -38,7 +38,7 @@
       <tbody>
         {% for r in requests %}
           <tr>
-            <td>{{ r.created_at[:10] }}</td>
+            <td>{{ r.created_at|local_date }}</td>
             <td><a href="/admin/requests/{{ r.id }}">{{ r.name }}</a></td>
             <td class="muted">{{ r.contact|mask_contact }}</td>
             <td>{{ r.message|truncate(120) }}</td>

@@ -33,7 +33,7 @@
     {% for a in actions %}
       <li>
         <strong>{{ 'Удаление' if a.action == 'delete' else 'Обезличивание' }}</strong>
-        <span class="muted">{{ a.created_at[:16]|replace('T', ' ') }}</span>
+        <span class="muted">{{ a.created_at|local_time }}</span>
         {% if a.reason %}<div class="muted">Основание: {{ a.reason }}</div>{% endif %}
       </li>
     {% endfor %}

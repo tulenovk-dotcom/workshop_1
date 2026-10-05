@@ -63,6 +63,7 @@ from .reference import (
     normalize_city,
 )
 from .seed import seed_if_empty
+from .timeutil import local_date, local_time
 
 log = logging.getLogger("app")
 
@@ -497,6 +498,8 @@ async def save_logo(upload, current: str) -> str:
     return store_image(*image) if image else current
 
 
+templates.env.filters["local_time"] = local_time
+templates.env.filters["local_date"] = local_date
 templates.env.filters["price"] = format_price
 templates.env.filters["initials"] = initials
 templates.env.filters["hue"] = name_hue

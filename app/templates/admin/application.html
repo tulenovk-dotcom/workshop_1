@@ -15,7 +15,7 @@
 
 {% if application.anonymized_at %}
   <p class="notice notice-warn">
-    Заявка обезличена {{ application.anonymized_at[:10] }}: контакты затёрты,
+    Заявка обезличена {{ application.anonymized_at|local_date }}: контакты затёрты,
     связаться с заявителем по ней уже нельзя.
   </p>
 {% endif %}
@@ -31,7 +31,7 @@
   <div class="card-head">
     <span class="chip">{{ APPLICANT_KINDS.get(application.applicant_kind, application.applicant_kind) }}</span>
     <span class="chip status-{{ application.status }}">{{ APPLICATION_STATUSES.get(application.status, application.status) }}</span>
-    <span class="muted">Отправлена {{ application.created_at[:10] }}</span>
+    <span class="muted">Отправлена {{ application.created_at|local_date }}</span>
   </div>
 
   <div class="provider-head">
@@ -67,14 +67,14 @@
     <div><dt>Согласие на обработку</dt>
       <dd>
         {% if consent %}
-          дано {{ consent.given_at[:10] }}, политика версии {{ consent.policy_version }}
-          {% if consent.revoked_at %}<br>отозвано {{ consent.revoked_at[:10] }}{% endif %}
+          дано {{ consent.given_at|local_date }}, политика версии {{ consent.policy_version }}
+          {% if consent.revoked_at %}<br>отозвано {{ consent.revoked_at|local_date }}{% endif %}
         {% else %}
-          дано {{ application.consent_at[:10] }} (до введения журнала согласий)
+          дано {{ application.consent_at|local_date }} (до введения журнала согласий)
         {% endif %}
       </dd></div>
     <div><dt>Отпечаток адреса</dt><dd>{{ application.author_ip_hash|short_hash }}</dd></div>
-    <div><dt>Обновлена</dt><dd>{{ application.updated_at[:10] }}</dd></div>
+    <div><dt>Обновлена</dt><dd>{{ application.updated_at|local_date }}</dd></div>
   </dl>
 
   <h2>Методы</h2>
