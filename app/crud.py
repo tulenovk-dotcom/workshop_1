@@ -820,17 +820,26 @@ VISIT_GAP_MINUTES = 30
 
 
 def record_page_view(
-    conn: sqlite3.Connection, ip: str, path: str, agent: str, device: str
+    conn: sqlite3.Connection,
+    ip: str,
+    path: str,
+    agent: str,
+    device: str,
+    is_bot: bool = False,
 ) -> None:
     """Запись в журнал посещений: адрес, время, страница, браузер.
+
+    Роботы тоже записываются, но с пометкой `is_bot`. Выбрасывать их сразу
+    было бы хуже: ошибку в отсеве тогда не разобрать и не откатить - живой
+    посетитель, принятый за робота, просто исчезнет без следа.
 
     В отличие от счётчика по дням, здесь лежат персональные данные. Записи
     удаляются через VISIT_LOG_DAYS дней - см. cleanup_visit_log.
     """
     conn.execute(
-        "INSERT INTO visit_log (ip, created_at, path, user_agent, device)"
-        " VALUES (?, ?, ?, ?, ?)",
-        (ip[:64], now_iso(), path[:300], agent[:300], device[:20]),
+        "INSERT INTO visit_log (ip, created_at, path, user_agent, device, is_bot)"
+        " VALUES (?, ?, ?, ?, ?, ?)",
+        (ip[:64], now_iso(), path[:300], agent[:300], device[:20], int(is_bot)),
     )
 
 
@@ -868,7 +877,7 @@ def visitors(conn: sqlite3.Connection, days: int) -> list[sqlite3.Row]:
         WITH steps AS (
           SELECT ip, created_at, device,
                  LAG(created_at) OVER (PARTITION BY ip ORDER BY created_at) AS prev
-            FROM visit_log WHERE created_at >= ?
+            FROM visit_log WHERE created_at >= ? AND is_bot = 0
         )
         SELECT ip,
                COUNT(*) AS views,
@@ -888,7 +897,8 @@ def visitors(conn: sqlite3.Connection, days: int) -> list[sqlite3.Row]:
 
 def visitors_count(conn: sqlite3.Connection, days: int) -> int:
     row = conn.execute(
-        "SELECT COUNT(DISTINCT ip) AS n FROM visit_log WHERE created_at >= ?",
+        "SELECT COUNT(DISTINCT ip) AS n FROM visit_log"
+        " WHERE created_at >= ? AND is_bot = 0",
         (visit_log_since(days),),
     ).fetchone()
     return int(row["n"])
@@ -900,42 +910,7 @@ def visitor_pages(
     """Что смотрел один посетитель: страницы по времени, новые сверху."""
     return conn.execute(
         "SELECT created_at, path, device, user_agent FROM visit_log"
-        " WHERE ip = ? AND created_at >= ?"
+        " WHERE ip = ? AND created_at >= ? AND is_bot = 0"
         " ORDER BY created_at DESC LIMIT ?",
         (ip, visit_log_since(days), limit),
     ).fetchall()
-
-
-def purge_bot_visits(conn: sqlite3.Connection) -> int:
-    """Разовая уборка: убрать из журнала записи роботов, попавшие туда
-    раньше, когда отсев их пропускал.
-
-    Ждать тридцати дней, пока они уйдут по сроку, незачем: подпись браузера
-    сохранена у каждой записи, значит робота видно и задним числом.
-
-    Счётчик по дням поправляется вместе с журналом - иначе график остался бы
-    завышенным, а таблица посетителей уже нет, и числа перестали бы сходиться
-    между собой.
-    """
-    from .useragent import looks_like_bot
-
-    rows = conn.execute("SELECT id, created_at, user_agent FROM visit_log").fetchall()
-    bots = [row for row in rows if looks_like_bot(row["user_agent"])]
-    if not bots:
-        return 0
-
-    by_day: dict = {}
-    for row in bots:
-        day = visit_day(datetime.fromisoformat(row["created_at"]))
-        by_day[day] = by_day.get(day, 0) + 1
-
-    conn.executemany(
-        "DELETE FROM visit_log WHERE id = ?", [(row["id"],) for row in bots]
-    )
-    # MAX(0, ...) - на случай, если часть записей журнала уже ушла по сроку
-    # хранения, а счётчик дня их ещё помнит. Отрицательным он быть не должен.
-    conn.executemany(
-        "UPDATE visit_days SET views = MAX(0, views - ?) WHERE day = ?",
-        [(count, day) for day, count in by_day.items()],
-    )
-    return len(bots)

@@ -283,21 +283,24 @@ async def count_visit(request: Request, call_next):
         return response
     if not response.headers.get("content-type", "").startswith("text/html"):
         return response
-    if looks_like_bot(user_agent(request)):
-        return response
-
     global _visit_cleanup_day
     agent = user_agent(request)
+    is_bot = looks_like_bot(agent)
     day = crud.visit_day()
     try:
         with db_session() as conn:
-            crud.record_visit(conn, day)
+            # Счётчик по дням - только люди: по нему строится график.
+            if not is_bot:
+                crud.record_visit(conn, day)
+            # В журнал попадают все, но робот помечен. Так ошибку в отсеве
+            # видно и можно откатить, а не обнаружить по пропаже записей.
             crud.record_page_view(
                 conn,
                 request_ip(request),
                 request.url.path,
                 agent,
                 device_from_agent(agent),
+                is_bot,
             )
             # Чистка журнала - раз в сутки, при первом посещении нового дня.
             # Отдельного планировщика в проекте нет, а привязка к запуску
@@ -548,15 +551,10 @@ def on_startup() -> None:
         # Журнал посещений чистится и при запуске, и раз в сутки из счётчика:
         # если сайт долго не перезапускали, срок хранения всё равно соблюдён.
         removed = crud.cleanup_visit_log(conn)
-        # Записи роботов, попавшие в журнал, пока отсев их пропускал.
-        # После починки отсева таких не появляется, и уборка находит ноль.
-        bots = crud.purge_bot_visits(conn)
     if cleaned:
         log.info("Обезличено записей по истечении срока хранения: %s", cleaned)
     if removed:
         log.info("Удалено записей журнала посещений: %s", removed)
-    if bots:
-        log.info("Убрано из журнала записей роботов: %s", bots)
 
 
 def parse_int(value: str | None) -> int | None:
