@@ -103,6 +103,38 @@ class ОтсевРоботов(unittest.TestCase):
         self.assertTrue(looks_like_bot(""))
 
 
+class ПроверкаВладельца(unittest.TestCase):
+    """Четыре случая, которые владелец просил проверить отдельно.
+
+    Они собраны в своём наборе нарочно: это договорённость о поведении,
+    а не просто ещё несколько примеров.
+    """
+
+    def test_обычный_визит_засчитывается(self):
+        self.assertFalse(looks_like_bot(ЛЮДИ["Chrome на Windows"]))
+        self.assertFalse(looks_like_bot(ЛЮДИ["Safari на iPhone"]))
+
+    def test_яндекс_браузер_засчитывается(self):
+        """Живой браузер, подпись которого легче всего принять за робота."""
+        self.assertFalse(looks_like_bot(ЛЮДИ["Яндекс.Браузер"]))
+
+    def test_превью_из_telegram_не_засчитывается(self):
+        self.assertTrue(looks_like_bot("TelegramBot (like TwitterBot)"))
+
+    def test_превью_из_whatsapp_не_засчитывается(self):
+        """WhatsApp есть в списке библиотеки, но проверяем свой список:
+        если библиотека не поставится, превью всё равно не должно считаться
+        посетителем."""
+        for подпись in ("WhatsApp/2.23.20.0", "WhatsApp/2.19.81 A"):
+            with self.subTest(подпись):
+                низ = подпись.lower()
+                self.assertTrue(any(mark in низ for mark in BOT_MARKERS))
+
+    def test_превью_из_viber_не_засчитывается(self):
+        """Viber не знает ни библиотека, ни чужие списки - только наш."""
+        self.assertTrue(looks_like_bot("Viber/22.4.0"))
+
+
 class ОпределениеУстройства(unittest.TestCase):
     def test_телефон(self):
         self.assertEqual(device_from_agent(ЛЮДИ["Safari на iPhone"]), "телефон")

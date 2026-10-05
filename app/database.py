@@ -153,7 +153,10 @@ CREATE TABLE IF NOT EXISTS visit_log (
     created_at TEXT NOT NULL,
     path TEXT NOT NULL,
     user_agent TEXT NOT NULL DEFAULT '',
-    device TEXT NOT NULL DEFAULT ''
+    device TEXT NOT NULL DEFAULT '',
+    -- Роботы не выбрасываются, а помечаются: ошибку в отсеве тогда можно
+    -- разобрать и откатить, а не обнаружить по пропавшим записям.
+    is_bot INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS requests (
@@ -181,6 +184,7 @@ CREATE INDEX IF NOT EXISTS idx_data_actions_record ON data_actions(subject_type,
 CREATE INDEX IF NOT EXISTS idx_requests_status ON requests(status, created_at);
 CREATE INDEX IF NOT EXISTS idx_visit_log_time ON visit_log(created_at);
 CREATE INDEX IF NOT EXISTS idx_visit_log_ip ON visit_log(ip, created_at);
+CREATE INDEX IF NOT EXISTS idx_visit_log_people ON visit_log(is_bot, created_at);
 """
 
 
@@ -291,6 +295,15 @@ def init_db() -> None:
             conn.execute(
                 "ALTER TABLE providers ADD COLUMN logo_path TEXT NOT NULL DEFAULT ''"
             )
+        # Пометка робота у записей журнала посещений. Старым базам столбца
+        # не хватает: добавляем, существующие записи остаются людьми, пока
+        # их не пересчитает отдельная команда (deploy/BOTS.md).
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(visit_log)")}
+        if "is_bot" not in columns:
+            conn.execute(
+                "ALTER TABLE visit_log ADD COLUMN is_bot INTEGER NOT NULL DEFAULT 0"
+            )
+
         columns = {row["name"] for row in conn.execute("PRAGMA table_info(applications)")}
         if "logo_path" not in columns:
             conn.execute(
