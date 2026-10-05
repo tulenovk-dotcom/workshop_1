@@ -23,11 +23,46 @@
 """
 
 import argparse
+import sqlite3
+import sys
 from datetime import datetime
 
 from .crud import visit_day
-from .database import db_session
+from .database import DB_PATH, db_session
 from .useragent import looks_like_bot
+
+
+def проверить_базу(путь):
+    """Можно ли работать с этим файлом. Возвращает текст ошибки или None.
+
+    Проверяем до подключения нарочно: `sqlite3.connect` создаёт пустой файл,
+    если его нет, и команда молча заводила бы новую базу вместо работы с
+    настоящей. Так уже и вышло при первом запуске на сервере.
+    """
+    if not путь.exists():
+        return (
+            f"Файла базы нет: {путь}\n\n"
+            "Скорее всего, не задана переменная DB_PATH. Сайт берёт её из\n"
+            "настроек службы (EnvironmentFile), а при запуске руками их нет,\n"
+            "и путь получается другой - рядом с кодом.\n\n"
+            "Запустите, подставив тот же путь, что у службы, например:\n"
+            "    DB_PATH=/srv/erekshe/data/catalog.db .venv/bin/python -m app.recount_bots"
+        )
+    try:
+        with sqlite3.connect(f"file:{путь}?mode=ro", uri=True) as conn:
+            есть = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='visit_log'"
+            ).fetchone()
+    except sqlite3.Error as ошибка:
+        return f"Не удалось открыть базу {путь}: {ошибка}"
+    if not есть:
+        return (
+            f"В базе {путь} нет таблицы visit_log.\n\n"
+            "Похоже, это не та база, с которой работает сайт: возможно, пустой\n"
+            "файл, созданный предыдущим запуском без DB_PATH.\n"
+            "Проверьте путь в настройках службы и подставьте его в DB_PATH."
+        )
+    return None
 
 
 def разобрать(conn):
@@ -114,6 +149,14 @@ def main() -> None:
         help="записать изменения; без него команда ничего не меняет",
     )
     args = parser.parse_args()
+
+    # Какой файл открыли - печатаем всегда, даже когда всё хорошо: половина
+    # недоразумений с этой командой именно про «не та база».
+    print(f"База: {DB_PATH}")
+    беда = проверить_базу(DB_PATH)
+    if беда:
+        print(f"\n{беда}", file=sys.stderr)
+        raise SystemExit(1)
 
     with db_session() as conn:
         rows, пометить, вернуть = разобрать(conn)
