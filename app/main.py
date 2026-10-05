@@ -598,10 +598,30 @@ def city_from_form(form) -> str:
     return normalize_city(raw)
 
 
+def lang_param(request: Request) -> str:
+    """Язык, заданный прямо в адресе параметром `?lang=`.
+
+    Нужен поисковикам: они ходят без cookie, и без такого параметра у
+    казахской версии не было бы собственного адреса, а значит, и hreflang
+    ссылаться было бы не на что. Голый адрес - русская версия.
+    """
+    code = request.query_params.get("lang", "")
+    return code if is_supported(code) and code != DEFAULT_LANGUAGE else ""
+
+
 def request_lang(request: Request) -> str:
-    """Язык страницы: из cookie, а если её нет - русский."""
+    """Язык страницы: сначала адрес, потом cookie, иначе русский."""
+    code = request.query_params.get("lang", "")
+    if is_supported(code):
+        return code
     code = request.cookies.get(LANG_COOKIE, "")
     return code if is_supported(code) else DEFAULT_LANGUAGE
+
+
+def language_urls(path: str) -> dict:
+    """Адреса этой же страницы на каждом языке - для canonical и hreflang."""
+    base = SITE_URL + path
+    return {"ru": base, "kk": f"{base}?lang=kk"}
 
 
 def current_path(request: Request) -> str:
@@ -618,7 +638,11 @@ def render(request: Request, template: str, context: dict) -> HTMLResponse:
         "lang": lang,
         # Адрес страницы без параметров: для canonical и og:url. Параметры
         # фильтров в них не нужны - это одна и та же страница каталога.
-        "page_url": SITE_URL + request.url.path,
+        "page_url": SITE_URL + request.url.path + (
+            "?lang=kk" if lang_param(request) else ""
+        ),
+        # Адреса обеих языковых версий: для тегов hreflang в шапке страницы.
+        "alt_urls": language_urls(request.url.path),
         # Функция перевода привязана к языку запроса и поэтому не может
         # быть глобальной: у каждого посетителя свой язык.
         "t": lambda text: translate(text, lang),
@@ -880,12 +904,24 @@ def robots() -> str:
     Карту сайта показываем только открытому сайту: закрытому она ни к чему."""
     if NOINDEX:
         return "User-agent: *\nDisallow: /\n"
-    return f"User-agent: *\nDisallow:\nSitemap: {SITE_URL}/sitemap.xml\n"
+    # Админка закрыта и так - без пароля туда не войти, - но и звать в неё
+    # робота незачем: он будет ходить по страницам входа и ничего не найдёт.
+    return (
+        "User-agent: *\n"
+        "Disallow: /admin\n"
+        f"Sitemap: {SITE_URL}/sitemap.xml\n"
+    )
 
 
 # Страницы, которые есть всегда и не зависят от содержимого базы.
-# «Помощь бесплатно» в список не входит: страница пустая и из меню убрана.
-SITEMAP_PAGES = ("/", "/methods", "/early-signs", "/dlya-specialistov", "/privacy")
+SITEMAP_PAGES = (
+    "/",
+    "/methods",
+    "/early-signs",
+    "/free-help",
+    "/dlya-specialistov",
+    "/privacy",
+)
 
 
 @app.get("/sitemap.xml")
@@ -896,20 +932,40 @@ def sitemap() -> Response:
     Закрытый от поисковиков сайт отдаёт пустую карту: так ответ остаётся
     валидным XML, а приглашать робота на закрытые страницы незачем.
     """
-    urls = []
+    paths = []
     if not NOINDEX:
-        urls = [SITE_URL + path for path in SITEMAP_PAGES]
+        paths = list(SITEMAP_PAGES)
         with db_session() as conn:
-            urls += [
-                f"{SITE_URL}/providers/{row['id']}"
+            # Карточки берём из базы на каждый запрос: завели новое место -
+            # оно появилось в карте само, без правки кода.
+            paths += [
+                f"/providers/{row['id']}"
                 for row in crud.list_providers_admin(conn)
                 if not row["is_test"]
             ]
-    body = "".join(f"<url><loc>{escape(url)}</loc></url>" for url in urls)
+
+    body = []
+    for path in paths:
+        alt = language_urls(path)
+        # У каждой страницы два адреса - по одному на язык, - и в каждой
+        # записи перечислены оба. Так положено: ссылки должны быть взаимными,
+        # иначе поисковик связку не признает.
+        links = "".join(
+            f'<xhtml:link rel="alternate" hreflang="{code}" href="{escape(url)}"/>'
+            for code, url in (("ru", alt["ru"]), ("kk", alt["kk"]))
+        )
+        links += (
+            '<xhtml:link rel="alternate" hreflang="x-default"'
+            f' href="{escape(alt["ru"])}"/>'
+        )
+        for url in (alt["ru"], alt["kk"]):
+            body.append(f"<url><loc>{escape(url)}</loc>{links}</url>")
+
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>'
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
-        f"{body}</urlset>"
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"'
+        ' xmlns:xhtml="http://www.w3.org/1999/xhtml">'
+        f'{"".join(body)}</urlset>'
     )
     return Response(content=xml, media_type="application/xml")
 
