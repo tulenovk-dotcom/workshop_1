@@ -29,13 +29,13 @@
   </dl>
   <p class="hint">
     {{ t('Метка говорит о состоянии исследований, а не о качестве работы конкретного специалиста.') }}
-    <a href="/methods">{{ t('Подробнее о методах') }}</a>
+    <a href="{{ url('/methods') }}">{{ t('Подробнее о методах') }}</a>
   </p>
 </section>
 
 <h2 class="filters-title">{{ t('Подобрать помощь') }}</h2>
 
-<form class="filters" method="get" action="/">
+<form class="filters" method="get" action="{{ url('/') }}">
   <div class="field filters-search">
     <label for="q">{{ t('Поиск по названию или ФИО') }}</label>
     <input type="search" id="q" name="q" value="{{ raw.q }}"
@@ -109,7 +109,7 @@
 
     <div class="filter-actions">
       <button type="submit" class="btn btn-primary">{{ t('Найти') }}</button>
-      <a class="btn btn-ghost" href="/">{{ t('Сбросить') }}</a>
+      <a class="btn btn-ghost" href="{{ url('/') }}">{{ t('Сбросить') }}</a>
     </div>
   </div>
 </form>
@@ -131,7 +131,7 @@
       </div>
 
       <div class="pc-main">
-        <h2 class="pc-name"><a href="/providers/{{ p.id }}">{{ p.name }}</a></h2>
+        <h2 class="pc-name"><a href="{{ url('/providers/' ~ p.id) }}">{{ p.name }}</a></h2>
 
         <div class="badges">
           {% for m in methods_map.get(p.id, []) %}
@@ -165,11 +165,11 @@
         {% elif p.phone %}
           <a class="btn btn-cta" href="tel:{{ p.phone|replace(' ', '') }}">{{ t('Позвонить') }}</a>
         {% else %}
-          <a class="btn btn-cta" href="/providers/{{ p.id }}">{{ t('Открыть карточку') }}</a>
+          <a class="btn btn-cta" href="{{ url('/providers/' ~ p.id) }}">{{ t('Открыть карточку') }}</a>
         {% endif %}
 
         {% if p.pricing == 'free' %}<p class="pc-hint">{{ t('занятия бесплатные') }}</p>{% endif %}
-        <a class="pc-more" href="/providers/{{ p.id }}">{{ t('Подробнее') }}</a>
+        <a class="pc-more" href="{{ url('/providers/' ~ p.id) }}">{{ t('Подробнее') }}</a>
       </div>
     </article>
   {% endfor %}

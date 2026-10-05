@@ -8,13 +8,20 @@
   <meta name="description" content="{% block description %}{{ t('Где получить помощь ребёнку с РАС в Казахстане: реабилитационные центры, клиники, частные специалисты, детские сады и школы. У каждого метода указан уровень доказательности.') }}{% endblock %}">
 
   {# Канонический адрес - без параметров фильтров: каталог с фильтрами и без
-     них это одна страница, и поисковику незачем считать их разными. #}
+     них это одна страница, и поисковику незачем считать их разными.
+     Язык в адресе при этом остаётся: русская и казахская версии - разные
+     страницы, и каждая каноническая сама себе. #}
   <link rel="canonical" href="{{ page_url }}">
+
+  {# Какая страница на каком языке. Поисковик ходит без cookie и видит по
+     голому адресу русскую версию, поэтому она же и x-default. #}
+  <link rel="alternate" hreflang="ru" href="{{ alt_urls.ru }}">
+  <link rel="alternate" hreflang="kk" href="{{ alt_urls.kk }}">
+  <link rel="alternate" hreflang="x-default" href="{{ alt_urls.ru }}">
 
   {# Open Graph: заголовок и описание берём из тех же блоков, что и мета-теги,
      чтобы ссылка в мессенджере показывала ровно то же, что и страница.
-     Язык здесь тот, на котором страница открыта: он хранится в cookie, а не
-     в адресе, поэтому отдельного адреса у казахской версии нет. #}
+     Язык здесь тот, на котором страница открыта. #}
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="{{ t('Каталог помощи детям с РАС в Казахстане') }}">
   <meta property="og:title" content="{{ self.title() }}">
@@ -43,7 +50,7 @@
 
 <header class="site-header">
   <div class="container header-inner">
-    <a class="logo" href="/">
+    <a class="logo" href="{{ url('/') }}">
       {# alt пустой: название сайта стоит рядом текстом, и читалка
          не должна произносить его дважды. #}
       {# Ширина и высота указаны в том размере, в каком знак стоит на
@@ -54,9 +61,9 @@
       <span class="logo-text">{{ t('Каталог помощи детям с РАС') }}<span>{{ t('Казахстан') }}</span></span>
     </a>
     <nav class="site-nav">
-      <a href="/">{{ t('Каталог') }}</a>
-      <a href="/methods">{{ t('Методы помощи') }}</a>
-      <a href="/early-signs">{{ t('Ранние признаки аутизма') }}</a>
+      <a href="{{ url('/') }}">{{ t('Каталог') }}</a>
+      <a href="{{ url('/methods') }}">{{ t('Методы помощи') }}</a>
+      <a href="{{ url('/early-signs') }}">{{ t('Ранние признаки аутизма') }}</a>
     </nav>
     <div class="header-auth">
       {# Выбор языка одной плашкой из двух половинок. Текущий язык залит
@@ -66,11 +73,11 @@
           {% if code == lang %}
             <span class="lang-current" aria-current="true">{{ label }}</span>
           {% else %}
-            <a href="/lang/{{ code }}?next={{ current_path|urlencode }}">{{ label }}</a>
+            <a href="{{ lang_links[code] }}" hreflang="{{ code }}">{{ label }}</a>
           {% endif %}
         {%- endfor -%}
       </p>
-      <a class="btn-outline" href="/dlya-specialistov">{{ t('Разместиться в каталоге') }}</a>
+      <a class="btn-outline" href="{{ url('/dlya-specialistov') }}">{{ t('Разместиться в каталоге') }}</a>
       {% if request.session.get('admin') %}
         <a class="auth-link auth-link-quiet" href="/admin">{{ t('Админка') }}</a>
         <a class="auth-link auth-link-quiet" href="/admin/logout">{{ t('Выйти') }}</a>
@@ -92,9 +99,9 @@
       {{ t('Данные о местах занятий и отзывы размещают пользователи. Уточняйте актуальные цены, возраст детей и программу занятий напрямую на месте.') }}
     </p>
     <p class="footer-links">
-      <a href="/dlya-specialistov">{{ t('Разместиться в каталоге') }}</a>
-      <a href="/privacy">{{ t('Политика конфиденциальности') }}</a>
-      <a href="/privacy/request">{{ t('Удалить мои данные') }}</a>
+      <a href="{{ url('/dlya-specialistov') }}">{{ t('Разместиться в каталоге') }}</a>
+      <a href="{{ url('/privacy') }}">{{ t('Политика конфиденциальности') }}</a>
+      <a href="{{ url('/privacy/request') }}">{{ t('Удалить мои данные') }}</a>
     </p>
   </div>
 </footer>

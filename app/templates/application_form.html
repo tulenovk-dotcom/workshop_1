@@ -34,7 +34,7 @@
   </div>
 {% endif %}
 
-<form class="admin-form application-form" method="post" action="/dlya-specialistov"
+<form class="admin-form application-form" method="post" action="{{ url('/dlya-specialistov') }}"
       enctype="multipart/form-data">
   <fieldset class="field field-wide kind-picker">
     <legend>{{ t('Вы заполняете анкету от имени') }} *</legend>
@@ -254,7 +254,7 @@
     <label class="checkbox">
       <input type="checkbox" name="consent" value="1" required
              {% if form.consent %}checked{% endif %}>
-      {% set policy = '<a href="/privacy" target="_blank" rel="noopener">' ~ t('политику конфиденциальности') ~ '</a>' %}
+      {% set policy = '<a href="' ~ url('/privacy') ~ '" target="_blank" rel="noopener">' ~ t('политику конфиденциальности') ~ '</a>' %}
       {{ t('Я согласен на обработку персональных данных, указанных в заявке, и принимаю %s')|format(policy)|safe }} *
     </label>
   </div>

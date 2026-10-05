@@ -5,7 +5,7 @@
 {% block description %}{{ t('%s, %s: контакты, методы работы и отзывы в каталоге помощи детям с РАС в Казахстане.')|format(provider.name, provider.city) }}{% endblock %}
 
 {% block content %}
-<p class="breadcrumbs"><a href="/">← {{ t('Вернуться к каталогу') }}</a></p>
+<p class="breadcrumbs"><a href="{{ url('/') }}">← {{ t('Вернуться к каталогу') }}</a></p>
 
 <article class="provider">
   <div class="card-head">
@@ -112,7 +112,7 @@
   <p class="data-warning">
     {{ t('Пишите о занятиях и о работе специалистов. Не указывайте диагнозы, имена и фамилии детей и другие сведения о здоровье - ни о своём ребёнке, ни о чужом. Такие отзывы модератор не опубликует.') }}
   </p>
-  <form class="review-form" method="post" action="/providers/{{ provider.id }}/reviews">
+  <form class="review-form" method="post" action="{{ url('/providers/' ~ provider.id ~ '/reviews') }}">
     <div class="field">
       <label for="author_name">{{ t('Ваше имя') }}</label>
       <input type="text" id="author_name" name="author_name" maxlength="80" required>
@@ -135,7 +135,7 @@
     <div class="field field-wide consent-field">
       <label class="checkbox">
         <input type="checkbox" name="consent" value="1" required>
-        {% set policy = '<a href="/privacy" target="_blank" rel="noopener">' ~ t('политику конфиденциальности') ~ '</a>' %}
+        {% set policy = '<a href="' ~ url('/privacy') ~ '" target="_blank" rel="noopener">' ~ t('политику конфиденциальности') ~ '</a>' %}
         {{ t('Я согласен на обработку персональных данных, указанных в отзыве, и принимаю %s')|format(policy)|safe }}
       </label>
     </div>
@@ -144,7 +144,7 @@
       <button type="submit" class="btn btn-primary">{{ t('Отправить на модерацию') }}</button>
     </div>
     <p class="hint">
-      {% set request_link = '<a href="/privacy/request">' ~ t('через обращение') ~ '</a>' %}
+      {% set request_link = '<a href="' ~ url('/privacy/request') ~ '">' ~ t('через обращение') ~ '</a>' %}
       {{ t('Отзывы публикуются после проверки модератором. Отозвать согласие и удалить отзыв можно %s.')|format(request_link)|safe }}
     </p>
   </form>

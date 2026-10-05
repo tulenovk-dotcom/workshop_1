@@ -24,7 +24,7 @@
   </div>
 {% endif %}
 
-<form class="admin-form" method="post" action="/privacy/request">
+<form class="admin-form" method="post" action="{{ url('/privacy/request') }}">
   <div class="field">
     <label for="name">{{ t('Как к вам обращаться') }} *</label>
     <input type="text" id="name" name="name" maxlength="120" required
