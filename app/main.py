@@ -64,6 +64,7 @@ from .reference import (
 )
 from .seed import seed_if_empty
 from .timeutil import local_date, local_time
+from .useragent import device_from_agent, looks_like_bot
 
 log = logging.getLogger("app")
 
@@ -221,51 +222,11 @@ def user_agent(request: Request) -> str:
 # с первым. Отличить одного человека от другого сайт при этом не может -
 # и не должен.
 
-# Роботы ходят по сайту чаще людей. Пустой User-Agent тоже считаем роботом:
-# у обычного браузера он всегда есть.
-BOT_MARKERS = (
-    "bot",
-    "crawler",
-    "spider",
-    "slurp",
-    "curl",
-    "wget",
-    "python-requests",
-    "httpx",
-    "headless",
-    "monitor",
-    "uptime",
-    "lighthouse",
-)
-
 # Админка - это администратор, а не посетитель, и в счёт не идёт.
 UNCOUNTED_PREFIXES = ("/static", "/admin", "/favicon", "/robots.txt", "/sitemap.xml")
 
 # День, в который журнал посещений чистили в последний раз.
 _visit_cleanup_day = ""
-
-
-def looks_like_bot(agent: str) -> bool:
-    low = agent.lower()
-    return not low or any(mark in low for mark in BOT_MARKERS)
-
-
-def device_from_agent(agent: str) -> str:
-    """Телефон, планшет или компьютер - по подписи браузера.
-
-    Это догадка, а не точное знание: подпись можно подделать, а некоторые
-    браузеры врут нарочно. Для статистики этого довольно, для чего-то
-    серьёзнее - нет.
-    """
-    low = agent.lower()
-    if "ipad" in low or "tablet" in low:
-        return "планшет"
-    if "android" in low and "mobi" not in low:
-        # Android без пометки Mobi - обычно планшет.
-        return "планшет"
-    if "mobi" in low or "android" in low or "iphone" in low:
-        return "телефон"
-    return "компьютер"
 
 
 @app.middleware("http")
