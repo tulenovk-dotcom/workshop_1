@@ -939,6 +939,14 @@ input:focus, select:focus, textarea:focus {
 
 .admin-summary { color: var(--muted); }
 
+/* Номер выкаченной версии. Служебная строка - набрана тихо, чтобы не
+   спорить с содержимым страницы. */
+.admin-version {
+  margin: -10px 0 18px;
+  color: var(--muted);
+  font-size: var(--step--1);
+}
+
 .login-box { max-width: 420px; }
 .login-box .field { margin-bottom: 14px; }
 

@@ -65,6 +65,7 @@ from .reference import (
 from .seed import seed_if_empty
 from .timeutil import local_date, local_time
 from .useragent import device_from_agent, looks_like_bot
+from .version import current_commit
 
 log = logging.getLogger("app")
 
@@ -526,6 +527,7 @@ templates.env.globals.update(
     NOINDEX=NOINDEX,
     SITE_URL=SITE_URL,
     ADMIN_ENABLED=ADMIN_ENABLED,
+    APP_COMMIT=current_commit(),
     APPLICANT_KINDS=APPLICANT_KINDS,
     APPLICATION_STATUSES=APPLICATION_STATUSES,
     ORGANIZATION_TYPES=ORGANIZATION_TYPES,

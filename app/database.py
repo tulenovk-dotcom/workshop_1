@@ -277,6 +277,21 @@ def migrate_method_translations(conn: sqlite3.Connection) -> None:
         )
 
 
+def migrate_visit_log_columns(conn: sqlite3.Connection) -> None:
+    """Пометка робота у записей журнала посещений.
+
+    Старым базам столбца не хватает: `CREATE TABLE IF NOT EXISTS` уже
+    существующую таблицу не меняет. Добавляем его сами; записи, сделанные
+    раньше, остаются людьми, пока их не пересчитает отдельная команда
+    `python -m app.recount_bots`.
+    """
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(visit_log)")}
+    if "is_bot" not in columns:
+        conn.execute(
+            "ALTER TABLE visit_log ADD COLUMN is_bot INTEGER NOT NULL DEFAULT 0"
+        )
+
+
 def init_db() -> None:
     from .reference import (
         DEFAULT_METHODS,
@@ -288,6 +303,11 @@ def init_db() -> None:
     with db_session() as conn:
         conn.executescript(SCHEMA)
         migrate_ip_columns(conn)
+        # Столбцы добавляются ДО индексов: индекс строится по столбцу, и на
+        # уже существующей базе без него создание индекса падает, а вместе
+        # с ним и запуск сайта. На новой базе столбец приходит из SCHEMA,
+        # поэтому на стенде, где база каждый раз новая, этого не видно.
+        migrate_visit_log_columns(conn)
         conn.executescript(INDEXES)
         migrate_method_translations(conn)
         columns = {row["name"] for row in conn.execute("PRAGMA table_info(providers)")}
@@ -295,15 +315,6 @@ def init_db() -> None:
             conn.execute(
                 "ALTER TABLE providers ADD COLUMN logo_path TEXT NOT NULL DEFAULT ''"
             )
-        # Пометка робота у записей журнала посещений. Старым базам столбца
-        # не хватает: добавляем, существующие записи остаются людьми, пока
-        # их не пересчитает отдельная команда (deploy/BOTS.md).
-        columns = {row["name"] for row in conn.execute("PRAGMA table_info(visit_log)")}
-        if "is_bot" not in columns:
-            conn.execute(
-                "ALTER TABLE visit_log ADD COLUMN is_bot INTEGER NOT NULL DEFAULT 0"
-            )
-
         columns = {row["name"] for row in conn.execute("PRAGMA table_info(applications)")}
         if "logo_path" not in columns:
             conn.execute(
