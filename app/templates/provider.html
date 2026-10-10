@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "_macros.html" as ui with context %}
 
-{% block title %}{{ provider.name }} - {{ t('каталог помощи детям с РАС') }}{% endblock %}
-{% block description %}{{ t('%s, %s: контакты, методы работы и отзывы в каталоге помощи детям с РАС в Казахстане.')|format(provider.name, provider.city) }}{% endblock %}
+{% block title %}{{ t('%s: помощь детям с аутизмом (РАС)')|format(provider.name) }}{% endblock %}
+{% block description %}{{ t('%s, %s: контакты, методы работы и отзывы в каталоге помощи детям с аутизмом (РАС) в Казахстане.')|format(provider.name, provider.city) }}{% endblock %}
 
 {% block content %}
 <p class="breadcrumbs"><a href="{{ url('/') }}">← {{ t('Вернуться к каталогу') }}</a></p>

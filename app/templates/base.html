@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   {% if NOINDEX %}<meta name="robots" content="noindex, nofollow">{% endif %}
-  <title>{% block title %}{{ t('Каталог помощи детям с РАС в Казахстане') }}{% endblock %}</title>
+  <title>{% block title %}{{ t('Каталог помощи детям с аутизмом в Казахстане') }}{% endblock %}</title>
   <meta name="description" content="{% block description %}{{ t('Где получить помощь ребёнку с РАС в Казахстане: реабилитационные центры, клиники, частные специалисты, детские сады и школы. У каждого метода указан уровень доказательности.') }}{% endblock %}">
 
   {# Канонический адрес - без параметров фильтров: каталог с фильтрами и без
@@ -23,7 +23,7 @@
      чтобы ссылка в мессенджере показывала ровно то же, что и страница.
      Язык здесь тот, на котором страница открыта. #}
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="{{ t('Каталог помощи детям с РАС в Казахстане') }}">
+  <meta property="og:site_name" content="{{ t('Каталог помощи детям с аутизмом') }}">
   <meta property="og:title" content="{{ self.title() }}">
   <meta property="og:description" content="{{ self.description() }}">
   <meta property="og:url" content="{{ page_url }}">
@@ -58,7 +58,7 @@
          останется маленькой, а не развернётся во весь файл. #}
       <img class="logo-mark" src="{{ static_url('logo.webp') }}" alt=""
            width="49" height="46">
-      <span class="logo-text">{{ t('Каталог помощи детям с РАС') }}<span>{{ t('Казахстан') }}</span></span>
+      <span class="logo-text">{{ t('Каталог помощи детям с аутизмом') }}<span>{{ t('Казахстан') }}</span></span>
     </a>
     <nav class="site-nav">
       <a href="{{ url('/') }}">{{ t('Каталог') }}</a>
