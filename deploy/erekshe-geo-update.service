@@ -1,0 +1,31 @@
+[Unit]
+# Обновление справочника местоположений DB-IP для страницы «Посетители».
+# Запускается по расписанию из erekshe-geo-update.timer, сам по себе не
+# работает. Копируется в /etc/systemd/system/ вместе с таймером.
+#
+# Если справочник за текущий месяц уже лежит, команда ничего не качает.
+# Если скачать не удалось, старый файл остаётся, сайт работает как раньше.
+# Сайт перезапускать не нужно: новый файл он подхватывает сам.
+Description=Обновление справочника местоположений (erekshe.kz)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=erekshe
+Group=erekshe
+WorkingDirectory=/srv/erekshe
+EnvironmentFile=/etc/erekshe/erekshe.env
+ExecStart=/srv/erekshe/.venv/bin/python -m app.geo_update
+
+# Не мешать сайту: скачивание и распаковка идут с низким приоритетом.
+Nice=10
+IOSchedulingClass=idle
+
+ProtectSystem=strict
+ReadWritePaths=/srv/erekshe/data
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+
+SyslogIdentifier=erekshe-geo

@@ -1226,6 +1226,14 @@ input:focus, select:focus, textarea:focus {
   word-break: break-word;
 }
 
+/* Место посетителя. «Не определено» приглушено, чтобы не спорило с
+   настоящими городами в той же колонке. */
+.visitor-place { margin: -4px 0 14px; }
+.visitor-place .hint { display: inline; }
+.visitor-place-unknown { color: var(--muted); }
+.visitor-geo-share { margin: 0 0 10px; font-weight: 600; }
+.visitor-attribution { margin-top: 24px; font-size: 0.8rem; }
+
 /* --- Заявки на размещение --- */
 
 .btn-outline {

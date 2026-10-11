@@ -22,7 +22,10 @@ services:
     runtime: python
     plan: free
     region: frankfurt
-    buildCommand: pip install -r requirements.txt
+    # После установки пакетов качается справочник местоположений DB-IP для
+    # страницы «Посетители». Если скачать не удалось, сборка не падает:
+    # место посетителей будет «не определено».
+    buildCommand: pip install -r requirements.txt && (python -m app.geo_update || true)
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /
 

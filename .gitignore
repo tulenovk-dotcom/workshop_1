@@ -8,3 +8,7 @@ catalog.db
 .secret_key
 .ip_salt
 app/static/uploads/
+# Справочник местоположений DB-IP: больше 100 МБ, качается командой
+# python -m app.geo_update, в git не хранится.
+*.mmdb
+.geo-*

@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import crud
+from . import crud, geo
 from .database import DB_PATH, db_session, init_db, read_or_create_secret
 from .notifications import notify_new_application
 from .i18n import (
@@ -1477,11 +1477,21 @@ def admin_visitors(request: Request, days: int = 7, ip: str = "", date: str = ""
         }
         if ip:
             context["pages"] = crud.visitor_pages(conn, ip, days, day=day)
+            context["place"] = geo.locate(ip)
         else:
             rows = crud.visitors(conn, days, day)
             context["rows"] = rows
             context["views_total"] = sum(int(row["views"]) for row in rows)
             context["visits_total"] = sum(int(row["visits"]) for row in rows)
+            # Место ищется при показе, а не при записи: так оно есть и у
+            # старых записей журнала, а схема базы не меняется.
+            places = geo.locate_many(row["ip"] for row in rows)
+            context["places"] = places
+            context["geo"] = geo.summary(places[row["ip"]] for row in rows)
+    context["geo_available"] = geo.database_available()
+    age = geo.database_age_days()
+    context["geo_stale_days"] = age if age is not None and age > geo.STALE_DAYS else None
+    context["geo_attribution"] = geo.ATTRIBUTION_URL
     return render(request, "admin/visitors.html", context)
 
 

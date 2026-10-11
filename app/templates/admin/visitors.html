@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_macros.html" as ui with context %}
 
 {% block title %}Админка - посетители{% endblock %}
 
@@ -44,6 +45,8 @@
   <p class="hint"><a href="/admin/visitors?{{ scope_query }}">Ко всем посетителям{% if day %} за {{ day.strftime('%d.%m.%Y') }}{% endif %}</a></p>
 
   <h2>{{ ip }}</h2>
+  <p class="visitor-place">Откуда: {{ place.label }}{% if place.label != 'не определено' %}
+    <span class="hint">(примерно, по адресу)</span>{% endif %}</p>
 
   {% if pages %}
     <p class="hint">Страницы по времени, новые сверху. Показано не больше 300
@@ -93,11 +96,53 @@
     Админка, картинки и поисковые роботы в счёт не идут.</p>
 
   {% if rows %}
+    <h2>Откуда заходят</h2>
+    {% if geo_available %}
+      {% if geo_stale_days %}
+        <p class="notice notice-warn">Справочнику местоположений уже
+          {{ geo_stale_days }} дней: ежемесячное обновление на сервере
+          несколько раз не прошло. Места показываются, но новые адреса
+          операторов могут определяться хуже.</p>
+      {% endif %}
+      <p class="hint">Место определяется по адресу и только примерно. Страна
+        почти всегда верна, город - не всегда: мобильные операторы выпускают
+        абонентов в интернет через несколько крупных городов, поэтому заход
+        с телефона из Тараза может показаться «Алматы». Считаются
+        уникальные адреса{% if day %} за {{ day.strftime('%d.%m.%Y') }}{% endif %}.</p>
+      {% if geo.known %}
+        <p class="visitor-geo-share">Из Казахстана {{ geo.kz }} из {{ geo.known }}
+          ({{ geo.kz_share }}%){% if geo.known < geo.total %}, ещё у
+          {{ geo.total - geo.known }} место не определено{% endif %}.</p>
+      {% endif %}
+      <div class="table-wrap">
+        <table class="admin-table stat-table">
+          <thead>
+            <tr><th>Откуда</th><th class="stat-col-bar">Доля</th><th class="stat-col-num">Посетителей</th></tr>
+          </thead>
+          <tbody>
+            {% for row in geo.rows %}
+              <tr>
+                <td>{{ row.label }}</td>
+                <td class="stat-col-bar">{{ ui.stat_bar(row.n, geo.max) }}</td>
+                <td class="stat-col-num">{{ row.n }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="notice notice-warn">Справочник местоположений на сервере не
+        найден, поэтому в колонке «Откуда» стоит «не определено». Его
+        скачивает команда <code>python -m app.geo_update</code>.</p>
+    {% endif %}
+
+    <h2>По адресам</h2>
     <div class="table-wrap">
       <table class="admin-table stat-table">
         <thead>
           <tr>
             <th>Адрес</th>
+            <th>Откуда</th>
             <th>Первый визит</th>
             <th>Последний визит</th>
             <th class="stat-col-num">Визитов</th>
@@ -109,6 +154,8 @@
           {% for row in rows %}
             <tr>
               <td><a href="/admin/visitors?{{ scope_query }}&ip={{ row.ip|urlencode }}">{{ row.ip }}</a></td>
+              {% set place = places[row.ip] %}
+              <td class="{{ 'visitor-place-unknown' if place.label == 'не определено' else '' }}">{{ place.label }}</td>
               <td class="visitor-when">{{ row.first_seen|local_time }}</td>
               <td class="visitor-when">{{ row.last_seen|local_time }}</td>
               <td class="stat-col-num">{{ row.visits }}</td>
@@ -124,4 +171,7 @@
   {% endif %}
 
 {% endif %}
+
+<p class="hint visitor-attribution">Местоположение:
+  <a href="{{ geo_attribution }}">IP Geolocation by DB-IP</a>.</p>
 {% endblock %}
