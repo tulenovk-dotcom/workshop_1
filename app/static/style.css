@@ -1264,7 +1264,6 @@ input:focus, select:focus, textarea:focus {
 .visitor-place { margin: -4px 0 14px; }
 .visitor-place .hint { display: inline; }
 .visitor-place-unknown { color: var(--muted); }
-.visitor-geo-share { margin: 0 0 10px; font-weight: 600; }
 .visitor-attribution { margin-top: 24px; font-size: 0.8rem; }
 
 /* --- Заявки на размещение --- */

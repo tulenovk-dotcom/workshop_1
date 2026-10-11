@@ -111,7 +111,8 @@
           <h2>Откуда заходят</h2>
           {% if geo.known %}
             <span class="visitor-geo-teaser">из Казахстана {{ geo.kz }} из
-              {{ geo.known }} ({{ geo.kz_share }}%)</span>
+              {{ geo.known }} ({{ geo.kz_share }}%){% if geo.known < geo.total %},
+              у {{ geo.total - geo.known }} не определено{% endif %}</span>
           {% endif %}
         </summary>
       <p class="hint">Место определяется по адресу и только примерно. Страна
@@ -119,11 +120,6 @@
         абонентов в интернет через несколько крупных городов, поэтому заход
         с телефона из Тараза может показаться «Алматы». Считаются
         уникальные адреса{% if day %} за {{ day.strftime('%d.%m.%Y') }}{% endif %}.</p>
-      {% if geo.known %}
-        <p class="visitor-geo-share">Из Казахстана {{ geo.kz }} из {{ geo.known }}
-          ({{ geo.kz_share }}%){% if geo.known < geo.total %}, ещё у
-          {{ geo.total - geo.known }} место не определено{% endif %}.</p>
-      {% endif %}
       <div class="table-wrap">
         <table class="admin-table stat-table">
           <thead>
