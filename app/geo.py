@@ -233,6 +233,17 @@ def database_available() -> bool:
     return _open_reader() is not None
 
 
+def status() -> str:
+    """Почему место не определяется: ok, no_library, no_file или broken."""
+    if _open_reader() is not None:
+        return "ok"
+    try:
+        import maxminddb  # noqa: F401
+    except ImportError:
+        return "no_library"
+    return "no_file" if not GEO_DB_PATH.exists() else "broken"
+
+
 # Справочник обновляется раз в месяц. Если ему больше двух месяцев, значит
 # обновление несколько раз подряд не удалось - об этом надо сказать.
 STALE_DAYS = 70

@@ -21,15 +21,20 @@
 """
 
 import gzip
+import logging
 import os
 import shutil
 import sys
 import tempfile
+import threading
+import time
 import urllib.request
 from datetime import date, datetime, timezone
 from pathlib import Path
 
 from .geo import GEO_DB_PATH
+
+log = logging.getLogger("app")
 
 URL = "https://download.db-ip.com/free/dbip-city-lite-{month}.mmdb.gz"
 
@@ -41,6 +46,24 @@ TIMEOUT_SECONDS = 120
 
 def say(text: str) -> None:
     print(f"[справочник мест] {text}", flush=True)
+
+
+def _locked(folder: Path):
+    """Не дать двум обновлениям идти одновременно (сайт и ручной запуск).
+
+    Возвращает открытый файл-замок или None, если замок уже занят.
+    """
+    try:
+        import fcntl
+    except ImportError:  # не Linux - просто без замка
+        return open(os.devnull, "w")
+    handle = open(folder / ".geo-update.lock", "w")
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        handle.close()
+        return None
+    return handle
 
 
 def months_to_try(today: date) -> list:
@@ -100,6 +123,24 @@ def download(month: str, folder: Path) -> Path:
 def main() -> int:
     target = GEO_DB_PATH
     target.parent.mkdir(parents=True, exist_ok=True)
+    lock = _locked(target.parent)
+    if lock is None:
+        say("обновление уже идёт в другом процессе, пропускаю")
+        return 0
+    try:
+        return _update(target)
+    finally:
+        lock.close()
+
+
+def _update(target: Path) -> int:
+    try:
+        import maxminddb  # noqa: F401
+    except ImportError:
+        # Без библиотеки скачанный файл не проверить и не прочитать:
+        # качать сотню мегабайт впустую незачем.
+        say("не установлен пакет maxminddb: pip install -r requirements.txt")
+        return 1
     today = date.today()
     months = months_to_try(today)
 
@@ -132,6 +173,45 @@ def main() -> int:
     else:
         say("обновить не получилось, справочника нет: место будет «не определено»")
     return 1
+
+
+# --- Обновление изнутри сайта ----------------------------------------------
+#
+# Чтобы на боевом сервере не настраивать отдельное расписание, сайт сам
+# проверяет справочник: первый раз через AUTO_FIRST_DELAY после запуска,
+# дальше раз в AUTO_INTERVAL. Если справочник за текущий месяц уже лежит,
+# проверка занимает доли секунды и ничего не качает.
+#
+# Задержка перед первой проверкой нужна из-за выката: скрипт выката
+# запускает новую версию на отдельном порту, проверяет и гасит. Такой
+# пробный запуск живёт меньше минуты и качать ничего не должен.
+#
+# Выключается переменной GEOIP_AUTO_UPDATE=0 - например, если на сервере
+# настроен таймер из deploy/erekshe-geo-update.timer.
+
+AUTO_FIRST_DELAY = 10 * 60
+AUTO_INTERVAL = 7 * 24 * 60 * 60
+_started = False
+
+
+def _auto_loop() -> None:
+    time.sleep(AUTO_FIRST_DELAY)
+    while True:
+        try:
+            main()
+        except Exception:
+            log.exception("Фоновое обновление справочника мест упало")
+        time.sleep(AUTO_INTERVAL)
+
+
+def start_background() -> bool:
+    """Запустить фоновую проверку справочника. True, если запущена."""
+    global _started
+    if _started or os.environ.get("GEOIP_AUTO_UPDATE", "1") == "0":
+        return False
+    _started = True
+    threading.Thread(target=_auto_loop, name="geo-update", daemon=True).start()
+    return True
 
 
 if __name__ == "__main__":

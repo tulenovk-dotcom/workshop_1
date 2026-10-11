@@ -558,6 +558,12 @@ def on_startup() -> None:
         log.info("Обезличено записей по истечении срока хранения: %s", cleaned)
     if removed:
         log.info("Удалено записей журнала посещений: %s", removed)
+    # Справочник местоположений сайт обновляет сам, в фоне: см. geo_update.
+    from . import geo_update
+
+    if geo_update.start_background():
+        log.info("Фоновая проверка справочника мест: первая через %s мин",
+                 geo_update.AUTO_FIRST_DELAY // 60)
 
 
 def parse_int(value: str | None) -> int | None:
@@ -1488,7 +1494,8 @@ def admin_visitors(request: Request, days: int = 7, ip: str = "", date: str = ""
             places = geo.locate_many(row["ip"] for row in rows)
             context["places"] = places
             context["geo"] = geo.summary(places[row["ip"]] for row in rows)
-    context["geo_available"] = geo.database_available()
+    context["geo_status"] = geo.status()
+    context["geo_available"] = context["geo_status"] == "ok"
     age = geo.database_age_days()
     context["geo_stale_days"] = age if age is not None and age > geo.STALE_DAYS else None
     context["geo_attribution"] = geo.ATTRIBUTION_URL
