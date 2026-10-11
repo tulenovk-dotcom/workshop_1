@@ -1181,6 +1181,39 @@ input:focus, select:focus, textarea:focus {
 
 .stat-details .table-wrap { margin-top: 10px; }
 
+/* «Откуда заходят» на странице посетителей: свёрнутый блок, у которого
+   заголовок раздела и есть кнопка раскрытия. Рядом с заголовком - доля
+   Казахстана, чтобы главное число было видно без раскрытия. */
+.visitor-geo { margin: 8px 0 24px; }
+.visitor-geo summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 6px 0;
+}
+.visitor-geo summary { list-style: none; }
+.visitor-geo summary::-webkit-details-marker { display: none; }
+/* Свой треугольник: у summary с display:flex браузер свой не рисует. */
+.visitor-geo summary::before {
+  content: "";
+  align-self: center;
+  width: 0;
+  height: 0;
+  border-left: 7px solid var(--muted);
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  transition: transform 0.15s ease;
+}
+.visitor-geo[open] summary::before { transform: rotate(90deg); }
+.visitor-geo summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.visitor-geo summary h2 { display: inline; margin: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .visitor-geo summary::before { transition: none; }
+}
+.visitor-geo-teaser { font-weight: 400; color: var(--muted); }
+.visitor-geo[open] summary { margin-bottom: 8px; }
+
 /* Журнал посещений. Время и подпись браузера набраны машинным шрифтом:
    их сравнивают глазами по столбцу, а не читают как текст. */
 /* Выбор периода и даты на странице «Посетители»: кнопки периода и поле
