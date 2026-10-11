@@ -1,5 +1,5 @@
 import sqlite3
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 PROVIDER_FIELDS = (
     "provider_type",
@@ -865,7 +865,30 @@ def visit_log_since(days: int) -> str:
     return start.astimezone(timezone.utc).isoformat(timespec="seconds")
 
 
-def visitors(conn: sqlite3.Connection, days: int) -> list[sqlite3.Row]:
+def visit_log_range(days: int, day: date | None = None) -> tuple[str, str]:
+    """Границы выборки журнала: (с какого момента, до какого момента).
+
+    Если задан `day`, берутся ровно одни сутки этой даты по времени
+    Казахстана - с полуночи до полуночи. Иначе - период «сегодня / 7 / 30
+    дней» до текущего момента с запасом вперёд.
+    """
+    if day is not None:
+        start = datetime(day.year, day.month, day.day, tzinfo=KZ_TIME)
+        end = start + timedelta(days=1)
+        return (
+            start.astimezone(timezone.utc).isoformat(timespec="seconds"),
+            end.astimezone(timezone.utc).isoformat(timespec="seconds"),
+        )
+    # Верхняя граница с запасом: всё, что записано к этой секунде, попадает.
+    future = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(
+        timespec="seconds"
+    )
+    return visit_log_since(days), future
+
+
+def visitors(
+    conn: sqlite3.Connection, days: int, day: date | None = None
+) -> list[sqlite3.Row]:
     """Уникальные посетители за период: по строке на адрес.
 
     Визит и просмотр - разные вещи. Просмотр - одно открытие страницы.
@@ -877,7 +900,8 @@ def visitors(conn: sqlite3.Connection, days: int) -> list[sqlite3.Row]:
         WITH steps AS (
           SELECT ip, created_at, device,
                  LAG(created_at) OVER (PARTITION BY ip ORDER BY created_at) AS prev
-            FROM visit_log WHERE created_at >= ? AND is_bot = 0
+            FROM visit_log
+           WHERE created_at >= ? AND created_at < ? AND is_bot = 0
         )
         SELECT ip,
                COUNT(*) AS views,
@@ -891,26 +915,32 @@ def visitors(conn: sqlite3.Connection, days: int) -> list[sqlite3.Row]:
          GROUP BY ip
          ORDER BY last_seen DESC
         """,
-        (visit_log_since(days), VISIT_GAP_MINUTES),
+        (*visit_log_range(days, day), VISIT_GAP_MINUTES),
     ).fetchall()
 
 
-def visitors_count(conn: sqlite3.Connection, days: int) -> int:
+def visitors_count(
+    conn: sqlite3.Connection, days: int, day: date | None = None
+) -> int:
     row = conn.execute(
         "SELECT COUNT(DISTINCT ip) AS n FROM visit_log"
-        " WHERE created_at >= ? AND is_bot = 0",
-        (visit_log_since(days),),
+        " WHERE created_at >= ? AND created_at < ? AND is_bot = 0",
+        visit_log_range(days, day),
     ).fetchone()
     return int(row["n"])
 
 
 def visitor_pages(
-    conn: sqlite3.Connection, ip: str, days: int, limit: int = 300
+    conn: sqlite3.Connection,
+    ip: str,
+    days: int,
+    limit: int = 300,
+    day: date | None = None,
 ) -> list[sqlite3.Row]:
     """Что смотрел один посетитель: страницы по времени, новые сверху."""
     return conn.execute(
         "SELECT created_at, path, device, user_agent FROM visit_log"
-        " WHERE ip = ? AND created_at >= ? AND is_bot = 0"
+        " WHERE ip = ? AND created_at >= ? AND created_at < ? AND is_bot = 0"
         " ORDER BY created_at DESC LIMIT ?",
-        (ip, visit_log_since(days), limit),
+        (ip, *visit_log_range(days, day), limit),
     ).fetchall()

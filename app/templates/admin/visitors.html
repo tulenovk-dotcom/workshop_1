@@ -11,24 +11,43 @@
   {{ retention_days }} дней и удаляются сами. Показывать эту страницу
   посторонним и выносить адреса наружу нельзя.</p>
 
-<nav class="stat-periods">
-  {% for period, label in periods %}
-    {% if period == days %}
-      <span class="stat-period stat-period-current">{{ label }}</span>
-    {% else %}
-      <a class="stat-period" href="/admin/visitors?days={{ period }}">{{ label }}</a>
-    {% endif %}
-  {% endfor %}
-</nav>
+<div class="visitor-scope">
+  <nav class="stat-periods">
+    {% for period, label in periods %}
+      {% if not day and period == days %}
+        <span class="stat-period stat-period-current">{{ label }}</span>
+      {% else %}
+        <a class="stat-period" href="/admin/visitors?days={{ period }}{% if ip %}&ip={{ ip|urlencode }}{% endif %}">{{ label }}</a>
+      {% endif %}
+    {% endfor %}
+  </nav>
+
+  <form class="visitor-date" method="get" action="/admin/visitors">
+    <label for="visit-date">За дату</label>
+    <input type="date" id="visit-date" name="date"
+           value="{{ day.isoformat() if day else '' }}"
+           min="{{ date_min }}" max="{{ date_max }}" required>
+    {% if ip %}<input type="hidden" name="ip" value="{{ ip }}">{% endif %}
+    <button class="btn btn-small" type="submit">Показать</button>
+  </form>
+</div>
+
+{% if date_error %}
+  <p class="notice notice-warn">{{ date_error }}</p>
+{% endif %}
+
+{% if day %}
+  <h2 class="visitor-day">Посетители за {{ day.strftime('%d.%m.%Y') }}</h2>
+{% endif %}
 
 {% if ip %}
-  <p class="hint"><a href="/admin/visitors?days={{ days }}">← ко всем посетителям</a></p>
+  <p class="hint"><a href="/admin/visitors?{{ scope_query }}">Ко всем посетителям{% if day %} за {{ day.strftime('%d.%m.%Y') }}{% endif %}</a></p>
 
   <h2>{{ ip }}</h2>
 
   {% if pages %}
     <p class="hint">Страницы по времени, новые сверху. Показано не больше 300
-      записей за выбранный период.</p>
+      записей за {% if day %}эту дату{% else %}выбранный период{% endif %}.</p>
     <div class="table-wrap">
       <table class="admin-table">
         <thead>
@@ -47,7 +66,7 @@
       </table>
     </div>
   {% else %}
-    <p class="empty">За этот период записей с такого адреса нет.</p>
+    <p class="empty">За {% if day %}эту дату{% else %}этот период{% endif %} записей с такого адреса нет.</p>
   {% endif %}
 
 {% else %}
@@ -89,7 +108,7 @@
         <tbody>
           {% for row in rows %}
             <tr>
-              <td><a href="/admin/visitors?days={{ days }}&ip={{ row.ip|urlencode }}">{{ row.ip }}</a></td>
+              <td><a href="/admin/visitors?{{ scope_query }}&ip={{ row.ip|urlencode }}">{{ row.ip }}</a></td>
               <td class="visitor-when">{{ row.first_seen|local_time }}</td>
               <td class="visitor-when">{{ row.last_seen|local_time }}</td>
               <td class="stat-col-num">{{ row.visits }}</td>
@@ -101,7 +120,7 @@
       </table>
     </div>
   {% else %}
-    <p class="empty">За выбранный период посещений не записано.</p>
+    <p class="empty">{% if day %}За {{ day.strftime('%d.%m.%Y') }} посещений не записано. Выберите другую дату.{% else %}За выбранный период посещений не записано.{% endif %}</p>
   {% endif %}
 
 {% endif %}

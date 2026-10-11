@@ -1183,6 +1183,37 @@ input:focus, select:focus, textarea:focus {
 
 /* Журнал посещений. Время и подпись браузера набраны машинным шрифтом:
    их сравнивают глазами по столбцу, а не читают как текст. */
+/* Выбор периода и даты на странице «Посетители»: кнопки периода и поле
+   даты в одну строку, на узком экране поле уходит вниз. */
+.visitor-scope {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  margin: 0 0 14px;
+}
+
+.visitor-scope .stat-periods { margin: 0; }
+
+.visitor-date {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.visitor-date label {
+  font-size: 0.87rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.visitor-date input[type="date"] {
+  width: auto;
+  padding: 6px 10px;
+}
+
+.visitor-day { margin: 4px 0 12px; }
+
 .visitor-when {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;

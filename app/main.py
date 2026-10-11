@@ -5,6 +5,7 @@ import re
 import secrets
 import time
 import zlib
+from datetime import date, datetime, timedelta
 from html import escape
 from pathlib import Path
 
@@ -63,7 +64,7 @@ from .reference import (
     normalize_city,
 )
 from .seed import seed_if_empty
-from .timeutil import local_date, local_time
+from .timeutil import KZ_TIME, local_date, local_time
 from .useragent import device_from_agent, looks_like_bot
 from .version import current_commit
 
@@ -1435,8 +1436,12 @@ VISITOR_PERIODS = ((1, "Сегодня"), (7, "7 дней"), (30, "30 дней")
 
 
 @app.get("/admin/visitors", response_class=HTMLResponse)
-def admin_visitors(request: Request, days: int = 7, ip: str = ""):
-    """Уникальные посетители за период, по адресам.
+def admin_visitors(request: Request, days: int = 7, ip: str = "", date: str = ""):
+    """Уникальные посетители за период или за конкретную дату, по адресам.
+
+    Дата (`?date=2026-10-10`) берётся по времени Казахстана: с полуночи до
+    полуночи. Дальше срока хранения журнала выбирать нет смысла - тех
+    записей уже нет, поэтому поле ограничено этим сроком.
 
     Здесь видны персональные данные, поэтому страница закрытая, как и вся
     админка. Записи старше срока хранения сюда не попадают - их уже нет.
@@ -1445,6 +1450,15 @@ def admin_visitors(request: Request, days: int = 7, ip: str = ""):
         return guard
     if days not in {period for period, _ in VISITOR_PERIODS}:
         days = 7
+    today = datetime.now(KZ_TIME).date()
+    oldest = today - timedelta(days=crud.VISIT_LOG_DAYS - 1)
+    day = parse_visit_day(date, oldest, today)
+    date_error = ""
+    if date and day is None:
+        date_error = (
+            f"Дату можно выбрать с {oldest:%d.%m.%Y} по {today:%d.%m.%Y}:"
+            " более старые записи журнал уже удалил."
+        )
     with db_session() as conn:
         context = {
             "days": days,
@@ -1452,16 +1466,34 @@ def admin_visitors(request: Request, days: int = 7, ip: str = ""):
             "retention_days": crud.VISIT_LOG_DAYS,
             "gap_minutes": crud.VISIT_GAP_MINUTES,
             "ip": ip,
-            "unique_count": crud.visitors_count(conn, days),
+            "day": day,
+            "date_min": oldest.isoformat(),
+            "date_max": today.isoformat(),
+            "date_error": date_error,
+            # Хвост адреса, чтобы переход к посетителю и обратно не терял
+            # выбранную дату или период.
+            "scope_query": f"date={day.isoformat()}" if day else f"days={days}",
+            "unique_count": crud.visitors_count(conn, days, day),
         }
         if ip:
-            context["pages"] = crud.visitor_pages(conn, ip, days)
+            context["pages"] = crud.visitor_pages(conn, ip, days, day=day)
         else:
-            rows = crud.visitors(conn, days)
+            rows = crud.visitors(conn, days, day)
             context["rows"] = rows
             context["views_total"] = sum(int(row["views"]) for row in rows)
             context["visits_total"] = sum(int(row["visits"]) for row in rows)
     return render(request, "admin/visitors.html", context)
+
+
+def parse_visit_day(value: str, oldest: date, newest: date) -> date | None:
+    """Дата из адреса: «2026-10-10». Мусор и даты вне срока хранения - None."""
+    if not value:
+        return None
+    try:
+        day = date.fromisoformat(value.strip())
+    except ValueError:
+        return None
+    return day if oldest <= day <= newest else None
 
 
 def application_methods(conn, application) -> list:
