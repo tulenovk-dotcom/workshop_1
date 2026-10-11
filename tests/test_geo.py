@@ -94,5 +94,55 @@ class БезСправочника(unittest.TestCase):
         self.assertTrue(geo._usable("37.99.87.182"))
 
 
+class КогдаКачать(unittest.TestCase):
+    """Правило обновления: одно скачивание в месяц, начиная с 5-го числа."""
+
+    def setUp(self):
+        from app import geo_update
+
+        self.gu = geo_update
+        self.папка = tempfile.TemporaryDirectory()
+        self.файл = Path(self.папка.name) / "geo.mmdb"
+        self.прежний = geo_update.file_month
+
+    def tearDown(self):
+        self.gu.file_month = self.прежний
+        self.папка.cleanup()
+
+    def месяц_файла(self, месяц):
+        self.файл.write_bytes(b"x")
+        self.gu.file_month = lambda path: месяц
+
+    def test_нет_файла_качать_в_любой_день(self):
+        from datetime import date
+
+        self.assertTrue(self.gu.update_due(self.файл, date(2026, 10, 2)))
+
+    def test_до_пятого_числа_старый_файл_не_трогаем(self):
+        from datetime import date
+
+        self.месяц_файла("2026-09")
+        self.assertFalse(self.gu.update_due(self.файл, date(2026, 10, 4)))
+
+    def test_с_пятого_числа_старый_файл_обновляем(self):
+        from datetime import date
+
+        self.месяц_файла("2026-09")
+        self.assertTrue(self.gu.update_due(self.файл, date(2026, 10, 5)))
+        self.assertTrue(self.gu.update_due(self.файл, date(2026, 10, 20)))
+
+    def test_битый_файл_заменяем_сразу(self):
+        from datetime import date
+
+        self.месяц_файла(None)
+        self.assertTrue(self.gu.update_due(self.файл, date(2026, 10, 2)))
+
+    def test_свежий_файл_не_качаем(self):
+        from datetime import date
+
+        self.месяц_файла("2026-10")
+        self.assertFalse(self.gu.update_due(self.файл, date(2026, 10, 20)))
+
+
 if __name__ == "__main__":
     unittest.main()
