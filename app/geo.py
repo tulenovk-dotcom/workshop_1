@@ -93,10 +93,58 @@ def _open_reader():
         return _reader
 
 
+# В бесплатном справочнике у многих городов есть только английское
+# название. Для городов Казахстана - а это почти все посетители - держим
+# русские сами. Несколько написаний одного города: справочник пишет
+# по-разному (старые и новые названия, казахская и русская латиница).
+KZ_CITIES_RU = {
+    "almaty": "Алматы", "alma-ata": "Алматы",
+    "astana": "Астана", "nur-sultan": "Астана", "nursultan": "Астана",
+    "shymkent": "Шымкент", "chimkent": "Шымкент",
+    "karaganda": "Караганда", "qaraghandy": "Караганда", "karagandy": "Караганда",
+    "aktobe": "Актобе", "aqtobe": "Актобе",
+    "taraz": "Тараз",
+    "pavlodar": "Павлодар",
+    "oskemen": "Усть-Каменогорск", "ust-kamenogorsk": "Усть-Каменогорск",
+    "semey": "Семей", "semipalatinsk": "Семей",
+    "atyrau": "Атырау",
+    "kostanay": "Костанай", "qostanay": "Костанай", "kostanai": "Костанай",
+    "kyzylorda": "Кызылорда", "qyzylorda": "Кызылорда",
+    "oral": "Уральск", "uralsk": "Уральск",
+    "petropavl": "Петропавловск", "petropavlovsk": "Петропавловск",
+    "aktau": "Актау", "aqtau": "Актау",
+    "temirtau": "Темиртау",
+    "turkistan": "Туркестан", "turkestan": "Туркестан",
+    "kokshetau": "Кокшетау",
+    "taldykorgan": "Талдыкорган", "taldyqorghan": "Талдыкорган",
+    "ekibastuz": "Экибастуз",
+    "rudnyy": "Рудный", "rudny": "Рудный",
+    "zhezkazgan": "Жезказган",
+    "balkhash": "Балхаш",
+    "kaskelen": "Каскелен",
+    "konaev": "Конаев", "qonaev": "Конаев", "kapchagay": "Конаев",
+    "talgar": "Талгар",
+    "zhanaozen": "Жанаозен",
+    "satpayev": "Сатпаев",
+    "kentau": "Кентау",
+    "shchuchinsk": "Щучинск",
+    "stepnogorsk": "Степногорск",
+    "esik": "Есик", "issyk": "Есик",
+}
+
+
 def _name(record, key: str) -> str:
     """Название по-русски, если есть, иначе по-английски."""
     names = ((record or {}).get(key) or {}).get("names") or {}
     return names.get("ru") or names.get("en") or ""
+
+
+def _city_name(record) -> str:
+    names = ((record or {}).get("city") or {}).get("names") or {}
+    if names.get("ru"):
+        return names["ru"]
+    english = names.get("en") or ""
+    return KZ_CITIES_RU.get(english.strip().lower(), english)
 
 
 def describe(record) -> Dict[str, str]:
@@ -105,7 +153,7 @@ def describe(record) -> Dict[str, str]:
         return {"country": "", "iso": "", "city": "", "label": UNKNOWN}
     country = _name(record, "country")
     iso = ((record.get("country") or {}).get("iso_code") or "").upper()
-    city = _name(record, "city")
+    city = _city_name(record)
     if country and city:
         label = f"{country}, {city}"
     else:

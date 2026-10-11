@@ -34,6 +34,17 @@ class Подпись(unittest.TestCase):
         record = {"country": {"iso_code": "DE", "names": {"en": "Germany"}}}
         self.assertEqual(geo.describe(record)["label"], "Germany")
 
+    def test_город_казахстана_без_русского_названия(self):
+        record = {
+            "country": {"iso_code": "KZ", "names": {"ru": "Казахстан"}},
+            "city": {"names": {"en": "Almaty"}},
+        }
+        self.assertEqual(geo.describe(record)["label"], "Казахстан, Алматы")
+
+    def test_незнакомый_город_остаётся_как_есть(self):
+        record = {"country": {"names": {"ru": "Германия"}}, "city": {"names": {"en": "Berlin"}}}
+        self.assertEqual(geo.describe(record)["label"], "Германия, Berlin")
+
     def test_пустая_запись(self):
         self.assertEqual(geo.describe(None)["label"], geo.UNKNOWN)
 
