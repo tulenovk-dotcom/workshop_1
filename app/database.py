@@ -159,6 +159,25 @@ CREATE TABLE IF NOT EXISTS visit_log (
     is_bot INTEGER NOT NULL DEFAULT 0
 );
 
+-- Переходы по кнопкам связи: сколько раз из карточки ушли в WhatsApp,
+-- на сайт или в Instagram места занятий.
+--
+-- О человеке здесь не хранится ничего: ни адреса, ни подписи браузера.
+-- Запись говорит только «в такое-то время у такого-то места нажали такую-то
+-- кнопку». Поэтому записи не стареют и удалять их по просьбе человека
+-- нечего - удалять нечего. Роботы, как и в журнале посещений, не
+-- выбрасываются, а помечаются: ошибку в отсеве тогда можно откатить.
+CREATE TABLE IF NOT EXISTS contact_clicks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    provider_id INTEGER NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
+    -- whatsapp, website, instagram - какая кнопка.
+    kind TEXT NOT NULL,
+    -- card - со страницы места занятий, list - прямо из списка каталога.
+    source TEXT NOT NULL DEFAULT 'card',
+    created_at TEXT NOT NULL,
+    is_bot INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -185,6 +204,8 @@ CREATE INDEX IF NOT EXISTS idx_requests_status ON requests(status, created_at);
 CREATE INDEX IF NOT EXISTS idx_visit_log_time ON visit_log(created_at);
 CREATE INDEX IF NOT EXISTS idx_visit_log_ip ON visit_log(ip, created_at);
 CREATE INDEX IF NOT EXISTS idx_visit_log_people ON visit_log(is_bot, created_at);
+CREATE INDEX IF NOT EXISTS idx_clicks_provider ON contact_clicks(provider_id, is_bot);
+CREATE INDEX IF NOT EXISTS idx_clicks_time ON contact_clicks(created_at, is_bot);
 """
 
 
