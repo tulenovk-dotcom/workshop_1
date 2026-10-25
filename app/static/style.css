@@ -302,7 +302,13 @@ h3 { font-size: var(--step-1); margin: 22px 0 8px; }
   color: #fff;
 }
 
-.hero h1 { margin: 0 0 14px; max-width: 24ch; color: #fff; }
+/* Заголовок идёт во всю ширину плашки: он здесь и есть главный объект,
+   а не колонка текста. */
+.hero h1 { margin: 0 0 16px; color: #fff; }
+
+@media (min-width: 900px) {
+  .hero h1 { font-size: 2.3rem; }
+}
 
 .hero-lead { margin: 0 0 24px; max-width: 62ch; color: #d6dde2; }
 
@@ -323,7 +329,6 @@ h3 { font-size: var(--step-1); margin: 22px 0 8px; }
 
 @media (max-width: 640px) {
   .hero { padding: 26px 20px 24px; border-radius: 20px; }
-  .hero h1 { max-width: none; }
 }
 
 .breadcrumbs { margin: 0 0 16px; font-size: 0.95rem; }
