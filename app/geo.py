@@ -296,6 +296,13 @@ HOSTING_MARKERS = (
     "ip volume",
     "selectel",
     "timeweb",
+    # Замечены в журнале живого сайта: хостинги без слов «cloud» и
+    # «hosting» в названии, по одному признаку их не поймать.
+    "omegatech",
+    "1337 services",
+    "flokinet",
+    "hostkey",
+    "zomro",
     "beget",
     "reg.ru",
     "hostinger",

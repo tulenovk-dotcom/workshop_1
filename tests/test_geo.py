@@ -174,6 +174,10 @@ class ВладелецАдреса(unittest.TestCase):
             "Hetzner Online GmbH",
             "FranTech Solutions",
             "Alibaba Cloud LLC",
+            "Omegatech LTD",
+            "1337 Services GmbH",
+            "TC DATACENTER LIMITED",
+            "IP Volume inc",
         ):
             self.assertTrue(geo.looks_like_hosting(имя), имя)
 
@@ -181,6 +185,7 @@ class ВладелецАдреса(unittest.TestCase):
         """Казахстанские операторы - живые люди, их помечать нельзя."""
         for имя in (
             "Kazakhtelecom JSC",
+            "Kar-Tel LLC",
             "JSC Kcell",
             "Mobile Telecom Service",
             "Beeline Kazakhstan",
