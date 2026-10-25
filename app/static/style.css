@@ -18,8 +18,9 @@
   --red: #9b2c2c;
   --red-bg: #fbe9e9;
 
-  /* Шрифты: сериф для заголовков — «справочник», а не лендинг. */
-  --font-display: "Literata", Georgia, "Times New Roman", serif;
+  /* Один гротеск на весь сайт: и текст, и заголовки. Серифа больше нет -
+     разницу между заголовком и текстом держат кегль и насыщенность. */
+  --font-display: "Manrope", "Onest", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   --font-text: "Manrope", "Onest", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
 
   /* Шкала кегля, шаг ≈1.25 */
@@ -35,6 +36,7 @@
    набиралось бы двумя гарнитурами сразу. Onest знает все девять казахских
    букв, рисунком близок к Manrope, и на казахских страницах работает один. */
 html[lang="kk"] {
+  --font-display: "Onest", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   --font-text: "Onest", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
@@ -284,9 +286,11 @@ a { color: var(--accent); }
 
 main.container { padding-top: 24px; }
 
+/* Заголовки набраны жирно: без серифа отличить их от текста должна
+   насыщенность, а не рисунок буквы. */
 h1, h2, h3, .logo {
   font-family: var(--font-display);
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.01em;
   text-wrap: balance;
 }
