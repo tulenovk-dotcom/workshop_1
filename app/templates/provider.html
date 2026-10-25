@@ -31,8 +31,10 @@
       <a class="btn btn-primary" href="tel:{{ provider.phone|replace(' ', '') }}">{{ t('Позвонить') }}</a>
     {% endif %}
     {% if provider.whatsapp %}
-      <a class="btn btn-whatsapp" href="{{ provider.whatsapp|wa_link }}"
-         target="_blank" rel="noopener">{{ t('Написать в WhatsApp') }}</a>
+      {# Ссылка идёт через /go: сайт отмечает переход и перенаправляет
+         в WhatsApp. Для посетителя разницы нет. #}
+      <a class="btn btn-whatsapp" href="{{ url('/go/whatsapp/' ~ provider.id) }}"
+         target="_blank" rel="nofollow noopener">{{ t('Написать в WhatsApp') }}</a>
     {% endif %}
   </div>
 
@@ -45,12 +47,14 @@
     {% if provider.whatsapp %}<div><dt>WhatsApp</dt><dd>{{ provider.whatsapp }}</dd></div>{% endif %}
     {% if provider.website %}
       <div><dt>{{ t('Сайт') }}</dt><dd>
-        <a href="{{ provider.website|site_link }}" target="_blank" rel="noopener">{{ provider.website }}</a>
+        <a href="{{ url('/go/website/' ~ provider.id) }}"
+           target="_blank" rel="nofollow noopener">{{ provider.website }}</a>
       </dd></div>
     {% endif %}
     {% if provider.instagram %}
       <div><dt>Instagram</dt><dd>
-        <a href="{{ provider.instagram|instagram_link }}" target="_blank" rel="noopener">{{ provider.instagram }}</a>
+        <a href="{{ url('/go/instagram/' ~ provider.id) }}"
+           target="_blank" rel="nofollow noopener">{{ provider.instagram }}</a>
       </dd></div>
     {% endif %}
     <div><dt>{{ t('Возраст детей') }}</dt><dd>{{ ui.age_line(provider) }}</dd></div>

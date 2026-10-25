@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Админка - переходы{% endblock %}
+
+{% block content %}
+<h1>Переходы к специалистам</h1>
+{% include "admin/_nav.html" %}
+
+<p class="admin-summary">Сколько раз из каталога уходили к месту занятий:
+  писали в WhatsApp, открывали сайт или Instagram. Персональных данных
+  здесь нет - счётчик не знает, кто нажал, только когда и на какую кнопку.</p>
+
+<nav class="stat-periods">
+  {% for period, label in periods %}
+    {% if period == days %}
+      <span class="stat-period stat-period-current">{{ label }}</span>
+    {% else %}
+      <a class="stat-period" href="/admin/clicks?days={{ period }}">{{ label }}</a>
+    {% endif %}
+  {% endfor %}
+</nav>
+
+<section class="stat-strip">
+  <p class="stat-figure">
+    <span class="stat-num">{{ clicks_total }}</span>
+    <span class="stat-label">переходов за {{ days }} дней</span>
+  </p>
+  <p class="stat-figure">
+    <span class="stat-num">{{ whatsapp_total }}</span>
+    <span class="stat-label">из них в WhatsApp</span>
+  </p>
+  <p class="stat-figure">
+    <span class="stat-num">{{ views_total }}</span>
+    <span class="stat-label">открытий карточек</span>
+  </p>
+  <p class="stat-figure">
+    <span class="stat-num">{{ all_time_total }}</span>
+    <span class="stat-label">переходов за всё время</span>
+  </p>
+</section>
+
+{% if rows %}
+  <div class="table-wrap">
+    <table class="admin-table stat-table">
+      <thead>
+        <tr>
+          <th>Место занятий</th>
+          <th class="stat-col-num">Карточку открыли</th>
+          <th class="stat-col-num">WhatsApp</th>
+          <th class="stat-col-num">Сайт</th>
+          <th class="stat-col-num">Instagram</th>
+          <th class="stat-col-num">Всего за период</th>
+          <th class="stat-col-num">Доля</th>
+          <th class="stat-col-num">За всё время</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td>
+              <a href="/providers/{{ row.id }}">{{ row.name }}</a>
+              {% if row.is_test %}<span class="chip chip-test">тест</span>{% endif %}
+              <div class="muted">{{ row.city }}</div>
+            </td>
+            <td class="stat-col-num">{{ row.views }}</td>
+            <td class="stat-col-num">{{ row.whatsapp }}</td>
+            <td class="stat-col-num">{{ row.website }}</td>
+            <td class="stat-col-num">{{ row.instagram }}</td>
+            <td class="stat-col-num">{{ row.total }}</td>
+            <td class="stat-col-num">
+              {% if row.share is none %}—{% else %}{{ row.share }}%{% endif %}
+            </td>
+            <td class="stat-col-num">{{ row.all_time }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <p class="hint">Доля - это переходы, поделённые на открытия карточки.
+    Прочерк значит, что карточку за этот срок не открывали ни разу, и делить
+    не на что. Доля бывает и больше ста процентов: кнопка «Написать в
+    WhatsApp» стоит и в списке каталога, поэтому часть людей пишет, не
+    открывая карточку. Таких переходов за этот срок {{ from_list_total }}.</p>
+
+  <p class="hint">Открытия карточек известны за {{ retention_days }} дней -
+    столько живёт журнал посещений. Сами переходы не стареют: их общее число
+    в последней колонке считается за всё время.</p>
+
+  <p class="hint">Звонки в этот счёт не входят. Кнопка «Позвонить» открывает
+    приложение звонков на телефоне, а не страницу, и пропустить её через
+    счётчик, не рискуя самой кнопкой, нельзя.</p>
+{% else %}
+  <p class="empty">В каталоге пока нет ни одного места занятий.</p>
+{% endif %}
+{% endblock %}

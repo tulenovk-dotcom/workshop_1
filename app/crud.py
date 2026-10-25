@@ -979,3 +979,103 @@ def visitor_pages(
         + " ORDER BY created_at DESC LIMIT ?",
         (ip, *visit_log_range(days, day), limit),
     ).fetchall()
+
+
+# --- Переходы по кнопкам связи ----------------------------------------------
+
+# Откуда нажали. Со страницы места занятий - 'card', прямо из списка
+# каталога - 'list'. Различие нужно, чтобы доля переходов к открытиям
+# карточки была объяснима: часть людей пишет, не открыв карточку вовсе.
+CLICK_SOURCES = ("card", "list")
+
+
+def record_contact_click(
+    conn: sqlite3.Connection,
+    provider_id: int,
+    kind: str,
+    source: str = "card",
+    is_bot: bool = False,
+) -> None:
+    """Отметить переход по кнопке связи.
+
+    Персональных данных не пишем совсем: ни адреса, ни подписи браузера -
+    только время, место занятий, вид кнопки и откуда нажали.
+    """
+    conn.execute(
+        "INSERT INTO contact_clicks (provider_id, kind, source, created_at, is_bot)"
+        " VALUES (?, ?, ?, ?, ?)",
+        (
+            provider_id,
+            kind,
+            source if source in CLICK_SOURCES else "card",
+            now_iso(),
+            int(is_bot),
+        ),
+    )
+
+
+def contact_clicks_by_provider(
+    conn: sqlite3.Connection, days: int
+) -> list[sqlite3.Row]:
+    """Переходы за период, по строке на каждое место занятий.
+
+    В выборку попадают и те, к кому не перешли ни разу: нулевая строка -
+    такой же ответ, как и большая. Роботы не считаются.
+    """
+    return conn.execute(
+        """
+        SELECT p.id, p.name, p.city, p.is_test,
+               SUM(CASE WHEN c.kind = 'whatsapp' THEN 1 ELSE 0 END) AS whatsapp,
+               SUM(CASE WHEN c.kind = 'website' THEN 1 ELSE 0 END) AS website,
+               SUM(CASE WHEN c.kind = 'instagram' THEN 1 ELSE 0 END) AS instagram,
+               SUM(CASE WHEN c.source = 'list' THEN 1 ELSE 0 END) AS from_list,
+               COUNT(c.id) AS total,
+               (SELECT COUNT(*) FROM contact_clicks a
+                  WHERE a.provider_id = p.id AND a.is_bot = 0) AS all_time
+          FROM providers p
+          LEFT JOIN contact_clicks c
+                 ON c.provider_id = p.id AND c.is_bot = 0 AND c.created_at >= ?
+         GROUP BY p.id
+         ORDER BY total DESC, p.name
+        """,
+        (visit_log_since(days),),
+    ).fetchall()
+
+
+def provider_card_views(conn: sqlite3.Connection, days: int) -> dict[int, int]:
+    """Сколько раз открывали карточку каждого места занятий.
+
+    Считается по журналу посещений, а он живёт VISIT_LOG_DAYS дней - за
+    больший срок открытий просто не знаем. Казахская версия страницы идёт
+    в тот же счёт: это одна карточка, а не две.
+    """
+    rows = conn.execute(
+        """
+        SELECT CAST(
+                 REPLACE(REPLACE(path, '/kk/providers/', ''), '/providers/', '')
+                 AS INTEGER
+               ) AS provider_id,
+               COUNT(*) AS views
+          FROM visit_log
+         WHERE is_bot = 0 AND created_at >= ?
+           AND (path LIKE '/providers/%' OR path LIKE '/kk/providers/%')
+         GROUP BY provider_id
+        """,
+        (visit_log_since(days),),
+    ).fetchall()
+    return {int(row["provider_id"]): int(row["views"]) for row in rows if row["provider_id"]}
+
+
+def contact_clicks_total(conn: sqlite3.Connection, days: int | None = None) -> int:
+    """Все переходы: за период или за всё время, если период не задан."""
+    if days is None:
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM contact_clicks WHERE is_bot = 0"
+        ).fetchone()
+    else:
+        row = conn.execute(
+            "SELECT COUNT(*) AS n FROM contact_clicks"
+            " WHERE is_bot = 0 AND created_at >= ?",
+            (visit_log_since(days),),
+        ).fetchone()
+    return int(row["n"])

@@ -161,7 +161,9 @@
         <p class="pc-price">{{ ui.price_line(p) }}</p>
 
         {% if p.whatsapp %}
-          <a class="btn btn-cta" href="{{ p.whatsapp|wa_link }}" target="_blank" rel="noopener">
+          {# src=list: нажали прямо из списка, не открывая карточку. #}
+          <a class="btn btn-cta" href="{{ url('/go/whatsapp/' ~ p.id) }}?src=list"
+             target="_blank" rel="nofollow noopener">
             {{ t('Написать в WhatsApp') }}</a>
         {% elif p.phone %}
           <a class="btn btn-cta" href="tel:{{ p.phone|replace(' ', '') }}">{{ t('Позвонить') }}</a>

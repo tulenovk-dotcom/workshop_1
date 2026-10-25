@@ -851,6 +851,55 @@ def add_review(
     return local_redirect(request, f"/providers/{provider_id}?review=ok#reviews")
 
 
+# Какие кнопки считаем и как собрать из записи настоящий адрес: вид кнопки
+# из адреса /go/<вид>/<номер> -> (столбец записи, как превратить в ссылку).
+#
+# Телефона здесь нет: ссылка «Позвонить» ведёт не на страницу, а в приложение
+# звонков (tel:), и перенаправление туда разные браузеры понимают по-разному.
+# Ломать кнопку звонка ради счётчика нельзя, поэтому звонки не считаются.
+CLICK_TARGETS = {
+    "whatsapp": ("whatsapp", wa_link),
+    "website": ("website", site_link),
+    "instagram": ("instagram", instagram_link),
+}
+
+
+@app.get("/go/{kind}/{provider_id}")
+def go_to_contact(request: Request, kind: str, provider_id: int, src: str = "card"):
+    """Отметить переход по кнопке связи и отправить человека дальше.
+
+    Кнопка в карточке ведёт не прямо в WhatsApp, а сюда: сайт прибавляет
+    единицу к счётчику и тут же перенаправляет. Для посетителя ничего не
+    меняется - он попадает туда же, куда и раньше.
+
+    Счётчик не должен мешать переходу: если запись не удалась, человек всё
+    равно уходит по ссылке. Лучше потерять одну отметку, чем кнопку.
+    """
+    target = ""
+    if kind in CLICK_TARGETS:
+        field, as_link = CLICK_TARGETS[kind]
+        with db_session() as conn:
+            provider = crud.get_provider(conn, provider_id)
+            if provider is None:
+                raise HTTPException(status_code=404, detail="Запись не найдена")
+            target = as_link(provider[field])
+            if target:
+                try:
+                    # Робот отсеивается той же меркой, что и в журнале
+                    # посещений: подпись браузера плюс владелец адреса.
+                    # Иначе счётчик переходов и счётчик открытий считали бы
+                    # по-разному, и доля получалась бы кривой.
+                    is_bot = looks_like_bot(user_agent(request)) or geo.hosting(
+                        request_ip(request)
+                    )
+                    crud.record_contact_click(conn, provider_id, kind, src, is_bot)
+                except Exception:
+                    log.warning("Не удалось записать переход", exc_info=True)
+    if not target:
+        raise HTTPException(status_code=404, detail="Ссылка не найдена")
+    return RedirectResponse(target, status_code=302)
+
+
 @app.get("/methods", response_class=HTMLResponse)
 def methods_page(request: Request):
     with db_session() as conn:
@@ -954,6 +1003,11 @@ def robots() -> str:
     return (
         "User-agent: *\n"
         "Disallow: /admin\n"
+        # Кнопки связи ведут через /go, и робот, пройдя по ним, накрутил бы
+        # счётчик переходов. Пометка is_bot ловит известных роботов, но не
+        # всех, поэтому проще туда не звать.
+        "Disallow: /go\n"
+        "Disallow: /kk/go\n"
         f"Sitemap: {SITE_URL}/sitemap.xml\n"
     )
 
@@ -1534,6 +1588,53 @@ def parse_visit_day(value: str, oldest: date, newest: date) -> date | None:
     except ValueError:
         return None
     return day if oldest <= day <= newest else None
+
+
+# Сроки, за которые можно смотреть переходы. Дольше тридцати дней нет
+# смысла: открытия карточек берутся из журнала посещений, а он живёт
+# VISIT_LOG_DAYS дней, и без них не посчитать долю. Общее число переходов
+# за всё время в таблице есть отдельной колонкой - оно не стареет.
+CLICK_PERIODS = ((7, "7 дней"), (30, "30 дней"))
+
+
+@app.get("/admin/clicks", response_class=HTMLResponse)
+def admin_clicks(request: Request, days: int = 30):
+    """Переходы по кнопкам связи - по строке на место занятий.
+
+    Персональных данных здесь нет: счётчик переходов не знает, кто нажал.
+    Открытия карточек берутся из журнала посещений, уже без роботов.
+    """
+    if guard := require_admin(request):
+        return guard
+    if days not in {period for period, _ in CLICK_PERIODS}:
+        days = 30
+    with db_session() as conn:
+        views = crud.provider_card_views(conn, days)
+        rows = []
+        for row in crud.contact_clicks_by_provider(conn, days):
+            seen = views.get(int(row["id"]), 0)
+            total = int(row["total"])
+            rows.append({
+                **dict(row),
+                "views": seen,
+                # Доля считается от открытий карточки, но в числителе все
+                # переходы, в том числе сделанные прямо из списка каталога.
+                # Поэтому доля может выйти и больше ста процентов - под
+                # таблицей об этом сказано словами.
+                "share": round(total / seen * 100) if seen else None,
+            })
+        context = {
+            "days": days,
+            "periods": CLICK_PERIODS,
+            "retention_days": crud.VISIT_LOG_DAYS,
+            "rows": rows,
+            "clicks_total": sum(int(row["total"]) for row in rows),
+            "whatsapp_total": sum(int(row["whatsapp"]) for row in rows),
+            "from_list_total": sum(int(row["from_list"]) for row in rows),
+            "views_total": sum(int(row["views"]) for row in rows),
+            "all_time_total": crud.contact_clicks_total(conn),
+        }
+    return render(request, "admin/clicks.html", context)
 
 
 def application_methods(conn, application) -> list:

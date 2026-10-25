@@ -107,6 +107,26 @@ class ОбновлениеСуществующейБазы(unittest.TestCase):
         обновить(conn)
         self.assertIn("is_bot", столбцы(conn, "visit_log"))
 
+    def test_таблица_переходов_появляется_на_старой_базе(self):
+        """Счётчик переходов добавлен позже остальных таблиц.
+
+        На боевой базе таблицы contact_clicks нет, а индексы по ней есть в
+        INDEXES. Порядок в init_db такой, что таблица создаётся раньше: если
+        его однажды сломают, упадёт здесь, а не при выкате.
+        """
+        conn = sqlite3.connect(":memory:")
+        conn.executescript(СТАРЫЙ_ЖУРНАЛ)
+        обновить(conn)
+        имена = {
+            row[0]
+            for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE name LIKE '%click%'"
+            )
+        }
+        self.assertIn("contact_clicks", имена)
+        self.assertIn("idx_clicks_provider", имена)
+        self.assertIn("idx_clicks_time", имена)
+
     def test_новая_база_собирается_целиком(self):
         """Путь стенда: базы ещё нет вовсе."""
         conn = sqlite3.connect(":memory:")
@@ -117,7 +137,8 @@ class ОбновлениеСуществующейБазы(unittest.TestCase):
                 "SELECT name FROM sqlite_master WHERE type = 'table'"
             )
         }
-        for нужная in ("providers", "reviews", "applications", "visit_log", "visit_days"):
+        for нужная in ("providers", "reviews", "applications", "visit_log",
+                       "visit_days", "contact_clicks"):
             self.assertIn(нужная, таблицы)
         self.assertIn("is_bot", столбцы(conn, "visit_log"))
 
