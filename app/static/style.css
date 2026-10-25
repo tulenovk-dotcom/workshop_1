@@ -741,6 +741,10 @@ input:focus, select:focus, textarea:focus {
 
 .chip-test { background: #eceeed; color: var(--muted); }
 
+/* Плашка «робот» в журнале посещений. Тише обычной: это служебная
+   пометка о том, что запись не идёт в счёт, а не предупреждение. */
+.chip-bot { background: #eceeed; color: var(--muted); font-weight: 500; }
+
 .rating { margin-left: auto; font-weight: 700; font-size: 0.95rem; white-space: nowrap; }
 .rating .star { color: #d08700; }
 .rating-count { font-weight: 400; color: var(--muted); }
@@ -1288,6 +1292,7 @@ input:focus, select:focus, textarea:focus {
 .visitor-place { margin: -4px 0 14px; }
 .visitor-place .hint { display: inline; }
 .visitor-place-unknown { color: var(--muted); }
+.visitor-bots-switch { margin: 0 0 12px; }
 
 /* Владелец адреса - второй строкой под местом: «DigitalOcean» объясняет
    заход из США лучше, чем сам город. */

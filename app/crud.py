@@ -887,26 +887,38 @@ def visit_log_range(days: int, day: date | None = None) -> tuple[str, str]:
 
 
 def visitors(
-    conn: sqlite3.Connection, days: int, day: date | None = None
+    conn: sqlite3.Connection,
+    days: int,
+    day: date | None = None,
+    with_bots: bool = False,
 ) -> list[sqlite3.Row]:
     """Уникальные посетители за период: по строке на адрес.
 
     Визит и просмотр - разные вещи. Просмотр - одно открытие страницы.
     Визит - непрерывный заход: если между открытиями прошло больше
     VISIT_GAP_MINUTES, считаем, что человек пришёл заново.
+
+    По умолчанию роботов в выборке нет. `with_bots=True` возвращает их
+    тоже, со столбцом `is_bot`: администратору нужно иногда посмотреть,
+    кого именно отсеяли, - отсев без возможности проверить его глазами
+    доверия не вызывает.
     """
+    bots_filter = "" if with_bots else " AND is_bot = 0"
     return conn.execute(
         """
         WITH steps AS (
-          SELECT ip, created_at, device,
+          SELECT ip, created_at, device, is_bot,
                  LAG(created_at) OVER (PARTITION BY ip ORDER BY created_at) AS prev
             FROM visit_log
-           WHERE created_at >= ? AND created_at < ? AND is_bot = 0
+           WHERE created_at >= ? AND created_at < ?"""
+        + bots_filter
+        + """
         )
         SELECT ip,
                COUNT(*) AS views,
                MIN(created_at) AS first_seen,
                MAX(created_at) AS last_seen,
+               MAX(is_bot) AS is_bot,
                SUM(CASE WHEN prev IS NULL
                           OR (julianday(created_at) - julianday(prev)) * 1440 > ?
                         THEN 1 ELSE 0 END) AS visits,
@@ -952,11 +964,18 @@ def visitor_pages(
     days: int,
     limit: int = 300,
     day: date | None = None,
+    with_bots: bool = False,
 ) -> list[sqlite3.Row]:
-    """Что смотрел один посетитель: страницы по времени, новые сверху."""
+    """Что смотрел один посетитель: страницы по времени, новые сверху.
+
+    `with_bots=True` показывает и записи, помеченные роботами: иначе на
+    странице робота было бы пусто, и непонятно, за что его отсеяли.
+    """
+    bots_filter = "" if with_bots else " AND is_bot = 0"
     return conn.execute(
-        "SELECT created_at, path, device, user_agent FROM visit_log"
-        " WHERE ip = ? AND created_at >= ? AND created_at < ? AND is_bot = 0"
-        " ORDER BY created_at DESC LIMIT ?",
+        "SELECT created_at, path, device, user_agent, is_bot FROM visit_log"
+        " WHERE ip = ? AND created_at >= ? AND created_at < ?"
+        + bots_filter
+        + " ORDER BY created_at DESC LIMIT ?",
         (ip, *visit_log_range(days, day), limit),
     ).fetchall()

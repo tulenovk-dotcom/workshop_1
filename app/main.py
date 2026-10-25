@@ -1448,7 +1448,9 @@ VISITOR_PERIODS = ((1, "Сегодня"), (7, "7 дней"), (30, "30 дней")
 
 
 @app.get("/admin/visitors", response_class=HTMLResponse)
-def admin_visitors(request: Request, days: int = 7, ip: str = "", date: str = ""):
+def admin_visitors(
+    request: Request, days: int = 7, ip: str = "", date: str = "", bots: int = 0
+):
     """Уникальные посетители за период или за конкретную дату, по адресам.
 
     Дата (`?date=2026-10-10`) берётся по времени Казахстана: с полуночи до
@@ -1483,19 +1485,27 @@ def admin_visitors(request: Request, days: int = 7, ip: str = "", date: str = ""
             "date_max": today.isoformat(),
             "date_error": date_error,
             # Хвост адреса, чтобы переход к посетителю и обратно не терял
-            # выбранную дату или период.
-            "scope_query": f"date={day.isoformat()}" if day else f"days={days}",
+            # выбранную дату, период и показ роботов.
+            "scope_query": (f"date={day.isoformat()}" if day else f"days={days}")
+            + ("&bots=1" if bots else ""),
+            # Показывать ли роботов в таблице. По умолчанию нет: страница
+            # про людей. Но проверить отсев глазами надо, иначе он
+            # превращается в «сайт сам решил, а я поверь».
+            "show_bots": bool(bots),
             "unique_count": crud.visitors_count(conn, days, day),
         }
         if ip:
-            context["pages"] = crud.visitor_pages(conn, ip, days, day=day)
+            context["pages"] = crud.visitor_pages(
+                conn, ip, days, day=day, with_bots=True
+            )
             context["place"] = geo.locate(ip)
             context["org"] = geo.org(ip)
         else:
-            rows = crud.visitors(conn, days, day)
+            rows = crud.visitors(conn, days, day, with_bots=bool(bots))
             context["rows"] = rows
-            context["views_total"] = sum(int(row["views"]) for row in rows)
-            context["visits_total"] = sum(int(row["visits"]) for row in rows)
+            люди = [row for row in rows if not row["is_bot"]]
+            context["views_total"] = sum(int(row["views"]) for row in люди)
+            context["visits_total"] = sum(int(row["visits"]) for row in люди)
             # Место ищется при показе, а не при записи: так оно есть и у
             # старых записей журнала, а схема базы не меняется.
             places = geo.locate_many(row["ip"] for row in rows)
@@ -1503,7 +1513,7 @@ def admin_visitors(request: Request, days: int = 7, ip: str = "", date: str = ""
             # Владелец адреса - рядом с местом: «США, North Bergen» мало
             # что говорит, «DigitalOcean» объясняет сразу.
             context["orgs"] = geo.org_many(row["ip"] for row in rows)
-            context["geo"] = geo.summary(places[row["ip"]] for row in rows)
+            context["geo"] = geo.summary(places[row["ip"]] for row in люди)
             # Сколько адресов отсеяно как роботы. Без этой строки непонятно,
             # куда делись заходы, которые видно в журнале сервера.
             context["bots_count"] = crud.bots_count(conn, days, day)
