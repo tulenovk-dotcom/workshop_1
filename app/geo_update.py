@@ -32,11 +32,16 @@ import urllib.request
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from .geo import GEO_DB_PATH
+from .geo import GEO_ASN_DB_PATH, GEO_DB_PATH
 
 log = logging.getLogger("app")
 
 URL = "https://download.db-ip.com/free/dbip-city-lite-{month}.mmdb.gz"
+
+# Второй справочник - про владельца адреса. Лежит там же и выходит теми же
+# месячными выпусками. Нужен, чтобы отличить домашний интернет от
+# арендованного сервера: см. geo.hosting().
+URL_ASN = "https://download.db-ip.com/free/dbip-asn-lite-{month}.mmdb.gz"
 
 # Адрес для проверки: публичный DNS Google, у него страна известна всегда.
 CHECK_IP = "8.8.8.8"
@@ -97,9 +102,21 @@ def check(path: Path) -> None:
         raise ValueError(f"по адресу {CHECK_IP} страна не нашлась")
 
 
-def download(month: str, folder: Path) -> Path:
+def check_asn(path: Path) -> None:
+    """Файл открывается и находит владельца адреса. Иначе - исключение."""
+    import maxminddb
+
+    from .geo import organisation
+
+    with maxminddb.open_database(str(path)) as reader:
+        record = reader.get(CHECK_IP) or {}
+    if not organisation(record):
+        raise ValueError(f"по адресу {CHECK_IP} владелец не нашёлся")
+
+
+def download(month: str, folder: Path, url_template: str = URL) -> Path:
     """Скачать и распаковать справочник за месяц во временный файл."""
-    url = URL.format(month=month)
+    url = url_template.format(month=month)
     say(f"качаю {url}")
     request = urllib.request.Request(url, headers={"User-Agent": "erekshe.kz geo update"})
     fd, packed = tempfile.mkstemp(prefix=".geo-", suffix=".gz", dir=folder)
@@ -121,6 +138,12 @@ def download(month: str, folder: Path) -> Path:
 
 
 def main() -> int:
+    """Обновить оба справочника: места и владельцев адресов.
+
+    Владелец - вещь полезная, но не обязательная: без него сайт работает,
+    просто не отличает арендованный сервер от домашнего интернета. Поэтому
+    его неудача на итог команды не влияет, а сообщение в журнале остаётся.
+    """
     target = GEO_DB_PATH
     target.parent.mkdir(parents=True, exist_ok=True)
     lock = _locked(target.parent)
@@ -128,12 +151,19 @@ def main() -> int:
         say("обновление уже идёт в другом процессе, пропускаю")
         return 0
     try:
-        return _update(target)
+        code = _update(target)
+        _update(GEO_ASN_DB_PATH, URL_ASN, check_asn, "справочник владельцев")
+        return code
     finally:
         lock.close()
 
 
-def _update(target: Path) -> int:
+def _update(
+    target: Path,
+    url_template: str = URL,
+    checker=check,
+    label: str = "справочник",
+) -> int:
     try:
         import maxminddb  # noqa: F401
     except ImportError:
@@ -153,25 +183,25 @@ def _update(target: Path) -> int:
 
     for month in months:
         try:
-            fresh = download(month, target.parent)
+            fresh = download(month, target.parent, url_template)
         except Exception as error:
-            say(f"за {month} скачать не удалось: {error}")
+            say(f"{label} за {month} скачать не удалось: {error}")
             continue
         try:
-            check(fresh)
+            checker(fresh)
         except Exception as error:
             fresh.unlink(missing_ok=True)
             say(f"файл за {month} не прошёл проверку: {error}")
             continue
         os.chmod(fresh, 0o644)
         os.replace(fresh, target)
-        say(f"готово, справочник за {month}: {target}")
+        say(f"готово, {label} за {month}: {target}")
         return 0
 
     if target.exists():
-        say("обновить не получилось, остался прежний справочник")
+        say(f"обновить не получилось, остался прежний {label}")
     else:
-        say("обновить не получилось, справочника нет: место будет «не определено»")
+        say(f"обновить не получилось, {label} отсутствует")
     return 1
 
 
@@ -221,7 +251,8 @@ def _auto_loop() -> None:
     time.sleep(AUTO_FIRST_DELAY)
     while True:
         try:
-            if update_due(GEO_DB_PATH, date.today()):
+            today = date.today()
+            if update_due(GEO_DB_PATH, today) or update_due(GEO_ASN_DB_PATH, today):
                 main()
         except Exception:
             log.exception("Фоновое обновление справочника мест упало")

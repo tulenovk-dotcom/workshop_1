@@ -47,6 +47,9 @@
   <h2>{{ ip }}</h2>
   <p class="visitor-place">Откуда: {{ place.label }}{% if place.label != 'не определено' %}
     <span class="hint">(примерно, по адресу)</span>{% endif %}</p>
+  {% if org %}
+    <p class="visitor-place">Владелец адреса: {{ org }}</p>
+  {% endif %}
 
   {% if pages %}
     <p class="hint">Страницы по времени, новые сверху. Показано не больше 300
@@ -159,6 +162,13 @@
     {% endif %}
 
     <h2>По адресам</h2>
+
+    {% if bots_count %}
+      <p class="hint">Скрыто адресов, помеченных роботами: {{ bots_count }}.
+        Это поисковые обходчики, проверки доступности и заходы с арендованных
+        серверов. Записи о них в журнале остаются - пометку можно пересчитать
+        командой <code>python -m app.recount_bots</code>.</p>
+    {% endif %}
     <div class="table-wrap">
       <table class="admin-table stat-table">
         <thead>
@@ -177,7 +187,8 @@
             <tr>
               <td><a href="/admin/visitors?{{ scope_query }}&ip={{ row.ip|urlencode }}">{{ row.ip }}</a></td>
               {% set place = places[row.ip] %}
-              <td class="{{ 'visitor-place-unknown' if place.label == 'не определено' else '' }}">{{ place.label }}</td>
+              <td class="{{ 'visitor-place-unknown' if place.label == 'не определено' else '' }}">{{ place.label }}
+                {%- if orgs.get(row.ip) %}<span class="visitor-org">{{ orgs[row.ip] }}</span>{% endif %}</td>
               <td class="visitor-when">{{ row.first_seen|local_time }}</td>
               <td class="visitor-when">{{ row.last_seen|local_time }}</td>
               <td class="stat-col-num">{{ row.visits }}</td>

@@ -27,6 +27,7 @@ import sqlite3
 import sys
 from datetime import datetime
 
+from . import geo
 from .crud import visit_day
 from .database import DB_PATH, db_session
 from .useragent import looks_like_bot
@@ -66,14 +67,23 @@ def проверить_базу(путь):
 
 
 def разобрать(conn):
-    """Что поменялось бы: списки записей на пометку и на возврат."""
+    """Что поменялось бы: списки записей на пометку и на возврат.
+
+    Правило то же, что у сайта при записи: робот - либо тот, кто так
+    подписался, либо тот, кто зашёл с адреса хостинга. Владельцы адресов
+    берутся из справочника один раз на все записи; если справочника нет,
+    остаётся только подпись, и команда работает как раньше.
+    """
     rows = conn.execute(
-        "SELECT id, created_at, user_agent, is_bot FROM visit_log"
+        "SELECT id, created_at, ip, user_agent, is_bot FROM visit_log"
     ).fetchall()
+    владельцы = geo.org_many(row["ip"] for row in rows)
     пометить = []
     вернуть = []
     for row in rows:
-        робот = looks_like_bot(row["user_agent"])
+        робот = looks_like_bot(row["user_agent"]) or geo.looks_like_hosting(
+            владельцы.get(row["ip"], "")
+        )
         if робот and not row["is_bot"]:
             пометить.append(row)
         elif not робот and row["is_bot"]:
@@ -97,6 +107,16 @@ def подписи(rows) -> dict:
     return dict(sorted(счёт.items(), key=lambda pair: -pair[1]))
 
 
+def владельцы_адресов(rows) -> dict:
+    """Сколько записей у каждого владельца адреса. Для проверки глазами."""
+    счёт: dict = {}
+    известные = geo.org_many(row["ip"] for row in rows)
+    for row in rows:
+        имя = известные.get(row["ip"]) or "(владелец неизвестен)"
+        счёт[имя] = счёт.get(имя, 0) + 1
+    return dict(sorted(счёт.items(), key=lambda pair: -pair[1]))
+
+
 def показать(rows, пометить, вернуть) -> None:
     print(f"Записей в журнале: {len(rows)}")
     print(f"  из них уже помечены роботами: {sum(1 for r in rows if r['is_bot'])}")
@@ -105,6 +125,11 @@ def показать(rows, пометить, вернуть) -> None:
     for agent, count in list(подписи(пометить).items())[:15]:
         print(f"    {count:5}  {agent}")
     print()
+    if пометить:
+        print("    владельцы адресов:")
+        for имя, count in list(владельцы_адресов(пометить).items())[:15]:
+            print(f"    {count:5}  {имя}")
+        print()
     print(f"Вернуть людям: {len(вернуть)}")
     for agent, count in list(подписи(вернуть).items())[:15]:
         print(f"    {count:5}  {agent}")

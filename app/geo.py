@@ -40,57 +40,83 @@ _PROJECT_DIR = Path(__file__).resolve().parent.parent
 _SITE_DB = Path(os.environ.get("DB_PATH") or _PROJECT_DIR / "catalog.db")
 GEO_DB_PATH = Path(os.environ.get("GEOIP_DB") or _SITE_DB.parent / "geoip-city.mmdb")
 
+# Второй справочник, про владельца адреса: DB-IP «IP to ASN Lite». Лежит
+# рядом с первым и обновляется той же командой. Его может не быть - тогда
+# владелец просто неизвестен, и сайт работает как раньше.
+GEO_ASN_DB_PATH = Path(
+    os.environ.get("GEOIP_ASN_DB") or _SITE_DB.parent / "geoip-asn.mmdb"
+)
+
 ATTRIBUTION_URL = "https://db-ip.com"
 
 UNKNOWN = "не определено"
 KAZAKHSTAN_ISO = "KZ"
 
 _lock = threading.Lock()
-_reader = None
-_reader_mtime = None  # type: Optional[float]
-_warned = False
+
+# Открытые справочники: ключ - какой это файл, значение - что в нём лежит.
+# Справочников два (места и владельцы адресов), код открытия у них один.
+_open_files = {
+    "city": {"reader": None, "mtime": None, "warned": False},
+    "asn": {"reader": None, "mtime": None, "warned": False},
+}
 
 
-def _open_reader():
+def _open_db(kind, path, missing_message):
     """Открыть справочник или вернуть уже открытый.
 
     Если файл заменили (ежемесячное обновление), открываем заново: так
     свежие данные начинают работать без перезапуска сайта.
     """
-    global _reader, _reader_mtime, _warned
+    state = _open_files[kind]
     try:
-        mtime = GEO_DB_PATH.stat().st_mtime
+        mtime = path.stat().st_mtime
     except OSError:
-        if not _warned:
-            log.warning(
-                "Справочника местоположений нет (%s): место посетителей"
-                " будет «не определено». Скачать: python -m app.geo_update",
-                GEO_DB_PATH,
-            )
-            _warned = True
+        if not state["warned"]:
+            log.warning(missing_message, path)
+            state["warned"] = True
         return None
     with _lock:
-        if _reader is not None and _reader_mtime == mtime:
-            return _reader
+        if state["reader"] is not None and state["mtime"] == mtime:
+            return state["reader"]
         try:
             import maxminddb
         except ImportError:
-            if not _warned:
-                log.warning("Не установлен пакет maxminddb: место не определяется.")
-                _warned = True
+            if not state["warned"]:
+                log.warning("Не установлен пакет maxminddb: справочники не читаются.")
+                state["warned"] = True
             return None
         try:
-            fresh = maxminddb.open_database(str(GEO_DB_PATH))
+            fresh = maxminddb.open_database(str(path))
         except Exception as error:  # битый или недокачанный файл
-            log.warning("Не открылся справочник %s: %s", GEO_DB_PATH, error)
+            log.warning("Не открылся справочник %s: %s", path, error)
             return None
-        old, _reader, _reader_mtime = _reader, fresh, mtime
-        if old is not None:
+        previous = state["reader"]
+        state["reader"], state["mtime"] = fresh, mtime
+        if previous is not None:
             try:
-                old.close()
+                previous.close()
             except Exception:
                 pass
-        return _reader
+        return state["reader"]
+
+
+def _open_reader():
+    return _open_db(
+        "city",
+        GEO_DB_PATH,
+        "Справочника местоположений нет (%s): место посетителей будет"
+        " «не определено». Скачать: python -m app.geo_update",
+    )
+
+
+def _open_asn_reader():
+    return _open_db(
+        "asn",
+        GEO_ASN_DB_PATH,
+        "Справочника владельцев адресов нет (%s): заходы с арендованных"
+        " серверов не отличить от людей. Скачать: python -m app.geo_update",
+    )
 
 
 # В бесплатном справочнике у многих городов есть только английское
@@ -193,6 +219,146 @@ def locate_many(ips: Iterable[str]) -> Dict[str, Dict[str, str]]:
 
 def locate(ip: str) -> Dict[str, str]:
     return locate_many([ip])[ip]
+
+
+# --- Чей это адрес: домашний интернет или арендованный сервер ---------------
+#
+# Второй справочник DB-IP говорит, какой организации принадлежит адрес.
+# Нужно это ради одного различия: человек выходит в интернет через
+# провайдера связи, а программа-обходчик - с сервера, снятого в аренду у
+# хостинга. Поэтому «Google LLC» или «DigitalOcean» в этой колонке означает
+# не посетителя из США, а чью-то программу.
+#
+# Распознавание идёт по названию владельца, а не по списку диапазонов:
+# список пришлось бы вести руками и он устаревал бы каждый месяц. Название
+# приходит из справочника, который обновляется сам.
+#
+# Это догадка, а не факт. Поэтому заходы помечаются роботами, но не
+# удаляются: если в список попало лишнее, пометку можно снять обратно
+# командой `python -m app.recount_bots`.
+
+HOSTING_MARKERS = (
+    # Общие слова в названиях хостингов и облаков.
+    "hosting",
+    "hoster",
+    "cloud",
+    "data center",
+    "datacenter",
+    "dedicated",
+    "colocation",
+    "colo ",
+    "vps",
+    "server",
+    # Крупные облака.
+    "google",
+    "amazon",
+    "aws",
+    "microsoft",
+    "azure",
+    "oracle",
+    "alibaba",
+    "tencent",
+    "huawei",
+    "ibm",
+    "digitalocean",
+    "digital ocean",
+    "linode",
+    "vultr",
+    "the constant company",
+    "choopa",
+    "hetzner",
+    "ovh",
+    "scaleway",
+    "contabo",
+    "leaseweb",
+    "netcup",
+    "ionos",
+    "equinix",
+    "rackspace",
+    # Сети доставки и защиты: оттуда тоже ходят проверки, а не люди.
+    "cloudflare",
+    "akamai",
+    "fastly",
+    # Площадки, с которых идут обходы и сканирование.
+    "m247",
+    "datacamp",
+    "frantech",
+    "buyvm",
+    "psychz",
+    "quadranet",
+    "colocrossing",
+    "zenlayer",
+    "worldstream",
+    "serverius",
+    "clouvider",
+    "stark industries",
+    "aeza",
+    "ip volume",
+    "selectel",
+    "timeweb",
+    "beget",
+    "reg.ru",
+    "hostinger",
+    "namecheap",
+    "godaddy",
+    "bytedance",
+)
+
+
+def organisation(record) -> str:
+    """Название владельца адреса из записи справочника."""
+    if not record:
+        return ""
+    for key in (
+        "autonomous_system_organization",
+        "as_organization",
+        "organization",
+        "isp",
+    ):
+        value = record.get(key)
+        if value:
+            return str(value).strip()
+    return ""
+
+
+def looks_like_hosting(org: str) -> bool:
+    """Похоже ли название на хостинг, облако или площадку для серверов."""
+    low = (org or "").lower()
+    return any(mark in low for mark in HOSTING_MARKERS)
+
+
+def org_many(ips: Iterable[str]) -> Dict[str, str]:
+    """Владелец для каждого адреса. Неизвестный - пустая строка."""
+    result = {}
+    reader = None
+    opened = False
+    for ip in ips:
+        if ip in result:
+            continue
+        record = None
+        if _usable(ip):
+            if not opened:
+                reader, opened = _open_asn_reader(), True
+            if reader is not None:
+                try:
+                    record = reader.get(ip.strip())
+                except Exception:
+                    record = None
+        result[ip] = organisation(record)
+    return result
+
+
+def org(ip: str) -> str:
+    return org_many([ip])[ip]
+
+
+def hosting(ip: str) -> bool:
+    """Адрес арендованного сервера, а не домашнего интернета.
+
+    Справочника нет или владелец неизвестен - False: сомнение толкуем в
+    пользу того, что это человек.
+    """
+    return looks_like_hosting(org(ip))
 
 
 def summary(places: Iterable[Dict[str, str]], top: int = 10) -> Dict:

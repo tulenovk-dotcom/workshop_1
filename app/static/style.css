@@ -1288,6 +1288,15 @@ input:focus, select:focus, textarea:focus {
 .visitor-place { margin: -4px 0 14px; }
 .visitor-place .hint { display: inline; }
 .visitor-place-unknown { color: var(--muted); }
+
+/* Владелец адреса - второй строкой под местом: «DigitalOcean» объясняет
+   заход из США лучше, чем сам город. */
+.visitor-org {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
 .visitor-attribution { margin-top: 24px; font-size: 0.8rem; }
 
 /* --- Заявки на размещение --- */

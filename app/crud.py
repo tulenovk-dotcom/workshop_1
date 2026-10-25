@@ -930,6 +930,22 @@ def visitors_count(
     return int(row["n"])
 
 
+def bots_count(
+    conn: sqlite3.Connection, days: int, day: date | None = None
+) -> int:
+    """Сколько адресов за период помечено роботами.
+
+    Нужен один счёт на странице: показать, что отсев работает и сколько
+    именно заходов он убрал из таблицы.
+    """
+    row = conn.execute(
+        "SELECT COUNT(DISTINCT ip) AS n FROM visit_log"
+        " WHERE created_at >= ? AND created_at < ? AND is_bot = 1",
+        visit_log_range(days, day),
+    ).fetchone()
+    return int(row["n"])
+
+
 def visitor_pages(
     conn: sqlite3.Connection,
     ip: str,

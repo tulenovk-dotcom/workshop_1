@@ -288,7 +288,12 @@ async def count_visit(request: Request, call_next):
         return response
     global _visit_cleanup_day
     agent = user_agent(request)
-    is_bot = looks_like_bot(agent)
+    ip = request_ip(request)
+    # Робот - не только тот, кто честно подписался. Заходы с адресов,
+    # принадлежащих хостингам и облакам, - это чьи-то программы: из
+    # дата-центра человек в интернет не выходит. Подпись браузера при этом
+    # бывает самой обычной, поэтому одной её мало.
+    is_bot = looks_like_bot(agent) or geo.hosting(ip)
     day = crud.visit_day()
     try:
         with db_session() as conn:
@@ -299,7 +304,7 @@ async def count_visit(request: Request, call_next):
             # видно и можно откатить, а не обнаружить по пропаже записей.
             crud.record_page_view(
                 conn,
-                request_ip(request),
+                ip,
                 request.url.path,
                 agent,
                 device_from_agent(agent),
@@ -1485,6 +1490,7 @@ def admin_visitors(request: Request, days: int = 7, ip: str = "", date: str = ""
         if ip:
             context["pages"] = crud.visitor_pages(conn, ip, days, day=day)
             context["place"] = geo.locate(ip)
+            context["org"] = geo.org(ip)
         else:
             rows = crud.visitors(conn, days, day)
             context["rows"] = rows
@@ -1494,7 +1500,13 @@ def admin_visitors(request: Request, days: int = 7, ip: str = "", date: str = ""
             # старых записей журнала, а схема базы не меняется.
             places = geo.locate_many(row["ip"] for row in rows)
             context["places"] = places
+            # Владелец адреса - рядом с местом: «США, North Bergen» мало
+            # что говорит, «DigitalOcean» объясняет сразу.
+            context["orgs"] = geo.org_many(row["ip"] for row in rows)
             context["geo"] = geo.summary(places[row["ip"]] for row in rows)
+            # Сколько адресов отсеяно как роботы. Без этой строки непонятно,
+            # куда делись заходы, которые видно в журнале сервера.
+            context["bots_count"] = crud.bots_count(conn, days, day)
     context["geo_status"] = geo.status()
     context["geo_available"] = context["geo_status"] == "ok"
     age = geo.database_age_days()

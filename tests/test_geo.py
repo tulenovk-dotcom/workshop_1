@@ -144,5 +144,64 @@ class КогдаКачать(unittest.TestCase):
         self.assertFalse(self.gu.update_due(self.файл, date(2026, 10, 20)))
 
 
+class ВладелецАдреса(unittest.TestCase):
+    """Отличить домашний интернет от арендованного сервера (geo.hosting).
+
+    Справочник владельцев здесь тоже не нужен: проверяется разбор записи и
+    список признаков. Без справочника всё должно считаться человеком -
+    сомнение толкуем в его пользу.
+    """
+
+    def test_имя_владельца_из_записи(self):
+        self.assertEqual(
+            geo.organisation({"autonomous_system_organization": "Google LLC"}),
+            "Google LLC",
+        )
+
+    def test_другое_название_поля(self):
+        self.assertEqual(geo.organisation({"organization": "OVH SAS"}), "OVH SAS")
+
+    def test_пустая_запись(self):
+        self.assertEqual(geo.organisation(None), "")
+        self.assertEqual(geo.organisation({}), "")
+
+    def test_хостинги_опознаются(self):
+        for имя in (
+            "Google LLC",
+            "Amazon.com, Inc.",
+            "DigitalOcean, LLC",
+            "The Constant Company, LLC",
+            "Hetzner Online GmbH",
+            "FranTech Solutions",
+            "Alibaba Cloud LLC",
+        ):
+            self.assertTrue(geo.looks_like_hosting(имя), имя)
+
+    def test_провайдеры_связи_не_хостинги(self):
+        """Казахстанские операторы - живые люди, их помечать нельзя."""
+        for имя in (
+            "Kazakhtelecom JSC",
+            "JSC Kcell",
+            "Mobile Telecom Service",
+            "Beeline Kazakhstan",
+            "Transtelecom JSC",
+            "",
+        ):
+            self.assertFalse(geo.looks_like_hosting(имя), имя)
+
+    def test_без_справочника_считаем_человеком(self):
+        прежний = geo.GEO_ASN_DB_PATH
+        geo.GEO_ASN_DB_PATH = Path(tempfile.gettempdir()) / "нет-такого-файла.mmdb"
+        try:
+            self.assertEqual(geo.org("8.8.8.8"), "")
+            self.assertFalse(geo.hosting("8.8.8.8"))
+        finally:
+            geo.GEO_ASN_DB_PATH = прежний
+
+    def test_служебные_адреса_не_ищем(self):
+        self.assertEqual(geo.org("127.0.0.1"), "")
+        self.assertEqual(geo.org("не адрес"), "")
+
+
 if __name__ == "__main__":
     unittest.main()
