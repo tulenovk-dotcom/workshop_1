@@ -364,7 +364,9 @@ h3 { font-size: var(--step-1); margin: 22px 0 8px; }
    под рамку панели и не двоится. */
 .filters-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  /* 260px, а не 190: в узкую колонку не помещались длинные значения вроде
+     «Реабилитационный центр», и выбранное нельзя было прочитать. */
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   width: calc(100% + 1px);
   margin-left: -1px;
 }
@@ -386,6 +388,13 @@ h3 { font-size: var(--step-1); margin: 22px 0 8px; }
   background: transparent;
   border: none;
   border-radius: 0;
+}
+
+/* Стрелке списка нужно своё место: без отступа справа текст заезжает под
+   неё и обрывается посреди буквы. Что всё же не влезло - многоточие. */
+.filters .field select {
+  padding-right: 20px;
+  text-overflow: ellipsis;
 }
 
 .filters .field input:focus,
@@ -446,14 +455,17 @@ input:focus, select:focus, textarea:focus {
 
 .checkbox {
   display: flex;
-  align-items: center;
+  /* По верху, а не по центру: подпись в две-три строки на телефоне, и
+     квадратик должен стоять у первой строки. */
+  align-items: flex-start;
   gap: 8px;
+  overflow-wrap: anywhere;
   font-weight: 400;
   font-size: 0.95rem;
   color: var(--text);
 }
 
-.checkbox input { width: 18px; height: 18px; flex: none; }
+.checkbox input { width: 18px; height: 18px; flex: none; margin-top: 2px; }
 
 /* --- Переключатель в стиле iOS --- */
 
