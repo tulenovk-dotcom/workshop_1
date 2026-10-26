@@ -1609,7 +1609,10 @@ input:focus, select:focus, textarea:focus {
   .actions .btn, .filter-actions .btn { flex: 1 1 auto; }
   .moderation-cols { grid-template-columns: 1fr; }
   .header-inner { gap: 10px; }
-  .header-auth { width: 100%; }
+  /* Переносим по строкам: при входе администратора в этой полосе четыре
+     элемента, а кнопка «Разместиться» занимает всю ширину - без переноса
+     «Админка» и «Выйти» уезжали за край экрана вместе со всей страницей. */
+  .header-auth { width: 100%; flex-wrap: wrap; }
   .btn-outline { width: 100%; text-align: center; }
   .btn-cta { width: 100%; }
   .pc-more { margin: 0; }
