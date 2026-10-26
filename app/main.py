@@ -227,7 +227,10 @@ def user_agent(request: Request) -> str:
 # и не должен.
 
 # Админка - это администратор, а не посетитель, и в счёт не идёт.
-UNCOUNTED_PREFIXES = ("/static", "/admin", "/favicon", "/robots.txt", "/sitemap.xml")
+UNCOUNTED_PREFIXES = (
+    "/static", "/admin", "/favicon", "/robots.txt", "/sitemap.xml",
+    "/site.webmanifest",
+)
 
 # День, в который журнал посещений чистили в последний раз.
 _visit_cleanup_day = ""
@@ -495,14 +498,25 @@ templates.env.filters["short_hash"] = short_hash
 _static_versions: dict[str, str] = {}
 
 
-def static_url(name: str) -> str:
+def static_version(name: str) -> str:
     if name not in _static_versions:
         try:
             data = (BASE_DIR / "static" / name).read_bytes()
             _static_versions[name] = format(zlib.crc32(data), "x")
         except OSError:
             _static_versions[name] = "0"
-    return f"/static/{name}?v={_static_versions[name]}"
+    return _static_versions[name]
+
+
+def static_url(name: str) -> str:
+    return f"/static/{name}?v={static_version(name)}"
+
+
+def manifest_url() -> str:
+    """Адрес манифеста. Файл лежит в статике, но отдаём его своим маршрутом
+    (см. `webmanifest`), поэтому и адрес у него не из `/static`. Метка
+    версии при этом считается от того же файла, что и у остальной статики."""
+    return f"/site.webmanifest?v={static_version(MANIFEST_NAME)}"
 
 
 def moderation_counts() -> dict:
@@ -547,6 +561,7 @@ templates.env.globals.update(
     moderation_counts=moderation_counts,
     health_markers=health_markers,
     static_url=static_url,
+    manifest_url=manifest_url,
 )
 
 
@@ -629,7 +644,8 @@ KK_PREFIX = "/kk"
 # Что под префиксом не живёт: админка, статика и служебные файлы. Они одни
 # на весь сайт, и второй их копии на казахском быть не должно.
 NO_PREFIX_PATHS = (
-    "/admin", "/static", "/robots.txt", "/sitemap.xml", "/favicon.ico", "/lang",
+    "/admin", "/static", "/robots.txt", "/sitemap.xml", "/favicon.ico",
+    "/site.webmanifest", "/lang",
 )
 
 
@@ -995,6 +1011,22 @@ def privacy_request_sent(request: Request):
 
 
 FAVICON_PATH = BASE_DIR / "static" / "favicon" / "favicon.ico"
+MANIFEST_NAME = "favicon/site.webmanifest"
+
+
+@app.get("/site.webmanifest", include_in_schema=False)
+def webmanifest() -> FileResponse:
+    """Манифест приложения - с правильным типом содержимого.
+
+    Файл лежит в статике, но на боевом сервере папку `/static` раздаёт
+    nginx мимо приложения, а расширения `.webmanifest` он не знает и отдаёт
+    файл потоком байтов. Поэтому манифест идёт отдельным адресом: тип
+    проставляет приложение, и он одинаков на стенде и на живом сайте.
+    """
+    return FileResponse(
+        BASE_DIR / "static" / MANIFEST_NAME,
+        media_type="application/manifest+json",
+    )
 
 
 @app.get("/favicon.ico", include_in_schema=False)

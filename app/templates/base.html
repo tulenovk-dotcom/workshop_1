@@ -34,11 +34,13 @@
   {# Значок сайта собран из того же логотипа, что стоит в шапке: квадрат
      с прозрачными полями сверху и снизу, чтобы знак не обрезало и не
      растянуло. Адреса идут через static_url - поменяли картинку, и браузер
-     заберёт новую, а не достанет старую из кеша. #}
+     заберёт новую, а не достанет старую из кеша. Манифест - исключение:
+     его отдаёт отдельный маршрут, иначе nginx на боевом сервере проставит
+     ему неверный тип содержимого. #}
   <link rel="icon" href="{{ static_url('favicon/favicon.ico') }}" sizes="any">
   <link rel="icon" href="{{ static_url('favicon/favicon-32.png') }}" type="image/png" sizes="32x32">
   <link rel="apple-touch-icon" href="{{ static_url('favicon/apple-touch-icon.png') }}">
-  <link rel="manifest" href="{{ static_url('favicon/site.webmanifest') }}">
+  <link rel="manifest" href="{{ manifest_url() }}">
   <meta name="theme-color" content="#22333f">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
