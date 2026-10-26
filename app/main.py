@@ -11,6 +11,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import (
+    FileResponse,
     HTMLResponse,
     PlainTextResponse,
     RedirectResponse,
@@ -627,7 +628,9 @@ KK_PREFIX = "/kk"
 
 # Что под префиксом не живёт: админка, статика и служебные файлы. Они одни
 # на весь сайт, и второй их копии на казахском быть не должно.
-NO_PREFIX_PATHS = ("/admin", "/static", "/robots.txt", "/sitemap.xml", "/lang")
+NO_PREFIX_PATHS = (
+    "/admin", "/static", "/robots.txt", "/sitemap.xml", "/favicon.ico", "/lang",
+)
 
 
 def lang_prefix(request: Request) -> str:
@@ -989,6 +992,21 @@ async def privacy_request_create(request: Request):
 @app.get("/privacy/request/sent", response_class=HTMLResponse)
 def privacy_request_sent(request: Request):
     return render(request, "privacy_request_sent.html", {})
+
+
+FAVICON_PATH = BASE_DIR / "static" / "favicon" / "favicon.ico"
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon() -> FileResponse:
+    """Значок сайта по корневому адресу.
+
+    В разметке он указан через /static, но браузер всё равно просит его
+    и по корню - не разбирая страницу, а иногда и вовсе без неё: так он
+    ходит за значком для закладки или для вкладки с robots.txt. Отдаём тот
+    же файл, чтобы в журнале не копились 404.
+    """
+    return FileResponse(FAVICON_PATH, media_type="image/x-icon")
 
 
 @app.get("/robots.txt", response_class=PlainTextResponse)

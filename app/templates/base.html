@@ -31,7 +31,15 @@
   <meta property="og:image" content="{{ SITE_URL }}{{ static_url('logo.webp') }}">
   <meta name="twitter:card" content="summary">
 
-  <link rel="icon" href="data:,">
+  {# Значок сайта собран из того же логотипа, что стоит в шапке: квадрат
+     с прозрачными полями сверху и снизу, чтобы знак не обрезало и не
+     растянуло. Адреса идут через static_url - поменяли картинку, и браузер
+     заберёт новую, а не достанет старую из кеша. #}
+  <link rel="icon" href="{{ static_url('favicon/favicon.ico') }}" sizes="any">
+  <link rel="icon" href="{{ static_url('favicon/favicon-32.png') }}" type="image/png" sizes="32x32">
+  <link rel="apple-touch-icon" href="{{ static_url('favicon/apple-touch-icon.png') }}">
+  <link rel="manifest" href="{{ static_url('favicon/site.webmanifest') }}">
+  <meta name="theme-color" content="#22333f">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Onest:wght@400;500;600;700;800&display=swap">
@@ -51,12 +59,12 @@
 <header class="site-header">
   <div class="container header-inner">
     <a class="logo" href="{{ url('/') }}">
-      {# alt пустой: название сайта стоит рядом текстом, и читалка
-         не должна произносить его дважды. #}
+      {# В alt название сайта: рядом текстом стоит только описание
+         каталога, самого имени там нет, и без alt читалка его не назовёт. #}
       {# Ширина и высота указаны в том размере, в каком знак стоит на
          экране: если стили почему-то не приехали, картинка всё равно
          останется маленькой, а не развернётся во весь файл. #}
-      <img class="logo-mark" src="{{ static_url('logo.webp') }}" alt=""
+      <img class="logo-mark" src="{{ static_url('logo.webp') }}" alt="Erekshe"
            width="49" height="46">
       <span class="logo-text">{{ t('Каталог помощи детям с аутизмом') }}<span>{{ t('Казахстан') }}</span></span>
     </a>
