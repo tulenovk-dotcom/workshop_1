@@ -539,9 +539,8 @@ input:focus, select:focus, textarea:focus {
 .results-count { font-weight: 600; margin: 0 0 12px; }
 
 /* --- Карта каталога ---
-   Сайт монохромный: цветом говорят только метки доказательности. Поэтому
-   подложка карты приглушена до почти серой, а точки мест - цветом
-   основной кнопки. Цветная карта перетянула бы на себя весь экран. */
+   Подложка карты в обычных цветах: по ним родители узнают свой район -
+   парки, дороги, реки. Точки мест - цветом основной кнопки. */
 
 .map-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 14px; }
 .map-tools[hidden] { display: none; }
@@ -557,7 +556,6 @@ input:focus, select:focus, textarea:focus {
   background: var(--bg);
 }
 .catalog-map[hidden] { display: none; }
-.catalog-map .leaflet-tile-pane { filter: grayscale(0.85) contrast(0.95); }
 .catalog-map .leaflet-popup-content { font: inherit; font-size: 0.9rem; line-height: 1.4; }
 .catalog-map .leaflet-popup-content a { display: inline-block; margin-top: 6px; color: var(--accent); font-weight: 600; }
 
