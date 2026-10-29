@@ -21,6 +21,9 @@
   var toggle = tools.querySelector("[data-map-toggle]");
   var nearButton = tools.querySelector("[data-near-me]");
   var status = tools.querySelector("[data-map-status]");
+  // Ни у одного места в списке нет точки - кнопки карты бесполезны,
+  // не показываем их совсем.
+  if (!list.querySelector(".provider-card[data-lat]")) { return; }
   tools.hidden = false;
 
   // Цвета берём из токенов сайта, а не пишем здесь свои.
