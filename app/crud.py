@@ -21,6 +21,8 @@ PROVIDER_FIELDS = (
     "description",
     "logo_path",
     "is_test",
+    "lat",
+    "lng",
 )
 
 RATING_COLUMNS = """

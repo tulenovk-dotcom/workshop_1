@@ -1806,9 +1806,34 @@ def provider_prefill(conn, application) -> tuple[dict, set[int]]:
         "description": application["comment"],
         "logo_path": application["logo_path"],
         "is_test": 0,
+        "lat": None,
+        "lng": None,
     }
     method_ids = {row["id"] for row in application_methods(conn, application)}
     return data, method_ids
+
+
+# Казахстан целиком с запасом: точка вне рамки - почти наверняка перепутаны
+# широта и долгота или вставлено что-то не то.
+KZ_LAT = (40.0, 56.5)
+KZ_LNG = (46.0, 88.0)
+
+
+def parse_point(text: str) -> tuple[float | None, float | None]:
+    """Точка на карте из строки «широта, долгота» - так её копируют из
+    Google Карт и 2ГИС. Пусто или непонятно - точки нет."""
+    numbers = re.findall(r"-?\d+(?:\.\d+)?", text or "")
+    if len(numbers) != 2:
+        return None, None
+    lat, lng = float(numbers[0]), float(numbers[1])
+    if not (KZ_LAT[0] <= lat <= KZ_LAT[1] and KZ_LNG[0] <= lng <= KZ_LNG[1]):
+        # Частая путаница: сначала долгота. Если наоборот всё сходится -
+        # меняем местами.
+        if KZ_LAT[0] <= lng <= KZ_LAT[1] and KZ_LNG[0] <= lat <= KZ_LNG[1]:
+            lat, lng = lng, lat
+        else:
+            return None, None
+    return round(lat, 6), round(lng, 6)
 
 
 def provider_form_data(
@@ -1835,6 +1860,7 @@ def provider_form_data(
         "logo_path": logo_path,
         "is_test": 1 if form["is_test"] else 0,
     }
+    data["lat"], data["lng"] = parse_point(form["coords"])
     method_ids = [int(code) for code in method_codes if code.isdigit()]
     return data, method_ids
 

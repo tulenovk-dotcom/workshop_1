@@ -45,7 +45,12 @@
   <dl class="info-grid">
     <div><dt>{{ t('Город') }}</dt><dd>{{ provider.city }}</dd></div>
     {% if provider.district %}<div><dt>{{ t('Район') }}</dt><dd>{{ provider.district }}</dd></div>{% endif %}
-    {% if provider.address %}<div><dt>{{ t('Адрес') }}</dt><dd>{{ provider.address }}</dd></div>{% endif %}
+    {% if provider.address %}<div><dt>{{ t('Адрес') }}</dt><dd>{{ provider.address }}
+      {#- 2ГИС ищет по городу и адресу: так находится само здание с его
+          названием, а не безымянная точка. -#}
+      <a class="map-link" href="https://2gis.kz/search/{{ (provider.city ~ ', ' ~ provider.address)|urlencode }}"
+         target="_blank" rel="nofollow noopener">{{ t('Открыть в 2ГИС') }}</a>
+    </dd></div>{% endif %}
     {# Телефона и WhatsApp здесь нет намеренно: номер отдаётся только по
        кнопке выше, чтобы его не собирали программы. #}
     {% if provider.website %}

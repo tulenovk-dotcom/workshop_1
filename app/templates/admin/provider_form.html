@@ -86,6 +86,24 @@
            value="{{ fd.address if fd else '' }}">
   </div>
 
+  {# Точка на карте. Без неё место есть в каталоге, но не на карте.
+     Кнопка «Найти по адресу» спрашивает OpenStreetMap прямо из браузера
+     администратора; найденное лучше проверить по ссылке рядом. #}
+  <div class="field field-wide">
+    <label for="coords">Точка на карте</label>
+    <div class="coords-row">
+      <input type="text" id="coords" name="coords" inputmode="decimal"
+             placeholder="43.238949, 76.945465"
+             pattern="\s*\d{2}\.\d+\s*,?\s*\d{2}\.\d+\s*"
+             title="Широта и долгота через запятую, например 43.238949, 76.945465"
+             value="{% if fd and fd.lat is not none and fd.lat != '' %}{{ fd.lat }}, {{ fd.lng }}{% endif %}">
+      <button type="button" class="btn btn-small" data-geocode hidden>Найти по адресу</button>
+    </div>
+    <p class="hint" data-geocode-status>Широта и долгота через запятую. Проще всего:
+      в 2ГИС или Google Картах нажать на здание правой кнопкой и скопировать
+      координаты. Пусто - места не будет на карте сайта, в каталоге оно останется.</p>
+  </div>
+
   <div class="field">
     <label for="phone">Телефон</label>
     <div class="phone-input">
@@ -216,4 +234,5 @@
     <a class="btn btn-ghost" href="/admin">Отмена</a>
   </div>
 </form>
+<script src="{{ static_url('admin-geocode.js') }}" defer></script>
 {% endblock %}

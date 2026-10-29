@@ -5,6 +5,24 @@ from .database import db_session
 from .reference import DEFAULT_METHODS, METHOD_TRANSLATIONS_KK
 
 # Все записи ниже — выдуманные, нужны только для проверки интерфейса.
+# Точки на карте для тестовых записей, по порядку списка ниже. Адреса
+# выдуманные, поэтому точки взяты примерно в своих городах, а не по адресу.
+# У записи «выезд на дом и онлайн» точки нет: на карте её быть не должно.
+TEST_POINTS = [
+    (43.2389, 76.8897),   # Алматы
+    (43.2565, 76.9284),   # Алматы
+    (51.1282, 71.4304),   # Астана
+    (51.0906, 71.4180),   # Астана
+    (42.3417, 69.5901),   # Шымкент
+    (43.2220, 76.8512),   # Алматы
+    (None, None),         # Караганда, выезд на дом и онлайн
+    (50.2839, 57.1670),   # Актобе
+    (52.2873, 76.9674),   # Павлодар
+    (43.2075, 76.9010),   # Алматы
+    (42.9500, 71.4200),   # Тараз, за городом
+    (49.9483, 82.6279),   # Усть-Каменогорск
+]
+
 TEST_PROVIDERS = [
     {
         "provider_type": "center",
@@ -327,10 +345,11 @@ def seed_if_empty(with_demo: bool = False) -> None:
         method_ids = {
             row["code"]: row["id"] for row in crud.list_methods(conn)
         }
-        for item in TEST_PROVIDERS:
+        for index, item in enumerate(TEST_PROVIDERS):
             data = {key: value for key, value in item.items() if key != "methods"}
             data["is_test"] = 1
             data.setdefault("logo_path", "")
+            data["lat"], data["lng"] = TEST_POINTS[index] if index < len(TEST_POINTS) else (None, None)
             crud.create_provider(
                 conn,
                 data,

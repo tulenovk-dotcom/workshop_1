@@ -119,13 +119,39 @@
   {{ t('Найдено') }}: {{ providers|length }}
 </p>
 
+{#- Карта и «ближайшие ко мне». Работают только со скриптом, поэтому панель
+    скрыта до его запуска (catalog-map.js). Карта грузится лишь по нажатию:
+    пока человек её не открыл, к OpenStreetMap сайт не обращается. Место
+    человека остаётся в его браузере и на сервер не уходит. -#}
+{% if providers %}
+<div class="map-tools" data-map-tools hidden
+     data-leaflet-js="{{ static_url('vendor/leaflet/leaflet.js') }}"
+     data-leaflet-css="{{ static_url('vendor/leaflet/leaflet.css') }}"
+     data-text-show="{{ t('Показать на карте') }}"
+     data-text-hide="{{ t('Скрыть карту') }}"
+     data-text-locating="{{ t('Определяю, где вы находитесь...') }}"
+     data-text-denied="{{ t('Не удалось определить, где вы. Разрешите сайту доступ к местоположению в настройках браузера.') }}"
+     data-text-sorted="{{ t('Сначала показаны ближайшие к вам.') }}"
+     data-text-km="{{ t('%s км от вас') }}"
+     data-text-you="{{ t('Вы здесь') }}"
+     data-text-more="{{ t('Подробнее') }}"
+     data-text-none="{{ t('У найденных мест пока не отмечена точка на карте.') }}">
+  <button type="button" class="btn" data-map-toggle aria-expanded="false"
+          aria-controls="catalog-map">{{ t('Показать на карте') }}</button>
+  <button type="button" class="btn" data-near-me>{{ t('Найти ближайшие ко мне') }}</button>
+  <p class="map-status" data-map-status role="status"></p>
+</div>
+<div class="catalog-map" id="catalog-map" hidden></div>
+{% endif %}
+
 {% if not providers %}
   <p class="empty">{{ t('По заданным условиям ничего не найдено. Попробуйте изменить фильтры.') }}</p>
 {% endif %}
 
 <div class="cards">
   {% for p in providers %}
-    <article class="card provider-card">
+    <article class="card provider-card" data-provider-id="{{ p.id }}"
+             {% if p.lat is not none and p.lng is not none %}data-lat="{{ p.lat }}" data-lng="{{ p.lng }}"{% endif %}>
       <div class="pc-media">
         {{ ui.logo(p, 'xl') }}
         {{ ui.rating(p.rating_avg, p.reviews_count) }}
@@ -158,6 +184,7 @@
 
       <div class="pc-side">
         <p class="pc-city">{{ p.city }}{% if p.district %}<span>{{ p.district }}</span>{% endif %}</p>
+        <p class="pc-distance" data-distance hidden></p>
         <p class="pc-price">{{ ui.price_line(p) }}</p>
 
         {% if p.whatsapp %}
@@ -178,4 +205,5 @@
   {% endfor %}
 </div>
 
+<script src="{{ static_url('catalog-map.js') }}" defer></script>
 {% endblock %}
