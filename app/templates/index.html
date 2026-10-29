@@ -166,7 +166,7 @@
              target="_blank" rel="nofollow noopener">
             {{ t('Написать в WhatsApp') }}</a>
         {% elif p.phone %}
-          {{ ui.phone_button(p, 'btn-cta') }}
+          {{ ui.phone_button(p, 'btn-cta', src='list') }}
         {% else %}
           <a class="btn btn-cta" href="{{ url('/providers/' ~ p.id) }}">{{ t('Открыть карточку') }}</a>
         {% endif %}

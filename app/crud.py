@@ -1025,6 +1025,7 @@ def contact_clicks_by_provider(
     return conn.execute(
         """
         SELECT p.id, p.name, p.city, p.is_test,
+               SUM(CASE WHEN c.kind = 'phone' THEN 1 ELSE 0 END) AS phone,
                SUM(CASE WHEN c.kind = 'whatsapp' THEN 1 ELSE 0 END) AS whatsapp,
                SUM(CASE WHEN c.kind = 'website' THEN 1 ELSE 0 END) AS website,
                SUM(CASE WHEN c.kind = 'instagram' THEN 1 ELSE 0 END) AS instagram,

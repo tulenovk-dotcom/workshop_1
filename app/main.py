@@ -842,7 +842,7 @@ def phone_link(phone: str) -> str:
 
 
 @app.post("/providers/{provider_id}/phone")
-def show_phone(request: Request, provider_id: int):
+def show_phone(request: Request, provider_id: int, src: str = "card"):
     """Отдать номер телефона по нажатию кнопки.
 
     Номер не пишется в страницу заранее: так его не соберёт программа,
@@ -860,6 +860,17 @@ def show_phone(request: Request, provider_id: int):
         provider = crud.get_provider(conn, provider_id)
         if provider is None or not provider["phone"]:
             raise HTTPException(status_code=404, detail="Номер не найден")
+        if allowed:
+            # Нажатие на кнопку телефона идёт в тот же счётчик, что и
+            # WhatsApp, видом 'phone'. Как и там, ошибка записи не мешает
+            # человеку получить номер.
+            try:
+                is_bot = looks_like_bot(user_agent(request)) or geo.hosting(
+                    request_ip(request)
+                )
+                crud.record_contact_click(conn, provider_id, "phone", src, is_bot)
+            except Exception:
+                log.warning("Не удалось записать нажатие телефона", exc_info=True)
         if wants_json:
             if not allowed:
                 return JSONResponse(
@@ -1747,6 +1758,7 @@ def admin_clicks(request: Request, days: int = 30):
             "rows": rows,
             "clicks_total": sum(int(row["total"]) for row in rows),
             "whatsapp_total": sum(int(row["whatsapp"]) for row in rows),
+            "phone_total": sum(int(row["phone"]) for row in rows),
             "from_list_total": sum(int(row["from_list"]) for row in rows),
             "views_total": sum(int(row["views"]) for row in rows),
             "all_time_total": crud.contact_clicks_total(conn),

@@ -67,13 +67,13 @@
     сразу начинает звонок, на компьютере ставит номер на место кнопки.
     Без скрипта форма отправляется обычным способом и карточка открывается
     уже с номером. -#}
-{% macro phone_button(provider, btn_class, show=False) %}
+{% macro phone_button(provider, btn_class, show=False, src='card') %}
   {% if show %}
     <a class="btn {{ btn_class }} phone-shown"
        href="tel:{{ provider.phone|replace(' ', '')|replace('-', '')|replace('(', '')|replace(')', '') }}">{{ provider.phone }}</a>
   {% else %}
     <form class="phone-form" method="post"
-          action="{{ url('/providers/' ~ provider.id ~ '/phone') }}" data-phone-form>
+          action="{{ url('/providers/' ~ provider.id ~ '/phone') }}{% if src == 'list' %}?src=list{% endif %}" data-phone-form>
       <button type="submit" class="btn {{ btn_class }}">
         <span class="phone-label-touch">{{ t('Позвонить') }}</span>
         <span class="phone-label-pointer">{{ t('Показать номер') }}</span>
