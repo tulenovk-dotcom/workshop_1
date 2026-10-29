@@ -563,6 +563,18 @@ input:focus, select:focus, textarea:focus {
 
 .actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 8px; }
 
+/* Кнопка телефона. Форма не должна ломать ряд кнопок, поэтому её рамка
+   «растворяется», и кнопка встаёт в ряд как обычная ссылка.
+   Подпись по экрану: пальцем - «Позвонить», мышью - «Показать номер». */
+.phone-form { display: contents; }
+.phone-label-pointer { display: none; }
+@media (hover: hover) and (pointer: fine) {
+  .phone-label-touch { display: none; }
+  .phone-label-pointer { display: inline; }
+}
+/* Открытый номер читается как номер: цифры одинаковой ширины. */
+.phone-shown { font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+
 /* --- Карточки провайдеров --- */
 
 .cards {

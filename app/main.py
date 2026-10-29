@@ -13,6 +13,7 @@ from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import (
     FileResponse,
     HTMLResponse,
+    JSONResponse,
     PlainTextResponse,
     RedirectResponse,
     Response,
@@ -31,6 +32,7 @@ from .i18n import (
     localized_field,
     translate,
 )
+from .ratelimit import contact_limiter
 from .personal_data import (
     CONSENT_PURPOSES,
     CONSENT_TEXTS,
@@ -825,6 +827,57 @@ def provider_detail(request: Request, provider_id: int, review: str = ""):
     return render(request, "provider.html", context)
 
 
+def phone_link(phone: str) -> str:
+    """Номер для ссылки tel: - только цифры и плюс в начале."""
+    digits = re.sub(r"[^\d+]", "", phone or "")
+    return digits
+
+
+@app.post("/providers/{provider_id}/phone")
+def show_phone(request: Request, provider_id: int):
+    """Отдать номер телефона по нажатию кнопки.
+
+    Номер не пишется в страницу заранее: так его не соберёт программа,
+    которая просто читает страницы подряд. Человек нажимает кнопку и
+    получает номер сразу.
+
+    Со скриптом (обычный случай) кнопка спрашивает номер здесь и получает
+    короткий ответ JSON: на телефоне сразу начинается звонок, на компьютере
+    номер появляется вместо кнопки. Без скрипта форма отправляется обычным
+    способом, и сайт показывает ту же карточку уже с номером.
+    """
+    wants_json = "application/json" in request.headers.get("accept", "")
+    allowed = contact_limiter.allow(request_ip(request))
+    with db_session() as conn:
+        provider = crud.get_provider(conn, provider_id)
+        if provider is None or not provider["phone"]:
+            raise HTTPException(status_code=404, detail="Номер не найден")
+        if wants_json:
+            if not allowed:
+                return JSONResponse(
+                    {"error": translate("Слишком много запросов. Попробуйте через минуту.", request_lang(request))},
+                    status_code=429,
+                )
+            return JSONResponse(
+                {"phone": provider["phone"], "tel": phone_link(provider["phone"])},
+                headers={"Cache-Control": "no-store"},
+            )
+        context = {
+            "provider": provider,
+            "methods": offered_methods(
+                crud.methods_for_providers(conn, [provider_id])[provider_id]
+            ),
+            "reviews": crud.published_reviews(conn, provider_id),
+            "review_status": "",
+            "show_phone": allowed,
+            "phone_limited": not allowed,
+        }
+    response = render(request, "provider.html", context)
+    if not allowed:
+        response.status_code = 429
+    return response
+
+
 @app.post("/providers/{provider_id}/reviews")
 def add_review(
     request: Request,
@@ -894,6 +947,12 @@ def go_to_contact(request: Request, kind: str, provider_id: int, src: str = "car
     Счётчик не должен мешать переходу: если запись не удалась, человек всё
     равно уходит по ссылке. Лучше потерять одну отметку, чем кнопку.
     """
+    if not contact_limiter.allow(request_ip(request)):
+        # Человек столько не нажимает: это программа-сборщик.
+        return PlainTextResponse(
+            translate("Слишком много запросов. Попробуйте через минуту.", request_lang(request)),
+            status_code=429,
+        )
     target = ""
     if kind in CLICK_TARGETS:
         field, as_link = CLICK_TARGETS[kind]

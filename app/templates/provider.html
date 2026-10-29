@@ -26,9 +26,12 @@
     <p class="provider-description">{{ provider.description }}</p>
   {% endif %}
 
+  {% if phone_limited %}
+    <p class="notice notice-warn">{{ t('Слишком много запросов. Попробуйте через минуту.') }}</p>
+  {% endif %}
   <div class="actions">
     {% if provider.phone %}
-      <a class="btn btn-primary" href="tel:{{ provider.phone|replace(' ', '') }}">{{ t('Позвонить') }}</a>
+      {{ ui.phone_button(provider, 'btn-primary', show_phone) }}
     {% endif %}
     {% if provider.whatsapp %}
       {# Ссылка идёт через /go: сайт отмечает переход и перенаправляет
@@ -43,8 +46,8 @@
     <div><dt>{{ t('Город') }}</dt><dd>{{ provider.city }}</dd></div>
     {% if provider.district %}<div><dt>{{ t('Район') }}</dt><dd>{{ provider.district }}</dd></div>{% endif %}
     {% if provider.address %}<div><dt>{{ t('Адрес') }}</dt><dd>{{ provider.address }}</dd></div>{% endif %}
-    {% if provider.phone %}<div><dt>{{ t('Телефон') }}</dt><dd>{{ provider.phone }}</dd></div>{% endif %}
-    {% if provider.whatsapp %}<div><dt>WhatsApp</dt><dd>{{ provider.whatsapp }}</dd></div>{% endif %}
+    {# Телефона и WhatsApp здесь нет намеренно: номер отдаётся только по
+       кнопке выше, чтобы его не собирали программы. #}
     {% if provider.website %}
       <div><dt>{{ t('Сайт') }}</dt><dd>
         <a href="{{ url('/go/website/' ~ provider.id) }}"
