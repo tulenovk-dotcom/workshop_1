@@ -55,7 +55,9 @@
         input.value = lat + ", " + lng;
         status.textContent = "Найдено: " + found[0].display_name + ". ";
         var check = document.createElement("a");
-        check.href = "https://2gis.kz/geo/" + lng + "%2C" + lat;
+        // m= ставит центр карты ровно в точку; /geo/ привязался бы к
+        // ближайшему объекту вроде района и показал бы не то место.
+        check.href = "https://2gis.kz/?m=" + lng + "%2C" + lat + "%2F18";
         check.target = "_blank";
         check.rel = "noopener";
         check.textContent = "Проверить точку в 2ГИС";
