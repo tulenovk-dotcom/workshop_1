@@ -7,7 +7,7 @@
 {% include "admin/_nav.html" %}
 
 <p class="admin-summary">Сколько раз из каталога уходили к месту занятий:
-  писали в WhatsApp, открывали сайт или Instagram. Персональных данных
+  узнавали номер телефона, писали в WhatsApp, открывали сайт или Instagram. Персональных данных
   здесь нет - счётчик не знает, кто нажал, только когда и на какую кнопку.</p>
 
 <nav class="stat-periods">
@@ -24,6 +24,10 @@
   <p class="stat-figure">
     <span class="stat-num">{{ clicks_total }}</span>
     <span class="stat-label">переходов за {{ days }} дней</span>
+  </p>
+  <p class="stat-figure">
+    <span class="stat-num">{{ phone_total }}</span>
+    <span class="stat-label">узнали номер телефона</span>
   </p>
   <p class="stat-figure">
     <span class="stat-num">{{ whatsapp_total }}</span>
@@ -46,6 +50,7 @@
         <tr>
           <th>Место занятий</th>
           <th class="stat-col-num">Карточку открыли</th>
+          <th class="stat-col-num">Телефон</th>
           <th class="stat-col-num">WhatsApp</th>
           <th class="stat-col-num">Сайт</th>
           <th class="stat-col-num">Instagram</th>
@@ -63,6 +68,7 @@
               <div class="muted">{{ row.city }}</div>
             </td>
             <td class="stat-col-num">{{ row.views }}</td>
+            <td class="stat-col-num">{{ row.phone }}</td>
             <td class="stat-col-num">{{ row.whatsapp }}</td>
             <td class="stat-col-num">{{ row.website }}</td>
             <td class="stat-col-num">{{ row.instagram }}</td>
@@ -80,16 +86,16 @@
   <p class="hint">Доля - это переходы, поделённые на открытия карточки.
     Прочерк значит, что карточку за этот срок не открывали ни разу, и делить
     не на что. Доля бывает и больше ста процентов: кнопка «Написать в
-    WhatsApp» стоит и в списке каталога, поэтому часть людей пишет, не
+    WhatsApp» (а у кого нет WhatsApp - кнопка телефона) стоит и в списке каталога, поэтому часть людей пишет, не
     открывая карточку. Таких переходов за этот срок {{ from_list_total }}.</p>
 
   <p class="hint">Открытия карточек известны за {{ retention_days }} дней -
     столько живёт журнал посещений. Сами переходы не стареют: их общее число
     в последней колонке считается за всё время.</p>
 
-  <p class="hint">Звонки в этот счёт не входят. Кнопка «Позвонить» открывает
-    приложение звонков на телефоне, а не страницу, и пропустить её через
-    счётчик, не рискуя самой кнопкой, нельзя.</p>
+  <p class="hint">Колонка «Телефон» - сколько раз нажали «Позвонить» или
+    «Показать номер». Сколько из них действительно дозвонились, сайт не
+    знает: сам звонок идёт уже с телефона человека. Считается с 29.10.2026.</p>
 {% else %}
   <p class="empty">В каталоге пока нет ни одного места занятий.</p>
 {% endif %}

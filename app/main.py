@@ -13,6 +13,7 @@ from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import (
     FileResponse,
     HTMLResponse,
+    JSONResponse,
     PlainTextResponse,
     RedirectResponse,
     Response,
@@ -31,6 +32,7 @@ from .i18n import (
     localized_field,
     translate,
 )
+from .ratelimit import contact_limiter
 from .personal_data import (
     CONSENT_PURPOSES,
     CONSENT_TEXTS,
@@ -101,7 +103,15 @@ NOINDEX = os.environ.get("NOINDEX") == "1"
 
 # Демонстрационные записи наливаются в пустую базу только по явной просьбе.
 # На боевом сервере переменной нет, и каталог начинается с чистого листа.
-SEED_DEMO = os.environ.get("SEED_DEMO") == "1"
+# Исключение - тестовый стенд: Render сам сообщает приложению адрес сервиса
+# в RENDER_EXTERNAL_HOSTNAME, и только на адресе стенда записи наливаются
+# без переменной. Сравнение по полному адресу: на боевом сервере (не Render)
+# этой переменной нет, и выдуманные центры туда попасть не могут.
+TEST_STAND_HOST = "erekshe-test.onrender.com"
+SEED_DEMO = (
+    os.environ.get("SEED_DEMO") == "1"
+    or os.environ.get("RENDER_EXTERNAL_HOSTNAME", "") == TEST_STAND_HOST
+)
 
 # Cookie администратора уходит только по HTTPS, когда сайт за TLS.
 # Локально по http флаг выключен, иначе вход не работал бы.
@@ -825,6 +835,68 @@ def provider_detail(request: Request, provider_id: int, review: str = ""):
     return render(request, "provider.html", context)
 
 
+def phone_link(phone: str) -> str:
+    """Номер для ссылки tel: - только цифры и плюс в начале."""
+    digits = re.sub(r"[^\d+]", "", phone or "")
+    return digits
+
+
+@app.post("/providers/{provider_id}/phone")
+def show_phone(request: Request, provider_id: int, src: str = "card"):
+    """Отдать номер телефона по нажатию кнопки.
+
+    Номер не пишется в страницу заранее: так его не соберёт программа,
+    которая просто читает страницы подряд. Человек нажимает кнопку и
+    получает номер сразу.
+
+    Со скриптом (обычный случай) кнопка спрашивает номер здесь и получает
+    короткий ответ JSON: на телефоне сразу начинается звонок, на компьютере
+    номер появляется вместо кнопки. Без скрипта форма отправляется обычным
+    способом, и сайт показывает ту же карточку уже с номером.
+    """
+    wants_json = "application/json" in request.headers.get("accept", "")
+    allowed = contact_limiter.allow(request_ip(request))
+    with db_session() as conn:
+        provider = crud.get_provider(conn, provider_id)
+        if provider is None or not provider["phone"]:
+            raise HTTPException(status_code=404, detail="Номер не найден")
+        if allowed:
+            # Нажатие на кнопку телефона идёт в тот же счётчик, что и
+            # WhatsApp, видом 'phone'. Как и там, ошибка записи не мешает
+            # человеку получить номер.
+            try:
+                is_bot = looks_like_bot(user_agent(request)) or geo.hosting(
+                    request_ip(request)
+                )
+                crud.record_contact_click(conn, provider_id, "phone", src, is_bot)
+            except Exception:
+                log.warning("Не удалось записать нажатие телефона", exc_info=True)
+        if wants_json:
+            if not allowed:
+                return JSONResponse(
+                    {"error": translate("Слишком много запросов. Попробуйте через минуту.", request_lang(request))},
+                    status_code=429,
+                )
+            return JSONResponse(
+                {"phone": provider["phone"], "tel": phone_link(provider["phone"])},
+                headers={"Cache-Control": "no-store"},
+            )
+        context = {
+            "provider": provider,
+            "methods": offered_methods(
+                crud.methods_for_providers(conn, [provider_id])[provider_id]
+            ),
+            "reviews": crud.published_reviews(conn, provider_id),
+            "review_status": "",
+            "show_phone": allowed,
+            "phone_limited": not allowed,
+        }
+    response = render(request, "provider.html", context)
+    if not allowed:
+        response.status_code = 429
+    return response
+
+
 @app.post("/providers/{provider_id}/reviews")
 def add_review(
     request: Request,
@@ -894,6 +966,12 @@ def go_to_contact(request: Request, kind: str, provider_id: int, src: str = "car
     Счётчик не должен мешать переходу: если запись не удалась, человек всё
     равно уходит по ссылке. Лучше потерять одну отметку, чем кнопку.
     """
+    if not contact_limiter.allow(request_ip(request)):
+        # Человек столько не нажимает: это программа-сборщик.
+        return PlainTextResponse(
+            translate("Слишком много запросов. Попробуйте через минуту.", request_lang(request)),
+            status_code=429,
+        )
     target = ""
     if kind in CLICK_TARGETS:
         field, as_link = CLICK_TARGETS[kind]
@@ -1680,6 +1758,7 @@ def admin_clicks(request: Request, days: int = 30):
             "rows": rows,
             "clicks_total": sum(int(row["total"]) for row in rows),
             "whatsapp_total": sum(int(row["whatsapp"]) for row in rows),
+            "phone_total": sum(int(row["phone"]) for row in rows),
             "from_list_total": sum(int(row["from_list"]) for row in rows),
             "views_total": sum(int(row["views"]) for row in rows),
             "all_time_total": crud.contact_clicks_total(conn),
@@ -1727,9 +1806,34 @@ def provider_prefill(conn, application) -> tuple[dict, set[int]]:
         "description": application["comment"],
         "logo_path": application["logo_path"],
         "is_test": 0,
+        "lat": None,
+        "lng": None,
     }
     method_ids = {row["id"] for row in application_methods(conn, application)}
     return data, method_ids
+
+
+# Казахстан целиком с запасом: точка вне рамки - почти наверняка перепутаны
+# широта и долгота или вставлено что-то не то.
+KZ_LAT = (40.0, 56.5)
+KZ_LNG = (46.0, 88.0)
+
+
+def parse_point(text: str) -> tuple[float | None, float | None]:
+    """Точка на карте из строки «широта, долгота» - так её копируют из
+    Google Карт и 2ГИС. Пусто или непонятно - точки нет."""
+    numbers = re.findall(r"-?\d+(?:\.\d+)?", text or "")
+    if len(numbers) != 2:
+        return None, None
+    lat, lng = float(numbers[0]), float(numbers[1])
+    if not (KZ_LAT[0] <= lat <= KZ_LAT[1] and KZ_LNG[0] <= lng <= KZ_LNG[1]):
+        # Частая путаница: сначала долгота. Если наоборот всё сходится -
+        # меняем местами.
+        if KZ_LAT[0] <= lng <= KZ_LAT[1] and KZ_LNG[0] <= lat <= KZ_LNG[1]:
+            lat, lng = lng, lat
+        else:
+            return None, None
+    return round(lat, 6), round(lng, 6)
 
 
 def provider_form_data(
@@ -1756,6 +1860,7 @@ def provider_form_data(
         "logo_path": logo_path,
         "is_test": 1 if form["is_test"] else 0,
     }
+    data["lat"], data["lng"] = parse_point(form["coords"])
     method_ids = [int(code) for code in method_codes if code.isdigit()]
     return data, method_ids
 
