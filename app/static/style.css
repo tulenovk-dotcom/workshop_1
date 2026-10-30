@@ -1646,3 +1646,77 @@ input:focus, select:focus, textarea:focus {
   /* Под палец: половинки по 38 пикселей, плашка целиком - 44. */
   .lang-switch a, .lang-switch .lang-current { min-height: 38px; padding: 6px 20px; }
 }
+
+/* ===================================================================
+   ПРОБНЫЙ ОБЛИК «МЯГКИЙ» - только главная страница
+   ===================================================================
+   Включается классом theme-soft на <body>; на остальных страницах его
+   нет, и они выглядят по-прежнему. Секция стоит отдельным куском в конце
+   файла намеренно: это проба, и убрать её нужно одним движением, не
+   выковыривая правки из десятка мест.
+
+   Что меняется: холодный голубой фон вместо серого, синий акцент вместо
+   графитового, скругления крупнее, меню - плашками. Чего не меняем:
+   цвет меток доказательности. Синий отдан навигации и действиям, а в
+   содержании цветом по-прежнему говорит только уровень доказательности,
+   иначе зелёная метода и синяя кнопка начнут спорить за внимание. */
+
+body.theme-soft {
+  --bg: #f3f7ff;
+  --surface: #ffffff;
+  --line: #e2eaf8;
+  --accent: #2563eb;
+  --accent-dark: #1d4ed8;
+  --muted: #5d6b7f;
+  /* Бледная заливка для неактивных плашек меню и подсказок. */
+  --accent-soft: #e9f0ff;
+}
+
+/* Шапка: белая полоса без линии снизу - её роль берёт на себя фон. */
+body.theme-soft .site-header { border-bottom: 0; }
+
+/* Меню плашками: текущая страница залита, остальные бледные. Так в
+   макете, и на телефоне по ним проще попадать пальцем. */
+body.theme-soft .site-nav { gap: 8px; }
+
+body.theme-soft .site-nav a {
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+body.theme-soft .site-nav a:hover { background: #dbe6ff; }
+
+body.theme-soft .btn-outline,
+body.theme-soft .auth-link { border-radius: 999px; }
+
+/* Крупные скругления у панелей и карточек. */
+body.theme-soft .filters,
+body.theme-soft .card,
+body.theme-soft .catalog-map,
+body.theme-soft .empty { border-radius: 20px; }
+
+body.theme-soft .btn { border-radius: 999px; }
+
+/* Лёгкая тень вместо жёсткой рамки: карточка приподнята, а не обведена. */
+body.theme-soft .card {
+  border-color: #eaf0fb;
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.06);
+}
+
+/* Подсказка про метки: та же плашка, что у бледных кнопок меню. */
+body.theme-soft .legend {
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: var(--accent-soft);
+  color: #3c4a60;
+}
+
+@media (max-width: 640px) {
+  /* На телефоне меню встаёт в две строки и занимает всю ширину шапки. */
+  body.theme-soft .site-nav { width: 100%; margin-left: 0; }
+  body.theme-soft .site-nav a { flex: 1 1 auto; text-align: center; }
+}

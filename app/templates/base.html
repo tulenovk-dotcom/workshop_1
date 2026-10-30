@@ -47,7 +47,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Onest:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="{{ static_url('style.css') }}">
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
 {% if SHOW_TEST_BANNER %}
   <p class="test-banner" role="status">
     <strong>{{ t('Тестовая версия сайта.') }}</strong> {{ t('Данные вымышленные.') }}
