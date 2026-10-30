@@ -769,43 +769,19 @@ input:focus, select:focus, textarea:focus {
 
 /* Ключ к меткам стоит до списка, который он объясняет: без него
    цветные плашки в карточках — просто украшение. */
-.evidence-key {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--text);
-  border-radius: 12px;
-  padding: 18px 20px;
-  margin: 28px 0 0;
-}
-
-.evidence-key h2 { margin: 0 0 14px; font-size: var(--step-1); }
-
-.evidence-key dl {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 12px 24px;
-  margin: 0;
-}
-
-.evidence-key dt { margin-bottom: 5px; }
-
-.evidence-key dd {
-  margin: 0;
-  font-size: 0.92rem;
-  color: var(--muted);
-}
-
-.evidence-key .hint { margin: 14px 0 0; }
-
+/* Расшифровка плашек над списком: три метки в ряд, под ними оговорка
+   отдельной строкой - поэтому у неё flex-basis во всю ширину. */
 .legend {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  margin-top: 24px;
+  margin: 24px 0 14px;
   color: var(--muted);
   font-size: 0.9rem;
 }
+
+.legend-note { flex-basis: 100%; }
 
 /* --- Карточка провайдера --- */
 
