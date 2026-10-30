@@ -18,7 +18,7 @@
       <h2>
         <span class="badge {{ info.css }}">{{ t(info.label) }}</span>
       </h2>
-      {% if info.note %}<p class="level-note">{{ t(info.note) }}</p>{% endif %}
+      {% if info.group_note %}<p class="level-note">{{ t(info.group_note) }}</p>{% endif %}
 
       <div class="method-cards">
         {% for m in items %}
