@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui with context %}
+
+{% block title %}{{ t('Помогите выбрать: подбор помощи ребёнку с аутизмом') }}{% endblock %}
+{% block description %}{{ t('Три вопроса: город, возраст ребёнка и что беспокоит. Покажем центры и специалистов, которые с этим работают.') }}{% endblock %}
+
+{% block content %}
+<p class="breadcrumbs"><a href="{{ url('/') }}">{{ t('Каталог') }}</a></p>
+
+{% if not show_results %}
+<section class="podbor">
+  <h1>{{ t('Помогите выбрать') }}</h1>
+  <p class="home-lead">{{ t('Ответьте на три вопроса, и мы покажем, к кому можно обратиться. Ответы никуда не сохраняются.') }}</p>
+
+  <form class="podbor-form" method="get" action="{{ url('/podbor') }}">
+    {#- Номера здесь - настоящий порядок шагов, а не украшение. -#}
+    <fieldset class="podbor-step">
+      <legend><span class="step-num">1</span>{{ t('Где вы живёте?') }}</legend>
+      <label class="visually-hidden" for="p-city">{{ t('Ваш город') }}</label>
+      <select id="p-city" name="city">
+        <option value="">{{ t('Все города') }}</option>
+        {% for c in cities %}
+          <option value="{{ c }}" {% if raw.city == c %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </fieldset>
+
+    <fieldset class="podbor-step choice-chips">
+      <legend><span class="step-num">2</span>{{ t('Сколько лет ребёнку?') }}</legend>
+      <label class="chip-option">
+        <input type="radio" name="age" value="" {% if not raw.age %}checked{% endif %}>
+        <span>{{ t('Не важно') }}</span>
+      </label>
+      {% for code, label, low, high in age_ranges %}
+        <label class="chip-option">
+          <input type="radio" name="age" value="{{ code }}" {% if raw.age == code %}checked{% endif %}>
+          <span>{{ t(label) }}</span>
+        </label>
+      {% endfor %}
+    </fieldset>
+
+    <fieldset class="podbor-step">
+      <legend><span class="step-num">3</span>{{ t('Что вас сейчас больше всего беспокоит?') }}</legend>
+      <p class="hint">{{ t('Можно выбрать несколько.') }}</p>
+      <div class="concern-list">
+        {% for c in concerns %}
+          <label class="concern-option">
+            <input type="checkbox" name="concern" value="{{ c.code }}" {% if c.code in raw.concern %}checked{% endif %}>
+            <span class="concern-text">
+              <strong>{{ t(c.label) }}</strong>
+              <span>{{ t(c.hint) }}</span>
+            </span>
+          </label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <div class="filter-actions">
+      <button type="submit" name="go" value="1" class="btn btn-primary">{{ t('Показать подходящие') }}</button>
+      <a class="btn btn-ghost" href="{{ url('/') }}">{{ t('Смотреть весь каталог') }}</a>
+    </div>
+  </form>
+</section>
+
+{% else %}
+{% set total = chosen|rejectattr('code', 'equalto', 'start')|list|length %}
+<section class="podbor">
+  <h1>
+    {% if results %}{{ t('Подходящие варианты: %s')|format(results|length) }}{% else %}{{ t('Подходящих вариантов пока нет') }}{% endif %}
+  </h1>
+  <p class="podbor-summary">
+    {{ raw.city or t('Все города') }}
+    {% if raw.age %}, {% for code, label, low, high in age_ranges %}{% if code == raw.age %}{{ t(label)|lower }}{% endif %}{% endfor %}{% endif %}
+    <a href="{{ url('/podbor') }}?city={{ raw.city|urlencode }}&age={{ raw.age|urlencode }}{% for c in raw.concern %}&concern={{ c }}{% endfor %}">{{ t('Изменить ответы') }}</a>
+  </p>
+
+  {% if chosen %}
+    <div class="advice">
+      <h2>{{ t('Что обычно помогает') }}</h2>
+      <ul>
+        {% for c in chosen %}
+          <li>{{ t(c.advice) }}{% if c.code == 'start' %} <a href="{{ url('/early-signs') }}">{{ t('Ранние признаки аутизма') }}</a>{% endif %}</li>
+        {% endfor %}
+      </ul>
+      <p class="hint">{{ t('Это общая подсказка, она не заменяет консультацию врача.') }}</p>
+    </div>
+  {% endif %}
+
+  {% if not results %}
+    <p class="empty">
+      {{ t('В этом городе пока нет мест, которые закрывают выбранное. Каталог пополняется.') }}
+      <a href="{{ url('/') }}?city={{ raw.city|urlencode }}">{{ t('Посмотреть все места в городе') }}</a>
+    </p>
+  {% endif %}
+
+  <div class="cards">
+    {% for r in results %}
+      {{ ui.provider_card(r.provider, methods_map.get(r.provider.id, []), matched=r.matched, total=total) }}
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

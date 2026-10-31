@@ -9,7 +9,7 @@ from datetime import date, datetime, timedelta
 from html import escape
 from pathlib import Path
 
-from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi import FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import (
     FileResponse,
     HTMLResponse,
@@ -54,6 +54,8 @@ from .reference import (
     CITIES,
     CITY_NAMES,
     CITY_OTHER,
+    CONCERN_CODES,
+    CONCERNS,
     EVIDENCE_LEVELS,
     MEDICAL_SPECIALTIES,
     OFFERED_EVIDENCE_LEVELS,
@@ -816,6 +818,69 @@ def index(
             },
         }
     return render(request, "index.html", context)
+
+
+@app.get("/podbor", response_class=HTMLResponse)
+def podbor(
+    request: Request,
+    city: str = "",
+    age: str = "",
+    concern: list[str] = Query(default=[]),
+    go: str = "",
+):
+    """Помощник «Помогите выбрать».
+
+    Три вопроса: город, возраст и что беспокоит. Пока человек не нажал
+    «Показать подходящие» (go=1), страница показывает только вопросы.
+    После - подходящие места: сначала те, что закрывают больше выбранных
+    пунктов. Место подходит к пункту, если у него есть хоть один метод,
+    специальность или вид места из справочника CONCERNS.
+    """
+    age_range = AGE_RANGE_BOUNDS.get(age)
+    chosen = [c for c in CONCERNS if c["code"] in set(concern) & set(CONCERN_CODES)]
+    # «Не знаю, с чего начать» ни с чем не сравнивается: по нему места не
+    # отбираются, а показывается подсказка про первые шаги.
+    scored_concerns = [c for c in chosen if c["code"] != "start"]
+    context = {
+        "concerns": CONCERNS,
+        "age_ranges": AGE_RANGES,
+        "raw": {"city": city, "age": age if age_range else "",
+                "concern": [c["code"] for c in chosen]},
+        "chosen": chosen,
+        "show_results": bool(go),
+        "results": [],
+        "methods_map": {},
+    }
+    with db_session() as conn:
+        context["cities"] = crud.cities(conn)
+        if go:
+            providers = crud.search_providers(
+                conn, {"city": city, "age_range": age_range}
+            )
+            methods_map = {
+                pid: offered_methods(rows)
+                for pid, rows in crud.methods_for_providers(
+                    conn, [p["id"] for p in providers]
+                ).items()
+            }
+            results = []
+            for p in providers:
+                codes = {m["code"] for m in methods_map.get(p["id"], [])}
+                matched = [
+                    c for c in scored_concerns
+                    if codes & set(c["methods"])
+                    or p["specialty"] in c["specialties"]
+                    or p["provider_type"] in c["types"]
+                ]
+                if scored_concerns and not matched:
+                    continue
+                results.append({"provider": p, "matched": matched})
+            # Сортировка устойчивая: при равном числе совпадений остаётся
+            # порядок каталога - по рейтингу, потом по названию.
+            results.sort(key=lambda r: -len(r["matched"]))
+            context["results"] = results
+            context["methods_map"] = methods_map
+    return render(request, "podbor.html", context)
 
 
 @app.get("/providers/{provider_id}", response_class=HTMLResponse)

@@ -81,3 +81,66 @@
     </form>
   {% endif %}
 {% endmacro %}
+
+{#- Карточка места занятий в списке. Одна на каталог и помощника, чтобы одно
+    и то же место выглядело одинаково. matched - пункты помощника, которые
+    это место закрывает; total - сколько пунктов человек выбрал. -#}
+{% macro provider_card(p, methods, matched=None, total=0) %}
+  <article class="card provider-card" data-provider-id="{{ p.id }}"
+           {% if p.lat is not none and p.lng is not none %}data-lat="{{ p.lat }}" data-lng="{{ p.lng }}"{% endif %}>
+    <div class="pc-media">
+      {{ logo(p, 'xl') }}
+      {{ rating(p.rating_avg, p.reviews_count) }}
+    </div>
+
+    <div class="pc-main">
+      {% if matched is not none and total %}
+        <p class="match-badge{% if matched|length < total %} match-partial{% endif %}">
+          {{ t('Подходит по %s из %s')|format(matched|length, total) }}{% if matched|length < total %}: {% for c in matched %}{{ t(c.label)|lower }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}
+        </p>
+      {% endif %}
+      <h2 class="pc-name"><a href="{{ url('/providers/' ~ p.id) }}">{{ p.name }}</a></h2>
+
+      <div class="badges">
+        {% for m in methods %}
+          <span class="badge {{ EVIDENCE_LEVELS[m.evidence_level].css }}"
+                title="{{ t(EVIDENCE_LEVELS[m.evidence_level].label) }}">{{ method_text(m) }}</span>
+        {% endfor %}
+      </div>
+
+      <p class="pc-line">
+        <span class="pc-key">{{ t('Где заниматься') }}:</span>
+        {{ t(PROVIDER_TYPES.get(p.provider_type, p.provider_type)) }}{% if p.specialty %}, {{ t(p.specialty) }}{% endif %}
+        {% if p.is_test %}<span class="chip chip-test">{{ t('тестовая запись') }}</span>{% endif %}
+      </p>
+      <p class="pc-line"><span class="pc-key">{{ t('Возраст детей') }}:</span> {{ age_line(p) }}</p>
+      {% if p.has_state_funding %}
+        <p class="pc-line pc-line-accent">{{ t('Есть гос. финансирование') }}</p>
+      {% endif %}
+
+      {% if p.description %}
+        <p class="pc-description">{{ p.description|truncate(230) }}</p>
+      {% endif %}
+    </div>
+
+    <div class="pc-side">
+      <p class="pc-city">{{ p.city }}{% if p.district %}<span>{{ p.district }}</span>{% endif %}</p>
+      <p class="pc-distance" data-distance hidden></p>
+      <p class="pc-price">{{ price_line(p) }}</p>
+
+      {% if p.whatsapp %}
+        {# src=list: нажали прямо из списка, не открывая карточку. #}
+        <a class="btn btn-cta" href="{{ url('/go/whatsapp/' ~ p.id) }}?src=list"
+           target="_blank" rel="nofollow noopener">
+          {{ t('Написать в WhatsApp') }}</a>
+      {% elif p.phone %}
+        {{ phone_button(p, 'btn-cta', src='list') }}
+      {% else %}
+        <a class="btn btn-cta" href="{{ url('/providers/' ~ p.id) }}">{{ t('Открыть карточку') }}</a>
+      {% endif %}
+
+      {% if p.pricing == 'free' %}<p class="pc-hint">{{ t('занятия бесплатные') }}</p>{% endif %}
+      <a class="pc-more" href="{{ url('/providers/' ~ p.id) }}">{{ t('Подробнее') }}</a>
+    </div>
+  </article>
+{% endmacro %}
