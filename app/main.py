@@ -1014,6 +1014,12 @@ def early_signs(request: Request):
     return render(request, "early_signs.html", {})
 
 
+@app.get("/o-nas", response_class=HTMLResponse)
+def about(request: Request):
+    """Кто делает каталог: родители особенного ребёнка, год и телефон."""
+    return render(request, "about.html", {})
+
+
 @app.get("/free-help", response_class=HTMLResponse)
 def free_help(request: Request):
     return render(request, "free_help.html", {})
@@ -1147,6 +1153,7 @@ SITEMAP_PAGES = (
     "/",
     "/methods",
     "/early-signs",
+    "/o-nas",
     "/dlya-specialistov",
     "/privacy",
 )
