@@ -1952,6 +1952,12 @@ input:focus, select:focus, textarea:focus {
    со статусами и подчиняется их логике: жёлтое - «нужно посмотреть». */
 .chip-flag { background: var(--amber-bg); color: var(--amber); }
 
+/* Номер адреса у отзыва. Серая метка - адрес встретился один раз, это
+   просто справка. Жёлтая - с адреса пришло несколько отзывов, и это по
+   той же логике «нужно посмотреть», что и слова о здоровье. */
+.chip-ip { background: #eceeed; color: var(--muted); font-weight: 500; }
+.chip-ip-same { background: var(--amber-bg); color: var(--amber); }
+
 .status-new { background: var(--amber-bg); color: var(--amber); }
 .status-in_progress { background: #e7eefb; color: var(--accent); }
 .status-approved { background: var(--green-bg); color: var(--green); }

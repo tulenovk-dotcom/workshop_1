@@ -53,7 +53,41 @@
           не записано (отзыв оставлен до введения журнала согласий)
         {% endif %}
       </dd></div>
-    <div><dt>Отпечаток адреса</dt><dd>{{ review.author_ip_hash|short_hash }}</dd></div>
+    <div><dt>Отпечаток адреса</dt>
+      <dd>
+        {{ review.author_ip_hash|short_hash }}
+        {% set mark = ip_numbers.get(review.author_ip_hash) %}
+        {% if mark %}
+          <span class="chip {{ 'chip-ip-same' if mark.count > 1 else 'chip-ip' }}">адрес № {{ mark.number }}</span>
+        {% endif %}
+      </dd></div>
+    <div><dt>Настоящий адрес</dt>
+      <dd>
+        {% if visit_ips %}
+          {% for ip in visit_ips %}
+            <a href="/admin/visitors?ip={{ ip|urlencode }}&days=30">{{ ip }}</a>{{ ", " if not loop.last }}
+          {% endfor %}
+          <p class="hint">
+            Из журнала посещений, по совпадению времени: отправив отзыв,
+            браузер открыл карточку заново.{{ ' Адресов несколько: в ту же секунду карточку открыл кто-то ещё, и какой из них автора - не узнать.' if visit_ips|length > 1 }}
+          </p>
+        {% else %}
+          не узнать: журнал посещений хранится {{ visit_log_days }} дней,
+          и запись об этом заходе уже удалена
+        {% endif %}
+      </dd></div>
+    <div><dt>Другие отзывы с этого адреса</dt>
+      <dd>
+        {% if same_ip %}
+          {% for other in same_ip %}
+            <a href="/admin/reviews/{{ other.id }}">№ {{ other.id }}, {{ other.author_name }}</a>
+            - {{ other.provider_name or 'запись удалена' }},
+            {{ other.created_at|local_date }}{{ "<br>"|safe if not loop.last }}
+          {% endfor %}
+        {% else %}
+          нет: с этого адреса пришёл только этот отзыв
+        {% endif %}
+      </dd></div>
   </dl>
 
   <h2>Модерация</h2>

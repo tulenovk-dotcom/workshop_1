@@ -2169,10 +2169,13 @@ def admin_reviews(request: Request):
     if guard := require_admin(request):
         return guard
     with db_session() as conn:
+        ip_numbers = crud.review_ip_numbers(conn)
         context = {
             "pending": crud.reviews_by_status(conn, "pending"),
             "published": crud.reviews_by_status(conn, "published"),
             "rejected": crud.reviews_by_status(conn, "rejected"),
+            "ip_numbers": ip_numbers,
+            "ip_repeats": [m for m in ip_numbers.values() if m["count"] > 1],
         }
     return render(request, "admin/reviews.html", context)
 
@@ -2185,11 +2188,25 @@ def admin_review_detail(request: Request, review_id: int):
         review = crud.get_review(conn, review_id)
         if review is None:
             raise HTTPException(status_code=404, detail="Отзыв не найден")
+        visit_ips = []
+        if review["provider_id"]:
+            # Отзыв хранит отпечаток адреса, а журнал посещений - сам адрес.
+            # Связывает их время: отправив отзыв, браузер открывает карточку
+            # заново, и этот заход попадает в журнал.
+            visit_ips = crud.visit_ips_near(
+                conn, f"/providers/{review['provider_id']}", review["created_at"]
+            )
         context = {
             "review": review,
             "consent": crud.get_consent(conn, "review", review_id),
             "actions": crud.data_actions_for(conn, "review", review_id),
             "markers": health_markers(review["author_name"], review["text"]),
+            "ip_numbers": crud.review_ip_numbers(conn),
+            "same_ip": crud.reviews_from_same_ip(
+                conn, review["author_ip_hash"], review_id
+            ),
+            "visit_ips": visit_ips,
+            "visit_log_days": crud.VISIT_LOG_DAYS,
         }
     return render(request, "admin/review.html", context)
 

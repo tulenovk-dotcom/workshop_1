@@ -292,6 +292,40 @@ def has_recent_review_from_ip(
     return row is not None
 
 
+def review_ip_numbers(conn: sqlite3.Connection) -> dict[str, dict]:
+    """Нумерует адреса отзывов: одинаковый отпечаток - один номер.
+
+    Самого адреса у отзыва нет, лежит только отпечаток. Сверять хеши
+    глазами неудобно, поэтому каждому отпечатку даётся номер по времени
+    первого отзыва, а рядом - сколько отзывов с этого адреса пришло.
+    """
+    rows = conn.execute(
+        "SELECT author_ip_hash AS ip_hash, COUNT(*) AS n,"
+        " MIN(created_at) AS first_at FROM reviews"
+        " WHERE author_ip_hash IS NOT NULL AND author_ip_hash <> ''"
+        " GROUP BY author_ip_hash ORDER BY first_at"
+    ).fetchall()
+    return {
+        row["ip_hash"]: {"number": number, "count": int(row["n"])}
+        for number, row in enumerate(rows, start=1)
+    }
+
+
+def reviews_from_same_ip(
+    conn: sqlite3.Connection, ip_hash: str | None, exclude_id: int
+) -> list[sqlite3.Row]:
+    """Другие отзывы с того же адреса - по отпечатку, без самого адреса."""
+    if not ip_hash:
+        return []
+    return conn.execute(
+        "SELECT r.id, r.author_name, r.status, r.created_at,"
+        " p.name AS provider_name FROM reviews r"
+        " LEFT JOIN providers p ON p.id = r.provider_id"
+        " WHERE r.author_ip_hash = ? AND r.id <> ? ORDER BY r.created_at",
+        (ip_hash, exclude_id),
+    ).fetchall()
+
+
 # --- Заявки на размещение ---------------------------------------------------
 
 APPLICATION_FIELDS = (
@@ -981,6 +1015,38 @@ def visitor_pages(
         + " ORDER BY created_at DESC LIMIT ?",
         (ip, *visit_log_range(days, day), limit),
     ).fetchall()
+
+
+def visit_ips_near(
+    conn: sqlite3.Connection, path: str, moment: str, seconds: int = 20
+) -> list[str]:
+    """Настоящие адреса из журнала посещений рядом по времени.
+
+    У отзыва хранится только отпечаток адреса. Но сразу после отправки
+    формы браузер открывает ту же страницу заново, и этот заход попадает
+    в журнал посещений уже с настоящим адресом. По совпадению времени
+    адрес автора и находится - пока запись в журнале жива, то есть
+    VISIT_LOG_DAYS дней.
+
+    Это сопоставление, а не запись: в ту же секунду ту же страницу мог
+    открыть кто-то другой. Поэтому возвращаются все подходящие адреса,
+    а не один, и на странице это названо совпадением по времени.
+    """
+    try:
+        at = datetime.fromisoformat(moment)
+    except (TypeError, ValueError):
+        return []
+    window = timedelta(seconds=seconds)
+    rows = conn.execute(
+        "SELECT DISTINCT ip FROM visit_log WHERE path = ? AND is_bot = 0"
+        " AND created_at >= ? AND created_at <= ?",
+        (
+            path,
+            (at - window).isoformat(timespec="seconds"),
+            (at + window).isoformat(timespec="seconds"),
+        ),
+    ).fetchall()
+    return [row["ip"] for row in rows]
 
 
 # --- Переходы по кнопкам связи ----------------------------------------------
