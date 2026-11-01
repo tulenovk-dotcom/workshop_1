@@ -272,6 +272,37 @@ a { color: var(--accent); }
   border-top: 1px solid var(--line);
 }
 
+/* «О нас» - первый блок подвала: здесь сайт говорит о себе от первого
+   лица. Заголовок крупнее остальных строк подвала, а линия снизу отделяет
+   рассказ о себе от предупреждений, которые идут дальше. */
+.about-us {
+  margin: 0 0 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.about-us h2 {
+  font-size: var(--step-1);
+  margin: 0 0 8px;
+}
+
+.about-us p {
+  margin: 0 0 8px;
+  max-width: 60ch;
+}
+
+/* Имя администратора и телефон - одной строкой, на узком экране телефон
+   переносится под имя целиком, а не разрывается посередине номера. */
+.about-contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  font-weight: 600;
+}
+
+.about-contact a { white-space: nowrap; }
+
 .disclaimer {
   margin: 0 0 6px;
   font-weight: 600;
