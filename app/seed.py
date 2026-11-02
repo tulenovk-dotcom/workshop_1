@@ -348,6 +348,7 @@ def seed_if_empty(with_demo: bool = False) -> None:
         for index, item in enumerate(TEST_PROVIDERS):
             data = {key: value for key, value in item.items() if key != "methods"}
             data["is_test"] = 1
+            data["is_pinned"] = 0
             data.setdefault("logo_path", "")
             data["lat"], data["lng"] = TEST_POINTS[index] if index < len(TEST_POINTS) else (None, None)
             crud.create_provider(

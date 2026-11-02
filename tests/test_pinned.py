@@ -138,6 +138,29 @@ class СтараяБазаОбновляется(unittest.TestCase):
         self.assertEqual(значение, 0)
 
 
+class ТестовыеЗаписиЗаполняютВсеПоля(unittest.TestCase):
+    """Стенд падал на старте 02.11.2026: в PROVIDER_FIELDS появилось поле
+    `is_pinned`, а `app/seed.py` собирал тестовую запись без него. Запрос на
+    вставку требует значение для каждого поля, значения не было, приложение
+    не поднималось. Боевой сайт это не задевало - там записи не наливаются.
+    """
+
+    def test_seed_упоминает_каждое_поле_карточки(self):
+        поля = {
+            узел.targets[0].id: ast.literal_eval(узел.value)
+            for узел in ast.parse(_исходник_crud).body
+            if isinstance(узел, ast.Assign)
+            and getattr(узел.targets[0], "id", "") == "PROVIDER_FIELDS"
+        }["PROVIDER_FIELDS"]
+        исходник_seed = (КОРЕНЬ / "app" / "seed.py").read_text()
+        забытые = [поле for поле in поля if f'"{поле}"' not in исходник_seed]
+        self.assertEqual(
+            забытые,
+            [],
+            "в app/seed.py нет значений для полей: " + ", ".join(забытые),
+        )
+
+
 class ПорядокВыдачи(unittest.TestCase):
     def подготовить(self):
         conn = sqlite3.connect(":memory:")
