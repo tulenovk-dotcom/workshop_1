@@ -187,6 +187,14 @@
       </span>
       <span class="switch-label">Тестовая запись</span>
     </label>
+    <label class="switch-row">
+      <span class="switch">
+        <input type="checkbox" name="is_pinned" value="1"
+               {% if fd and fd.is_pinned %}checked{% endif %}>
+        <span class="switch-track"></span>
+      </span>
+      <span class="switch-label">Первой в выдаче по своему городу</span>
+    </label>
   </div>
 
   <div class="field field-wide logo-field">

@@ -1813,6 +1813,7 @@ def provider_prefill(conn, application) -> tuple[dict, set[int]]:
         "description": application["comment"],
         "logo_path": application["logo_path"],
         "is_test": 0,
+        "is_pinned": 0,
         "lat": None,
         "lng": None,
     }
@@ -1866,6 +1867,7 @@ def provider_form_data(
         "description": form["description"].strip(),
         "logo_path": logo_path,
         "is_test": 1 if form["is_test"] else 0,
+        "is_pinned": 1 if form["is_pinned"] else 0,
     }
     data["lat"], data["lng"] = parse_point(form["coords"])
     method_ids = [int(code) for code in method_codes if code.isdigit()]

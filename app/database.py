@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS providers (
     description TEXT NOT NULL DEFAULT '',
     logo_path TEXT NOT NULL DEFAULT '',
     is_test INTEGER NOT NULL DEFAULT 0,
+    is_pinned INTEGER NOT NULL DEFAULT 0,
     lat REAL,
     lng REAL,
     created_at TEXT NOT NULL
@@ -316,16 +317,21 @@ def migrate_visit_log_columns(conn: sqlite3.Connection) -> None:
 
 
 def migrate_provider_columns(conn: sqlite3.Connection) -> None:
-    """Точка на карте у места занятий: широта и долгота.
+    """Точка на карте у места занятий и закрепление в выдаче.
 
     Старым базам столбцов не хватает, добавляем пустыми. Пока точка не
     заполнена в админке, место просто не показывается на карте - в списке
-    каталога оно остаётся как было.
+    каталога оно остаётся как было. Закрепление по умолчанию выключено,
+    так что порядок выдачи у существующих баз не меняется.
     """
     columns = {row["name"] for row in conn.execute("PRAGMA table_info(providers)")}
     for name in ("lat", "lng"):
         if name not in columns:
             conn.execute(f"ALTER TABLE providers ADD COLUMN {name} REAL")
+    if "is_pinned" not in columns:
+        conn.execute(
+            "ALTER TABLE providers ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0"
+        )
 
 
 def init_db() -> None:

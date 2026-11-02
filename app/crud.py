@@ -21,6 +21,7 @@ PROVIDER_FIELDS = (
     "description",
     "logo_path",
     "is_test",
+    "is_pinned",
     "lat",
     "lng",
 )
@@ -178,7 +179,16 @@ def search_providers(conn: sqlite3.Connection, f: dict) -> list[sqlite3.Row]:
             " AND m.evidence_level = 'none')"
         )
 
-    sql.append("ORDER BY rating_avg IS NULL, rating_avg DESC, p.name")
+    # Закреплённая карточка идёт первой, но только когда выбран город:
+    # закрепление действует внутри своего города, а не во всей выдаче.
+    # «is_pinned = 0» даёт 0 у закреплённых и 1 у остальных, поэтому
+    # по возрастанию закреплённые оказываются сверху.
+    if f.get("city"):
+        sql.append(
+            "ORDER BY p.is_pinned = 0, rating_avg IS NULL, rating_avg DESC, p.name"
+        )
+    else:
+        sql.append("ORDER BY rating_avg IS NULL, rating_avg DESC, p.name")
     return conn.execute(" ".join(sql), params).fetchall()
 
 
