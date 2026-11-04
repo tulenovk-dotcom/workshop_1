@@ -65,6 +65,9 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-text);
+  /* Вес обычного текста тоже из токена: иначе браузер поставил бы свои 400,
+     и казахский текст снова вышел бы плотнее русского. */
+  font-weight: var(--w-regular);
   font-size: 16px;
   line-height: 1.55;
 }
