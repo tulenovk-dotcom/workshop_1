@@ -139,7 +139,7 @@
   <p class="empty">{{ t('По заданным условиям ничего не найдено. Попробуйте изменить фильтры.') }}</p>
 {% endif %}
 
-<div class="cards">
+<div class="cards" data-page-size="20">
   {% for p in providers %}
     <article class="card provider-card" data-provider-id="{{ p.id }}"
              {% if p.lat is not none and p.lng is not none %}data-lat="{{ p.lat }}" data-lng="{{ p.lng }}"{% endif %}>
@@ -196,5 +196,12 @@
   {% endfor %}
 </div>
 
+{#- Кнопка показывает по 20 карточек. Без скрипта она спрятана, и весь список
+    виден сразу (catalog-more.js). -#}
+<div class="more-wrap" data-more hidden>
+  <button type="button" class="btn" data-show-more data-label="{{ t('Показать ещё') }}">{{ t('Показать ещё') }}</button>
+</div>
+
 <script src="{{ static_url('catalog-map.js') }}" defer></script>
+<script src="{{ static_url('catalog-more.js') }}" defer></script>
 {% endblock %}

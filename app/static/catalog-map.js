@@ -174,6 +174,8 @@
     });
     all.sort(function (a, b) { return a._km - b._km; });
     all.forEach(function (card) { list.appendChild(card); });
+    // catalog-more.js пересчитает, какие карточки показывать после сортировки.
+    document.dispatchEvent(new Event("catalog:sorted"));
   }
 
   nearButton.addEventListener("click", function () {
