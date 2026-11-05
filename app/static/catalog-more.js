@@ -28,9 +28,7 @@
     all.forEach(function (card, index) {
       card.hidden = index >= shown;
     });
-    var left = Math.max(all.length - shown, 0);
-    more.hidden = left === 0;
-    button.textContent = label + " " + Math.min(pageSize, left);
+    more.hidden = all.length <= shown;
   }
 
   button.addEventListener("click", function () {
