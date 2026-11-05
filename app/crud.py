@@ -616,9 +616,9 @@ def cleanup_personal_data(conn: sqlite3.Connection) -> int:
 def create_request(conn: sqlite3.Connection, data: dict) -> int:
     now = now_iso()
     cur = conn.execute(
-        "INSERT INTO requests (name, contact, message, author_ip_hash,"
+        "INSERT INTO requests (name, contact, kind, message, author_ip_hash,"
         " created_at, updated_at)"
-        " VALUES (:name, :contact, :message, :author_ip_hash,"
+        " VALUES (:name, :contact, :kind, :message, :author_ip_hash,"
         " :created_at, :updated_at)",
         {**data, "created_at": now, "updated_at": now},
     )
@@ -776,8 +776,8 @@ def working_days_ago(days: int) -> datetime:
 def requests_waiting_longer_than(conn: sqlite3.Connection, days: int) -> int:
     """Обращения, на которые не ответили дольше обещанного срока.
 
-    Срок обещан человеку на странице «Отозвать согласие или удалить мои
-    данные», и обещан в рабочих днях - поэтому и считаем в рабочих.
+    Срок обещан человеку на странице «Удалить или изменить свои данные»,
+    и обещан в рабочих днях - поэтому и считаем в рабочих.
     Просрочка здесь - не статистика ради статистики, а невыполненное
     обещание конкретному человеку.
     """

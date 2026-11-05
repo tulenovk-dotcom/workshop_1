@@ -47,6 +47,23 @@ CREATE TABLE visit_log (
 """
 
 
+# Обращения по персональным данным в том виде, в каком они лежат на боевой
+# базе до появления выбора «что нужно сделать».
+СТАРЫЕ_ОБРАЩЕНИЯ = """
+CREATE TABLE requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    contact TEXT NOT NULL,
+    message TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'new',
+    admin_note TEXT NOT NULL DEFAULT '',
+    author_ip_hash TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+"""
+
+
 def столбцы(conn, таблица):
     return {row[1] for row in conn.execute(f"PRAGMA table_info({таблица})")}
 
@@ -58,6 +75,8 @@ def обновить(conn):
         conn.execute(
             "ALTER TABLE visit_log ADD COLUMN is_bot INTEGER NOT NULL DEFAULT 0"
         )
+    if "kind" not in столбцы(conn, "requests"):
+        conn.execute("ALTER TABLE requests ADD COLUMN kind TEXT NOT NULL DEFAULT ''")
     conn.executescript(_блоки["INDEXES"])
 
 
@@ -142,6 +161,34 @@ class ОбновлениеСуществующейБазы(unittest.TestCase):
             self.assertIn(нужная, таблицы)
         self.assertIn("is_bot", столбцы(conn, "visit_log"))
 
+    def test_выбор_просьбы_появляется_у_старых_обращений(self):
+        """Столбец «что нужно сделать» добавлен позже самой таблицы.
+
+        На боевой базе обращения уже есть, и у них этого столбца нет.
+        Обновление должно его добавить, а присланный человеком текст -
+        оставить на месте: по нему и видно, чего он просил.
+        """
+        conn = sqlite3.connect(":memory:")
+        conn.executescript(СТАРЫЕ_ОБРАЩЕНИЯ)
+        conn.execute(
+            "INSERT INTO requests (name, contact, message, created_at, updated_at)"
+            " VALUES ('Асель', 'asel@mail.kz', 'Удалите мой отзыв',"
+            " '2026-10-20T10:00:00+00:00', '2026-10-20T10:00:00+00:00')"
+        )
+        обновить(conn)
+        self.assertIn("kind", столбцы(conn, "requests"))
+        строка = conn.execute("SELECT kind, message FROM requests").fetchone()
+        self.assertEqual(строка[0], "")
+        self.assertEqual(строка[1], "Удалите мой отзыв")
+
+    def test_обновление_обращений_можно_повторять(self):
+        """Второй запуск не должен спотыкаться об уже добавленный столбец."""
+        conn = sqlite3.connect(":memory:")
+        conn.executescript(СТАРЫЕ_ОБРАЩЕНИЯ)
+        обновить(conn)
+        обновить(conn)
+        self.assertIn("kind", столбцы(conn, "requests"))
+
     def test_порядок_в_коде_именно_такой(self):
         """Миграция столбцов должна стоять ДО создания индексов.
 
@@ -157,6 +204,11 @@ class ОбновлениеСуществующейБазы(unittest.TestCase):
             миграция,
             индексы,
             "migrate_visit_log_columns должен вызываться до создания индексов",
+        )
+        self.assertLess(
+            тело.index("migrate_request_columns(conn)"),
+            индексы,
+            "migrate_request_columns должен вызываться до создания индексов",
         )
 
 

@@ -19,9 +19,18 @@
   </div>
 
   <h2>{{ item.name }}</h2>
-  <p class="provider-description">{{ item.message }}</p>
+  <p class="provider-description">
+    {% if item.message %}
+      {{ item.message }}
+    {% else %}
+      <span class="muted">Человек не стал описывать просьбу словами -
+      выбрал её в форме.</span>
+    {% endif %}
+  </p>
 
   <dl class="info-grid">
+    <div><dt>Просьба</dt>
+      <dd>{{ REQUEST_KINDS.get(item.kind, 'Не указана') if item.kind else 'Не указана' }}</dd></div>
     <div><dt>Контакт для ответа</dt><dd>{{ item.contact }}</dd></div>
     <div><dt>Отпечаток адреса</dt><dd>{{ item.author_ip_hash|short_hash }}</dd></div>
     <div><dt>Обновлено</dt><dd>{{ item.updated_at|local_date }}</dd></div>

@@ -1483,6 +1483,19 @@ input:focus, select:focus, textarea:focus {
   .kind-picker input[type="radio"] { transition: none; }
 }
 
+/* Обращение по персональным данным: «Подробности» обязательны не всегда, а
+   только у просьб, где из одного выбора непонятно, что делать. Звёздочка
+   появляется вместе с таким выбором. Браузер без :has() её просто не
+   покажет, а обязательность всё равно проверяет сервер. Список просьб здесь
+   повторяет REQUEST_KINDS_NEED_DETAILS в app/reference.py: добавили туда
+   просьбу - добавьте и сюда. */
+.request-form .needs-details { display: none; }
+
+.request-form:has(input[name="kind"][value="correct"]:checked) .needs-details,
+.request-form:has(input[name="kind"][value="other"]:checked) .needs-details {
+  display: inline;
+}
+
 /* Показываем только поля выбранного варианта. Правила написаны от
    обратного - что прятать при каждом выборе: браузер без поддержки :has()
    ни одно из них не применит и покажет все поля, и форма всё равно

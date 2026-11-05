@@ -61,6 +61,8 @@ from .reference import (
     PRICING,
     PROVIDER_TYPES,
     REQUEST_ANSWER_DAYS,
+    REQUEST_KINDS,
+    REQUEST_KINDS_NEED_DETAILS,
     REQUEST_STATUSES,
     SPECIALTIES,
     TYPES_WITH_SPECIALTY,
@@ -564,6 +566,7 @@ templates.env.globals.update(
     APPLICATION_STATUSES=APPLICATION_STATUSES,
     ORGANIZATION_TYPES=ORGANIZATION_TYPES,
     REQUEST_STATUSES=REQUEST_STATUSES,
+    REQUEST_KINDS=REQUEST_KINDS,
     REQUEST_ANSWER_DAYS=REQUEST_ANSWER_DAYS,
     SUBJECT_TYPES=SUBJECT_TYPES,
     POLICY_VERSION=POLICY_VERSION,
@@ -1033,8 +1036,14 @@ def privacy(request: Request):
 # --- Обращения по персональным данным ---------------------------------------
 
 def clean_request(form: dict) -> tuple[dict, list[str]]:
-    """Разбор формы обращения. Обязательны имя, контакт и суть обращения:
-    без контакта ответить некуда, без сути непонятно, что человек просит."""
+    """Разбор формы обращения.
+
+    Обязательны имя, контакт и выбор просьбы: без контакта ответить некуда,
+    без выбора непонятно, что человек просит. Текст обязателен только там,
+    где сам выбор ничего не объясняет - «исправить неточность» и «другое».
+    Для «удалить», «отозвать согласие» и «узнать, какие данные есть» просьба
+    ясна из выбора, и требовать текст не за что.
+    """
     errors: list[str] = []
 
     name = form.get("name", "").strip()
@@ -1045,13 +1054,19 @@ def clean_request(form: dict) -> tuple[dict, list[str]]:
     if not contact:
         errors.append("Укажите телефон или электронную почту для ответа.")
 
+    kind = form.get("kind", "").strip()
+    if kind not in REQUEST_KINDS:
+        errors.append("Выберите, что нужно сделать с вашими данными.")
+        kind = ""
+
     message = form.get("message", "").strip()
-    if not message:
-        errors.append("Опишите, что нужно сделать с вашими данными.")
+    if kind in REQUEST_KINDS_NEED_DETAILS and not message:
+        errors.append("Напишите подробнее, что именно нужно сделать.")
 
     data = {
         "name": name[:120],
         "contact": contact[:160],
+        "kind": kind,
         "message": message[:2000],
     }
     return data, errors

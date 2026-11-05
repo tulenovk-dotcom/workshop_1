@@ -9,7 +9,8 @@
 <p class="admin-summary">
   Всего в списке: {{ requests|length }}. Срок ответа - {{ REQUEST_ANSWER_DAYS }}
   рабочих дней. Контакт показан частично: полностью он виден на странице
-  обращения.
+  обращения. У обращений, присланных до появления выбора просьбы, в колонке
+  «Просьба» стоит «не указана» - что человек просит, видно в подробностях.
 </p>
 
 <p class="status-filter">
@@ -30,7 +31,8 @@
           <th>Дата</th>
           <th>От кого</th>
           <th>Контакт</th>
-          <th>Суть</th>
+          <th>Просьба</th>
+          <th>Подробности</th>
           <th>Статус</th>
           <th>Действия</th>
         </tr>
@@ -41,7 +43,14 @@
             <td>{{ r.created_at|local_date }}</td>
             <td><a href="/admin/requests/{{ r.id }}">{{ r.name }}</a></td>
             <td class="muted">{{ r.contact|mask_contact }}</td>
-            <td>{{ r.message|truncate(120) }}</td>
+            <td>
+              {% if r.kind %}
+                {{ REQUEST_KINDS.get(r.kind, r.kind) }}
+              {% else %}
+                <span class="muted">не указана</span>
+              {% endif %}
+            </td>
+            <td>{{ r.message|truncate(90) if r.message else '' }}</td>
             <td><span class="chip status-{{ r.status }}">{{ REQUEST_STATUSES.get(r.status, r.status) }}</span></td>
             <td class="row-actions">
               <a class="btn btn-small" href="/admin/requests/{{ r.id }}">Открыть</a>

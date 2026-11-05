@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}{{ t('Удалить свои данные - каталог помощи при аутизме') }}{% endblock %}
-{% block description %}{{ t('Форма обращения: отозвать согласие на обработку персональных данных или удалить свои данные из каталога.') }}{% endblock %}
+{% block title %}{{ t('Удалить или изменить свои данные - каталог помощи при аутизме') }}{% endblock %}
+{% block description %}{{ t('Форма обращения: удалить свои данные из каталога, исправить неточность, отозвать согласие на обработку или узнать, какие данные у нас есть.') }}{% endblock %}
 
 {% block content %}
 <section class="intro">
-  <h1>{{ t('Отозвать согласие или удалить мои данные') }}</h1>
+  <h1>{{ t('Удалить или изменить свои данные') }}</h1>
   <p>
-    {{ t('Через эту форму можно отозвать согласие на обработку данных, попросить удалить заявку или отзыв, исправить неточность в карточке или узнать, какие ваши данные у нас есть.') }}
+    {{ t('Всё, что вы оставили в заявке или отзыве, остаётся вашим. Через эту форму можно попросить удалить эти данные, исправить в них неточность, отозвать согласие на обработку или узнать, что именно у нас есть. Выберите нужное ниже - объяснять словами не обязательно.') }}
   </p>
 </section>
 
@@ -24,7 +24,18 @@
   </div>
 {% endif %}
 
-<form class="admin-form" method="post" action="{{ url('/privacy/request') }}">
+<form class="admin-form request-form" method="post" action="{{ url('/privacy/request') }}">
+  <fieldset class="field field-wide kind-picker">
+    <legend>{{ t('Что нужно сделать') }} *</legend>
+    {% for code, label in REQUEST_KINDS.items() %}
+      <label class="radio">
+        <input type="radio" name="kind" value="{{ code }}"
+               {% if form.kind == code %}checked{% endif %}>
+        {{ t(label) }}
+      </label>
+    {% endfor %}
+  </fieldset>
+
   <div class="field">
     <label for="name">{{ t('Как к вам обращаться') }} *</label>
     <input type="text" id="name" name="name" maxlength="120" required
@@ -40,10 +51,11 @@
   </div>
 
   <div class="field field-wide">
-    <label for="message">{{ t('Что нужно сделать') }} *</label>
-    <textarea id="message" name="message" rows="6" maxlength="2000" required
-              placeholder="{{ t('Например: удалите мою заявку и отзыв о центре в Астане') }}">{{ form.message or '' }}</textarea>
-    <p class="hint">{{ t('До 2000 символов. Диагнозы и сведения о здоровье писать не нужно - для обращения они не требуются.') }}</p>
+    <label for="message">{{ t('Подробности') }}<span class="needs-details"> *</span></label>
+    <textarea id="message" name="message" rows="5" maxlength="2000"
+              placeholder="{{ t('Например: в карточке центра в Астане неверный телефон') }}">{{ form.message or '' }}</textarea>
+    <p class="hint">{{ t('Для «Исправить неточность» и «Другое» напишите, что именно нужно сделать. В остальных случаях поле можно оставить пустым: мы найдём вашу запись по контакту. До 2000 символов.') }}</p>
+    <p class="hint">{{ t('Диагнозы и сведения о здоровье писать не нужно - для обращения они не требуются.') }}</p>
   </div>
 
   {# Honeypot: поле спрятано от людей, его заполняют только боты. #}

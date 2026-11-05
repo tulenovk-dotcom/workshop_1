@@ -185,6 +185,7 @@ CREATE TABLE IF NOT EXISTS requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     contact TEXT NOT NULL,
+    kind TEXT NOT NULL DEFAULT '',
     message TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'new',
     admin_note TEXT NOT NULL DEFAULT '',
@@ -316,6 +317,17 @@ def migrate_visit_log_columns(conn: sqlite3.Connection) -> None:
         )
 
 
+def migrate_request_columns(conn: sqlite3.Connection) -> None:
+    """Выбор «что нужно сделать» у обращения по персональным данным.
+
+    Старым базам столбца не хватает: раньше просьба была только внутри
+    текста обращения. Там он остаётся пустым, и админка показывает такие
+    обращения как «не указано» - текст никуда не делся, его видно в карточке.
+    """
+    if "kind" not in table_columns(conn, "requests"):
+        conn.execute("ALTER TABLE requests ADD COLUMN kind TEXT NOT NULL DEFAULT ''")
+
+
 def migrate_provider_columns(conn: sqlite3.Connection) -> None:
     """Точка на карте у места занятий и закрепление в выдаче.
 
@@ -351,6 +363,7 @@ def init_db() -> None:
         # поэтому на стенде, где база каждый раз новая, этого не видно.
         migrate_visit_log_columns(conn)
         migrate_provider_columns(conn)
+        migrate_request_columns(conn)
         conn.executescript(INDEXES)
         migrate_method_translations(conn)
         columns = {row["name"] for row in conn.execute("PRAGMA table_info(providers)")}
