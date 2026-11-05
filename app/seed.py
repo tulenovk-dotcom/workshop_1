@@ -343,16 +343,28 @@ def seed_if_empty(with_demo: bool = False) -> None:
         if not with_demo:
             return
 
-        already_seeded = conn.execute(
+        # Демо-записи доливаем по именам: если их стало меньше, чем в списке
+        # выше (например, список выросли после того, как база уже наполнилась),
+        # недостающие добавятся при следующем запуске. Отзывы - только при
+        # первом наполнении пустой базы.
+        fresh = conn.execute(
             "SELECT COUNT(*) AS n FROM providers"
-        ).fetchone()["n"]
-        if already_seeded:
+        ).fetchone()["n"] == 0
+        existing_names = {
+            row["name"]
+            for row in conn.execute(
+                "SELECT name FROM providers WHERE is_test = 1"
+            ).fetchall()
+        }
+        if not fresh and len(existing_names) >= len(TEST_PROVIDERS):
             return
 
         method_ids = {
             row["code"]: row["id"] for row in crud.list_methods(conn)
         }
         for index, item in enumerate(TEST_PROVIDERS):
+            if item["name"] in existing_names:
+                continue
             data = {key: value for key, value in item.items() if key != "methods"}
             data["is_test"] = 1
             data["is_pinned"] = 0
@@ -363,6 +375,9 @@ def seed_if_empty(with_demo: bool = False) -> None:
                 data,
                 [method_ids[code] for code in item["methods"] if code in method_ids],
             )
+
+        if not fresh:
+            return
 
         for provider_id, author, rating, text, status in TEST_REVIEWS:
             review_id = crud.create_review(
