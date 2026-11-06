@@ -10,6 +10,14 @@
   --accent: #22333f;
   --accent-dark: #15212b;
 
+  /* Производные от основных: текст на тёмной подложке, утопленная подложка
+     под наведением и шапками таблиц, рамка заметнее обычной линии. */
+  --on-accent: #ffffff;
+  --on-accent-muted: #e6eaec;
+  --surface-sunken: #eceeed;
+  --line-strong: #c8cfce;
+  --switch-off: #e4e7ec;
+
   /* Единственные цветные значения: метки доказательности и WhatsApp. */
   --green: #1f7a4d;
   --green-bg: #e6f4ec;
@@ -17,6 +25,14 @@
   --amber-bg: #fdf3dc;
   --red: #9b2c2c;
   --red-bg: #fbe9e9;
+  --green-line: #bfe3cf;
+  --amber-line: #f0dcae;
+  --red-line: #eec4c4;
+
+  /* Золото звёзд - единственный цвет вне монохрома и вне шкалы
+     доказательности. Оценку ставят люди, и глаз ищет её отдельно. */
+  --star: #d08700;
+  --info-bg: #e7eefb;
 
   /* Один гротеск на весь сайт: и текст, и заголовки. Серифа больше нет -
      разницу между заголовком и текстом держат кегль и насыщенность. */
@@ -88,7 +104,7 @@ a { color: var(--accent); }
   margin: 0;
   padding: 9px 16px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.9rem;
   text-align: center;
 }
@@ -102,7 +118,7 @@ a { color: var(--accent); }
 .mode-banner {
   margin: 0;
   padding: 8px 16px;
-  background: #eceeed;
+  background: var(--surface-sunken);
   border-bottom: 1px solid var(--line);
   color: var(--text);
   font-size: 0.88rem;
@@ -161,7 +177,7 @@ a { color: var(--accent); }
   cursor: pointer;
 }
 
-.notice-close:hover { background: #eceeed; color: var(--text); }
+.notice-close:hover { background: var(--surface-sunken); color: var(--text); }
 
 .notice-ok { width: 100%; }
 
@@ -236,7 +252,7 @@ a { color: var(--accent); }
   white-space: nowrap;
 }
 
-.auth-link:hover { background: #eceeed; }
+.auth-link:hover { background: var(--surface-sunken); }
 
 .auth-link-quiet { color: var(--muted); border-color: transparent; }
 
@@ -284,7 +300,7 @@ a { color: var(--accent); }
   outline-offset: 2px;
 }
 
-.lang-switch .lang-current { background: var(--accent); color: #fff; }
+.lang-switch .lang-current { background: var(--accent); color: var(--on-accent); }
 
 .site-footer {
   margin-top: 48px;
@@ -324,7 +340,7 @@ a { color: var(--accent); }
   border: 1px solid var(--accent);
   border-radius: 10px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   cursor: pointer;
   opacity: 0;
   transform: translateY(8px);
@@ -517,7 +533,7 @@ input[type="url"], input[type="date"], select, textarea {
   font: inherit;
   line-height: 1.4;
   color: var(--text);
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 10px;
 }
@@ -569,7 +585,7 @@ input:focus, select:focus, textarea:focus {
 .switch-track {
   position: absolute;
   inset: 0;
-  background: #e4e7ec;
+  background: var(--switch-off);
   border-radius: 999px;
   transition: background 0.25s ease;
   pointer-events: none;
@@ -582,7 +598,7 @@ input:focus, select:focus, textarea:focus {
   left: 2px;
   width: 27px;
   height: 27px;
-  background: #fff;
+  background: var(--surface);
   border-radius: 50%;
   box-shadow: 0 2px 5px rgba(16, 32, 56, 0.22);
   transition: transform 0.25s cubic-bezier(0.4, 0.1, 0.2, 1);
@@ -669,13 +685,13 @@ input:focus, select:focus, textarea:focus {
   border-color: var(--line);
 }
 
-.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary { background: var(--accent); color: var(--on-accent); }
 .btn-primary:hover { background: var(--accent-dark); }
 /* Одно и то же действие выглядит одинаково в списке и в карточке.
    Зелёный на сайте занят под «доказано», брать его под кнопку нельзя. */
-.btn-whatsapp { background: var(--accent); color: #fff; }
+.btn-whatsapp { background: var(--accent); color: var(--on-accent); }
 .btn-ghost { background: transparent; }
-.btn-danger { color: var(--red); border-color: #e9c7c7; background: var(--red-bg); }
+.btn-danger { color: var(--red); border-color: var(--red-line); background: var(--red-bg); }
 .btn-small { padding: 7px 12px; font-size: 0.87rem; }
 
 .actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 8px; }
@@ -768,7 +784,7 @@ input:focus, select:focus, textarea:focus {
   width: 100%;
   padding: 11px 14px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-radius: 999px;
   font-size: 0.9rem;
   line-height: 1.2;
@@ -805,7 +821,7 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
   justify-content: center;
   object-fit: cover;
-  background: #eceeed;
+  background: var(--surface-sunken);
   border: 1px solid var(--line);
   border-radius: 12px;
   font-weight: var(--w-bold);
@@ -864,18 +880,18 @@ input:focus, select:focus, textarea:focus {
   font-size: 0.78rem;
   font-weight: var(--w-semibold);
   border-radius: 999px;
-  background: #e8ebea;
+  background: var(--surface-sunken);
   color: var(--text);
 }
 
-.chip-test { background: #eceeed; color: var(--muted); }
+.chip-test { background: var(--surface-sunken); color: var(--muted); }
 
 /* Плашка «робот» в журнале посещений. Тише обычной: это служебная
    пометка о том, что запись не идёт в счёт, а не предупреждение. */
-.chip-bot { background: #eceeed; color: var(--muted); font-weight: var(--w-medium); }
+.chip-bot { background: var(--surface-sunken); color: var(--muted); font-weight: var(--w-medium); }
 
 .rating { margin-left: auto; font-weight: var(--w-bold); font-size: 0.95rem; white-space: nowrap; }
-.rating .star { color: #d08700; }
+.rating .star { color: var(--star); }
 .rating-count { font-weight: var(--w-regular); color: var(--muted); }
 .rating-empty { font-weight: var(--w-regular); color: var(--muted); font-size: 0.88rem; }
 
@@ -892,9 +908,9 @@ input:focus, select:focus, textarea:focus {
   border: 1px solid transparent;
 }
 
-.ev-proven { background: var(--green-bg); color: var(--green); border-color: #bfe3cf; }
-.ev-limited { background: var(--amber-bg); color: var(--amber); border-color: #f0dcae; }
-.ev-none { background: var(--red-bg); color: var(--red); border-color: #eec4c4; }
+.ev-proven { background: var(--green-bg); color: var(--green); border-color: var(--green-line); }
+.ev-limited { background: var(--amber-bg); color: var(--amber); border-color: var(--amber-line); }
+.ev-none { background: var(--red-bg); color: var(--red); border-color: var(--red-line); }
 
 /* Ключ к меткам стоит до списка, который он объясняет: без него
    цветные плашки в карточках — просто украшение. */
@@ -955,7 +971,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .review-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.review-rating { color: #d08700; letter-spacing: 1px; }
+.review-rating { color: var(--star); letter-spacing: 1px; }
 .review-date { color: var(--muted); font-size: 0.85rem; }
 .review p { margin: 6px 0 0; overflow-wrap: anywhere; }
 
@@ -1029,13 +1045,13 @@ input:focus, select:focus, textarea:focus {
   margin: 28px 0;
   padding: 22px 24px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-radius: 14px;
 }
 
-.regress h2 { margin: 0 0 10px; color: #fff; font-size: var(--step-1); }
-.regress p { margin: 0 0 10px; max-width: 62ch; color: #e6eaec; }
-.regress .regress-action { margin-bottom: 0; color: #fff; font-weight: var(--w-semibold); }
+.regress h2 { margin: 0 0 10px; color: var(--on-accent); font-size: var(--step-1); }
+.regress p { margin: 0 0 10px; max-width: 62ch; color: var(--on-accent-muted); }
+.regress .regress-action { margin-bottom: 0; color: var(--on-accent); font-weight: var(--w-semibold); }
 
 .next-steps { margin: 28px 0; }
 .next-steps p { max-width: 70ch; }
@@ -1168,7 +1184,7 @@ input:focus, select:focus, textarea:focus {
   vertical-align: top;
 }
 
-.admin-table th { background: #eceeed; font-size: 0.85rem; }
+.admin-table th { background: var(--surface-sunken); font-size: 0.85rem; }
 
 .row-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
 .row-actions form { margin: 0; }
@@ -1270,8 +1286,8 @@ input:focus, select:focus, textarea:focus {
 }
 
 .stat-period:first-child { border-left: 0; }
-.stat-period:hover { background: #eceeed; color: var(--text); }
-.stat-period-current { background: var(--accent); color: #fff; }
+.stat-period:hover { background: var(--surface-sunken); color: var(--text); }
+.stat-period-current { background: var(--accent); color: var(--on-accent); }
 
 /* График. Рисуется обычным SVG: JavaScript в проекте нет, и ради столбиков
    заводить его незачем. Подпись дня всплывает по наведению сама - её
@@ -1300,7 +1316,7 @@ input:focus, select:focus, textarea:focus {
 .stat-chart-value {
   fill: var(--text);
   font-family: var(--font-text);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: var(--w-semibold);
 }
 
@@ -1423,7 +1439,7 @@ input:focus, select:focus, textarea:focus {
   white-space: nowrap;
 }
 
-.btn-outline:hover { background: var(--accent); color: #fff; }
+.btn-outline:hover { background: var(--accent); color: var(--on-accent); }
 
 .footer-links {
   display: flex;
@@ -1456,7 +1472,7 @@ input:focus, select:focus, textarea:focus {
   justify-content: center;
   border-radius: 999px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.85rem;
   font-weight: var(--w-bold);
 }
@@ -1501,7 +1517,7 @@ input:focus, select:focus, textarea:focus {
 
 .kind-picker .radio:last-of-type { margin-bottom: 0; }
 
-.kind-picker .radio:hover { border-color: #c8cfce; }
+.kind-picker .radio:hover { border-color: var(--line-strong); }
 
 .kind-picker .radio:has(input:checked) {
   border-color: var(--accent);
@@ -1516,7 +1532,7 @@ input:focus, select:focus, textarea:focus {
   width: 22px;
   height: 22px;
   margin: 0;
-  border: 2px solid #c2cac9;
+  border: 2px solid var(--line-strong);
   border-radius: 50%;
   background: var(--surface);
   cursor: pointer;
@@ -1671,7 +1687,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .status-filter .chip { text-decoration: none; }
-.chip-active { background: var(--accent); color: #fff; }
+.chip-active { background: var(--accent); color: var(--on-accent); }
 
 /* Запись, где встретились слова о здоровье. Метка живёт в админке рядом
    со статусами и подчиняется их логике: жёлтое - «нужно посмотреть». */
@@ -1680,11 +1696,11 @@ input:focus, select:focus, textarea:focus {
 /* Номер адреса у отзыва. Серая метка - адрес встретился один раз, это
    просто справка. Жёлтая - с адреса пришло несколько отзывов, и это по
    той же логике «нужно посмотреть», что и слова о здоровье. */
-.chip-ip { background: #eceeed; color: var(--muted); font-weight: var(--w-medium); }
+.chip-ip { background: var(--surface-sunken); color: var(--muted); font-weight: var(--w-medium); }
 .chip-ip-same { background: var(--amber-bg); color: var(--amber); }
 
 .status-new { background: var(--amber-bg); color: var(--amber); }
-.status-in_progress { background: #e7eefb; color: var(--accent); }
+.status-in_progress { background: var(--info-bg); color: var(--accent); }
 .status-approved { background: var(--green-bg); color: var(--green); }
 .status-rejected { background: var(--red-bg); color: var(--red); }
 
