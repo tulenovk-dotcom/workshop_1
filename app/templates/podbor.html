@@ -70,7 +70,7 @@
   </h1>
   <p class="podbor-summary">
     {{ raw.city or t('Все города') }}
-    {% if raw.age %}, {% for code, label, low, high in age_ranges %}{% if code == raw.age %}{{ t(label)|lower }}{% endif %}{% endfor %}{% endif %}
+    {%- if raw.age %}, {% for code, label, low, high in age_ranges %}{% if code == raw.age %}{{ t(label)|lower }}{% endif %}{% endfor %}{% endif %}
     <a href="{{ url('/podbor') }}?city={{ raw.city|urlencode }}&age={{ raw.age|urlencode }}{% for c in raw.concern %}&concern={{ c }}{% endfor %}">{{ t('Изменить ответы') }}</a>
   </p>
 
