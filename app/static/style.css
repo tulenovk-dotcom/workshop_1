@@ -303,6 +303,51 @@ a { color: var(--accent); }
   font-size: 0.9rem;
 }
 
+/* Кнопка «наверх». Висит в правом нижнем углу и появляется, когда страницу
+   пролистали больше чем на экран с половиной: на короткой странице
+   возвращаться некуда, а угол кнопка занимает. Показывает её скрипт
+   `totop.js`, снимая атрибут hidden; без скриптов кнопки нет, и страница
+   листается как обычно.
+   Залита accent, как главная кнопка: светлая на белом подвале, над которым
+   кнопка чаще всего и висит, потерялась бы. Лежит ниже окна о тестовом
+   режиме (z-index 50) - окно должно её накрывать. */
+.to-top {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease, background-color 0.18s ease;
+}
+
+/* Атрибут hidden слабее, чем display: grid выше, поэтому повторяем явно. */
+.to-top[hidden] { display: none; }
+
+.to-top.is-visible {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.to-top:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+.to-top svg { display: block; }
+
+@media (prefers-reduced-motion: reduce) {
+  .to-top { transition: none; }
+}
+
 /* --- Общие блоки --- */
 
 main.container { padding-top: 24px; }

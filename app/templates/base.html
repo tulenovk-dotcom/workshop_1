@@ -134,5 +134,21 @@
   <script src="{{ static_url('notice.js') }}" defer></script>
 {% endif %}
 <script src="{{ static_url('phone.js') }}" defer></script>
+{# Кнопка «наверх». Страницы каталога и таблицы в админке длинные, и
+   листать обратно к началу долго. Кнопку показывает скрипт, когда
+   пролистали больше экрана с половиной; без скриптов её нет, и страница
+   листается как обычно. Стрелка нарисована разметкой, а не знаком шрифта:
+   у казахской гарнитуры свой рисунок стрелок, и кнопка выглядела бы
+   на двух языках по-разному. #}
+<button type="button" class="to-top" id="to-top" hidden
+        aria-label="{{ t('Наверх') }}" title="{{ t('Наверх') }}">
+  <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"
+       focusable="false" fill="none" stroke="currentColor" stroke-width="2"
+       stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9 15V4.5"></path>
+    <path d="M3.75 9.75 9 4.5l5.25 5.25"></path>
+  </svg>
+</button>
+<script src="{{ static_url('totop.js') }}" defer></script>
 </body>
 </html>
