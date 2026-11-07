@@ -44,10 +44,10 @@
   <meta name="theme-color" content="#2b5a8c">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  {# Nunito - для русской версии, Onest переменный - для казахской:
-     веса там дробные (360, 460, 550, 640), и статические начертания
-     их не дают. #}
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Onest:wght@300..800&display=swap">
+  {# Один шрифт на обе версии. Nunito знает все девять казахских букв -
+     ә, ғ, қ, ң, ө, ұ, ү, һ, і, - проверено замером, поэтому второй
+     гарнитуры для казахских страниц больше не нужно. #}
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
   <link rel="stylesheet" href="{{ static_url('style.css') }}">
 </head>
 <body>
