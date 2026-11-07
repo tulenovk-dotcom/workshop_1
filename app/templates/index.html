@@ -193,13 +193,13 @@
 </div>
 {% endif %}
 
-<div class="cards" data-page-size="20">
+<div class="cards" data-page-size="10">
   {% for p in providers %}
     {{ ui.provider_card(p, methods_map.get(p.id, [])) }}
   {% endfor %}
 </div>
 
-{#- Кнопка показывает по 20 карточек. Без скрипта она спрятана, и весь список
+{#- Кнопка показывает по 10 карточек. Без скрипта она спрятана, и весь список
     виден сразу (catalog-more.js). -#}
 <div class="more-wrap" data-more hidden>
   <button type="button" class="btn" data-show-more data-label="{{ t('Показать ещё') }}">{{ t('Показать ещё') }}</button>

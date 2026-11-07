@@ -1,4 +1,4 @@
-/* Каталог: показываем по 20 карточек, остальные открываются кнопкой «Показать ещё».
+/* Каталог: показываем по 10 карточек, остальные открываются кнопкой «Показать ещё».
  *
  * Все карточки остаются в странице, скрываются только лишние. Так карта и
  * «Найти ближайшие ко мне» работают со всем списком. После сортировки по
@@ -16,7 +16,7 @@
 
   var button = more.querySelector("[data-show-more]");
   var label = button.dataset.label || button.textContent;
-  var pageSize = parseInt(list.dataset.pageSize, 10) || 20;
+  var pageSize = parseInt(list.dataset.pageSize, 10) || 10;
   var shown = pageSize;
 
   function cards() {
