@@ -47,6 +47,7 @@ from .personal_data import (
     short_hash,
 )
 from .reference import (
+    ADMIN_PHONE,
     AGE_RANGE_BOUNDS,
     AGE_RANGES,
     APPLICANT_KINDS,
@@ -549,6 +550,7 @@ def moderation_counts() -> dict:
 
 
 templates.env.globals.update(
+    ADMIN_PHONE=ADMIN_PHONE,
     PROVIDER_TYPES=PROVIDER_TYPES,
     CITIES=CITIES,
     CITY_NAMES=CITY_NAMES,

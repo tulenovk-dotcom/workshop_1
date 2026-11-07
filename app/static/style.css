@@ -21,7 +21,12 @@
   --r-block: 22px;
   --r-control: 14px;
 
-  /* Метки доказательности и WhatsApp. */
+  /* Метки доказательности и WhatsApp. Зелёный WhatsApp отдельный: он
+     фирменный, узнаётся с первого взгляда и темнее метки «доказано»,
+     чтобы кружок в углу не путали с плашкой метода. */
+  --wa: #25d366;
+  --wa-dark: #1aa750;
+
   --green: #1f7a4d;
   --green-bg: #e6f4ec;
   --amber: #8a6108;
@@ -356,6 +361,47 @@ a { color: var(--accent); }
 
 @media (prefers-reduced-motion: reduce) {
   .to-top { transition: none; }
+}
+
+/* Кнопка связи с администратором. Висит в правом нижнем углу на всех
+   страницах каталога, кнопка «наверх» встаёт над ней. Зелёная и круглая:
+   так её узнают, не читая. */
+.admin-chat {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--wa);
+  border: 1.5px solid var(--wa-dark);
+  color: #fff;
+  text-decoration: none;
+  box-shadow: 0 6px 20px rgba(29, 42, 51, 0.24);
+}
+
+.admin-chat:hover { background: var(--wa-dark); color: #fff; }
+.admin-chat:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.admin-chat-mark { display: block; }
+
+/* Подпись остаётся в разметке для читалки экрана: кружок без слов ей
+   нечего назвать. */
+.admin-chat-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Кнопка «наверх» поднимается над кружком связи. Селектор по соседству:
+   в админке кнопки связи нет, и «наверх» остаётся на своём месте. */
+.admin-chat ~ .to-top {
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
 }
 
 /* --- Общие блоки --- */

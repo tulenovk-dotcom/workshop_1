@@ -15,7 +15,7 @@
     <div><dt>{{ t('Год создания') }}</dt><dd>2026</dd></div>
     <div><dt>{{ t('Администратор сайта') }}</dt><dd>Меруерт</dd></div>
     <div><dt>{{ t('Телефон') }}</dt>
-      <dd><a href="tel:+77074068866">+7 707 406 88 66</a></dd></div>
+      <dd><a href="tel:{{ ADMIN_PHONE|replace(' ', '') }}">{{ ADMIN_PHONE }}</a></dd></div>
   </dl>
 </section>
 {% endblock %}
