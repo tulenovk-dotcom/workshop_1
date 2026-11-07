@@ -14,8 +14,8 @@
 
 <section class="home-top">
   <div class="home-intro">
-    <h1>{{ t('Вы не одни. Найдём помощь для вашего ребёнка рядом с домом') }}</h1>
-    <p class="home-lead">{{ t('Центры и специалисты по аутизму (РАС) в Казахстане. С ценами, возрастом и честной пометкой, какие методы работают.') }}</p>
+    <h1>{{ t('Где получить помощь ребёнку с расстройством аутистического спектра (РАС) в Казахстане') }}</h1>
+    <p class="home-lead">{{ t('Всё для поддержки и развития детей с РАС') }}</p>
 
     <a class="helper-link" href="{{ url('/podbor') }}">
       <span class="helper-link-mark" aria-hidden="true">
@@ -56,7 +56,20 @@
     </fieldset>
 
     <details class="more-filters" {% if more_open %}open{% endif %}>
-      <summary>{{ t('Ещё фильтры: метод, специалист, поиск по названию') }}</summary>
+      {#- Полоса выглядит как ещё одно поле панели: она и правда ведёт к
+          полям. Галочка нарисована разметкой, а не знаком шрифта - у
+          казахской гарнитуры свой рисунок стрелок. -#}
+      <summary>
+        <span class="more-filters-text">
+          <strong>{{ t('Ещё фильтры') }}</strong>
+          <span>{{ t('метод, специальность, где заниматься, поиск по названию') }}</span>
+        </span>
+        <svg class="more-filters-chevron" width="18" height="18" viewBox="0 0 18 18"
+             aria-hidden="true" focusable="false" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4.5 6.75 9 11.25l4.5-4.5"></path>
+        </svg>
+      </summary>
 
       <div class="more-filters-body">
         <div class="field">
