@@ -1078,7 +1078,6 @@ input:focus, select:focus, textarea:focus {
    hidden надо отдельно убрать, иначе кнопка не спрячется. */
 .more-wrap { display: flex; justify-content: center; margin: 18px 0 0; }
 .more-wrap[hidden] { display: none; }
-.provider-card[hidden] { display: none; }
 @media (max-width: 640px) {
   .more-wrap .btn { width: 100%; }
 }
@@ -1153,6 +1152,12 @@ input:focus, select:focus, textarea:focus {
   box-shadow: 0 4px 16px rgba(43, 90, 140, 0.07);
   align-items: start;
 }
+
+/* Спрятанная карточка не рисуется. Правило с двумя классами и атрибутом
+   сильнее, чем .card.provider-card с его display: grid, - иначе сетка
+   перебивала hidden, и «Показать ещё» прятала карточки только на бумаге:
+   атрибут стоял, а на экране был весь список. */
+.card.provider-card[hidden] { display: none; }
 
 .pc-media {
   display: flex;
