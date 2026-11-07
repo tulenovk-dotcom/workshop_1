@@ -93,5 +93,19 @@ class PromoBlockTest(unittest.TestCase):
         self.assertNotEqual([r["id"] for r in today], [r["id"] for r in tomorrow])
 
 
+class PromoCitiesTest(unittest.TestCase):
+    def test_tolko_goroda_s_shestju_i_bolshe(self):
+        counts = {"Астана": 16, "Алматы": 10, "Шымкент": 7,
+                  "Атырау": 5, "Тараз": 1}
+        self.assertEqual(promo.promo_cities(counts), ["Алматы", "Астана", "Шымкент"])
+
+    def test_rovno_shest_prohodit(self):
+        self.assertEqual(promo.promo_cities({"Актау": 6}), ["Актау"])
+
+    def test_pustoy_spravochnik(self):
+        self.assertEqual(promo.promo_cities({}), [])
+        self.assertEqual(promo.promo_cities(None), [])
+
+
 if __name__ == "__main__":
     unittest.main()

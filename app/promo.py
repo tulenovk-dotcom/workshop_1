@@ -78,3 +78,14 @@ def split(rows, moment: datetime = None):
     chosen = {r["id"] for r in block}
     rest = [r for r in rows if r["id"] not in chosen]
     return block, rest
+
+
+def promo_cities(counts: dict) -> list:
+    """Города, где продвижение имеет смысл предлагать.
+
+    Порог тот же, что и у показа блока: пока в городе меньше шести
+    карточек, родитель видит весь список на одном экране, и «первое
+    место» там продавать не из чего. Список считается каждый раз заново,
+    поэтому город включается сам, как только карточек станет достаточно.
+    """
+    return sorted(city for city, n in (counts or {}).items() if n >= MIN_RESULTS)

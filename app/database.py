@@ -90,6 +90,9 @@ CREATE TABLE IF NOT EXISTS applications (
     city TEXT NOT NULL,
     address TEXT NOT NULL DEFAULT '',
     method_codes TEXT NOT NULL DEFAULT '[]',
+    -- Человек выбрал платное продвижение в анкете. Сама оплата идёт
+    -- мимо сайта, это только отметка для администратора.
+    wants_promo INTEGER NOT NULL DEFAULT 0,
     age_from INTEGER,
     age_to INTEGER,
     price_from INTEGER,
@@ -319,6 +322,19 @@ def migrate_visit_log_columns(conn: sqlite3.Connection) -> None:
         )
 
 
+def migrate_application_columns(conn: sqlite3.Connection) -> None:
+    """Отметка о выборе платного размещения у заявки.
+
+    Старым базам столбца не хватает, добавляем выключенным: заявки,
+    поданные до появления продвижения, считаются бесплатными.
+    """
+    columns = {row["name"] for row in conn.execute("PRAGMA table_info(applications)")}
+    if "wants_promo" not in columns:
+        conn.execute(
+            "ALTER TABLE applications ADD COLUMN wants_promo INTEGER NOT NULL DEFAULT 0"
+        )
+
+
 def migrate_request_columns(conn: sqlite3.Connection) -> None:
     """Выбор «что нужно сделать» у обращения по персональным данным.
 
@@ -370,6 +386,7 @@ def init_db() -> None:
         # поэтому на стенде, где база каждый раз новая, этого не видно.
         migrate_visit_log_columns(conn)
         migrate_provider_columns(conn)
+        migrate_application_columns(conn)
         migrate_request_columns(conn)
         conn.executescript(INDEXES)
         migrate_method_translations(conn)

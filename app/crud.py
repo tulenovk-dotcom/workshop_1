@@ -129,6 +129,14 @@ def cities(conn: sqlite3.Connection) -> list[str]:
     return [row["city"] for row in rows]
 
 
+def city_counts(conn: sqlite3.Connection) -> dict:
+    """Сколько карточек в каждом городе. Нужно для порога продвижения."""
+    rows = conn.execute(
+        "SELECT city, COUNT(*) AS n FROM providers WHERE city <> '' GROUP BY city"
+    ).fetchall()
+    return {row["city"]: row["n"] for row in rows}
+
+
 def specialties_in_use(conn: sqlite3.Connection) -> list[str]:
     rows = conn.execute(
         "SELECT DISTINCT specialty FROM providers"
@@ -359,6 +367,7 @@ APPLICATION_FIELDS = (
     "email",
     "comment",
     "logo_path",
+    "wants_promo",
     "author_ip_hash",
 )
 

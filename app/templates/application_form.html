@@ -121,6 +121,38 @@
            value="{{ '' if city_listed else (form.city or '') }}">
   </div>
 
+  {#- Выбор размещения. Стоит сразу под городом: раньше сайт не знает, из
+      какого человек города, и не может решить, предлагать ли платное.
+      Блок спрятан до запуска скрипта и открывается, когда выбран город, где
+      продвижение работает. Без скрипта человек просто размещается бесплатно,
+      и ничего лишнего ему не обещано. -#}
+  {% if promo_cities %}
+  <fieldset class="field field-wide plan-picker" hidden data-plan-picker
+            data-promo-cities="{{ promo_cities|join('|') }}">
+    <legend>{{ t('Как разместиться') }}</legend>
+    <p class="hint">{{ t('Выбор ни на что не влияет при проверке: карточку публикуем в обоих случаях.') }}</p>
+    <div class="plan-list">
+      <label class="plan-option">
+        <input type="radio" name="plan" value="free"
+               {% if form.plan != 'promo' %}checked{% endif %}>
+        <span class="plan-text">
+          <strong>{{ t('Бесплатно') }}<span class="plan-price">0 ₸</span></strong>
+          <span>{{ t('Карточка со всеми данными. Место в списке по оценкам родителей.') }}</span>
+        </span>
+      </label>
+      <label class="plan-option">
+        <input type="radio" name="plan" value="promo"
+               {% if form.plan == 'promo' %}checked{% endif %}>
+        <span class="plan-text">
+          <strong>{{ t('С продвижением') }}<span class="plan-price">{{ t('от 1 999 ₸') }}</span></strong>
+          <span>{{ t('Карточка попадает в блок «Продвижение» наверху каталога и наверху списка по вашему городу. У неё пометка «Продвижение»: родители видят, что место платное.') }}</span>
+          <span class="plan-terms">{{ t('1 месяц: 1 999 ₸. 6 месяцев: 9 999 ₸. Год: 14 999 ₸. Платить сейчас не нужно, реквизиты пришлём после проверки.') }}</span>
+        </span>
+      </label>
+    </div>
+  </fieldset>
+  {% endif %}
+
   <div class="field">
     <label for="address">{{ t('Адрес') }}</label>
     <input type="text" id="address" name="address" maxlength="200"
@@ -267,4 +299,5 @@
     {{ t('Поля со звёздочкой обязательные. Мы проверим информацию и свяжемся с вами в течение двух рабочих дней.') }}
   </p>
 </form>
+<script src="{{ static_url('promo-pick.js') }}" defer></script>
 {% endblock %}

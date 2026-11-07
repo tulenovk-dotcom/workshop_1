@@ -1302,6 +1302,10 @@ def application_form_context(conn, form: dict, errors: list[str]) -> dict:
         "form": form,
         "errors": errors,
         "selected_methods": set(form.get("methods", [])),
+        # Города, где продвижение имеет смысл предлагать. Список считается
+        # заново при каждом открытии анкеты: город включается сам, как
+        # только карточек в нём станет достаточно.
+        "promo_cities": promo.promo_cities(crud.city_counts(conn)),
     }
 
 
@@ -1458,6 +1462,13 @@ async def application_create(request: Request):
 
         data["logo_path"] = store_image(*image) if image else ""
         data["author_ip_hash"] = ip_hash
+        # Выбор платного размещения проверяется заново: в браузере человек
+        # мог отметить продвижение, а потом сменить город на тот, где его
+        # не предлагают. Полагаться на то, что скрипт отработал, нельзя.
+        wants_promo = form.get("plan", "") == "promo" and data.get("city") in set(
+            promo.promo_cities(crud.city_counts(conn))
+        )
+        data["wants_promo"] = 1 if wants_promo else 0
         application_id = crud.create_application(conn, data)
         crud.create_consent(conn, consent_data("application", application_id, request))
         application = crud.get_application(conn, application_id)
@@ -1468,12 +1479,15 @@ async def application_create(request: Request):
         # Оповещение не должно мешать приёму заявки.
         pass
 
-    return local_redirect(request, "/dlya-specialistov/sent")
+    sent = "/dlya-specialistov/sent" + ("?promo=1" if wants_promo else "")
+    return local_redirect(request, sent)
 
 
 @app.get("/dlya-specialistov/sent", response_class=HTMLResponse)
-def application_sent(request: Request):
-    return render(request, "application_sent.html", {})
+def application_sent(request: Request, promo: str = ""):
+    # Реквизиты показываем только тому, кто выбрал платное размещение.
+    # Остальным про деньги на этом экране ни слова.
+    return render(request, "application_sent.html", {"wants_promo": bool(promo)})
 
 
 # --- Админка ----------------------------------------------------------------
