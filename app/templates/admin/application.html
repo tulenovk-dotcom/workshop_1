@@ -58,7 +58,7 @@
     <div><dt>Город</dt><dd>{{ application.city }}</dd></div>
     {# Что человек выбрал в анкете. Оплата идёт мимо сайта, это только
        подсказка: о чём говорить, когда будете звонить по заявке. #}
-    <div><dt>Размещение</dt><dd>{% if application.wants_promo %}<span class="badge-promo">Хочет продвижение</span>{% else %}Бесплатное{% endif %}</dd></div>
+    <div><dt>Размещение</dt><dd>{% if application.wants_promo %}<span class="badge-promo">Хочет продвижение</span>{% set chosen = PROMO_PLANS | selectattr("code", "equalto", application.promo_term) | first %}{% if chosen %} {{ chosen.label }}, {{ chosen.price|price }} ₸{% endif %}{% else %}Бесплатное{% endif %}</dd></div>
     {% if application.address %}<div><dt>Адрес</dt><dd>{{ application.address }}</dd></div>{% endif %}
     <div><dt>Контактное лицо</dt><dd>{{ application.contact_person }}</dd></div>
     <div><dt>Телефон</dt><dd>{{ application.phone }}</dd></div>

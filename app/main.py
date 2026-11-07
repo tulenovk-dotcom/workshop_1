@@ -48,6 +48,9 @@ from .personal_data import (
 )
 from .reference import (
     ADMIN_PHONE,
+    PROMO_PLANS,
+    PROMO_PLAN_CODES,
+    promo_plan,
     AGE_RANGE_BOUNDS,
     AGE_RANGES,
     APPLICANT_KINDS,
@@ -551,6 +554,7 @@ def moderation_counts() -> dict:
 
 templates.env.globals.update(
     ADMIN_PHONE=ADMIN_PHONE,
+    PROMO_PLANS=PROMO_PLANS,
     PROVIDER_TYPES=PROVIDER_TYPES,
     CITIES=CITIES,
     CITY_NAMES=CITY_NAMES,
@@ -1469,6 +1473,10 @@ async def application_create(request: Request):
             promo.promo_cities(crud.city_counts(conn))
         )
         data["wants_promo"] = 1 if wants_promo else 0
+        # Срок - намерение, а не обязательство: человек ещё ничего не платил
+        # и может передумать. Неизвестный код считаем невыбранным.
+        term = form.get("promo_term", "")
+        data["promo_term"] = term if wants_promo and term in PROMO_PLAN_CODES else ""
         application_id = crud.create_application(conn, data)
         crud.create_consent(conn, consent_data("application", application_id, request))
         application = crud.get_application(conn, application_id)
@@ -1479,15 +1487,22 @@ async def application_create(request: Request):
         # Оповещение не должно мешать приёму заявки.
         pass
 
-    sent = "/dlya-specialistov/sent" + ("?promo=1" if wants_promo else "")
+    sent = "/dlya-specialistov/sent"
+    if wants_promo:
+        sent += "?promo=1" + (f"&term={data['promo_term']}" if data["promo_term"] else "")
     return local_redirect(request, sent)
 
 
 @app.get("/dlya-specialistov/sent", response_class=HTMLResponse)
-def application_sent(request: Request, promo: str = ""):
+def application_sent(request: Request, promo: str = "", term: str = ""):
     # Реквизиты показываем только тому, кто выбрал платное размещение.
-    # Остальным про деньги на этом экране ни слова.
-    return render(request, "application_sent.html", {"wants_promo": bool(promo)})
+    # Остальным про деньги на этом экране ни слова. Срок выбран - показываем
+    # одну сумму вместо трёх: меньше шансов перевести не ту.
+    return render(
+        request,
+        "application_sent.html",
+        {"wants_promo": bool(promo), "plan": promo_plan(term)},
+    )
 
 
 # --- Админка ----------------------------------------------------------------

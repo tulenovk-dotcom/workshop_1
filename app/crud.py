@@ -368,6 +368,7 @@ APPLICATION_FIELDS = (
     "comment",
     "logo_path",
     "wants_promo",
+    "promo_term",
     "author_ip_hash",
 )
 

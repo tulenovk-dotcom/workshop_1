@@ -131,6 +131,25 @@ CONCERNS = [
 
 CONCERN_CODES = tuple(c["code"] for c in CONCERNS)
 
+# Сроки продвижения и цены. Лежат здесь, чтобы и анкета, и экран «Спасибо»,
+# и админка брали их из одного места: иначе цена в трёх местах разойдётся.
+PROMO_PLANS = (
+    {"code": "1m", "months": 1, "label": "1 месяц", "price": 1999},
+    {"code": "6m", "months": 6, "label": "6 месяцев", "price": 9999},
+    {"code": "12m", "months": 12, "label": "1 год", "price": 14999},
+)
+
+PROMO_PLAN_CODES = tuple(plan["code"] for plan in PROMO_PLANS)
+
+
+def promo_plan(code: str):
+    """Срок продвижения по коду. Неизвестный код - значит не выбран."""
+    for plan in PROMO_PLANS:
+        if plan["code"] == code:
+            return plan
+    return None
+
+
 # Контакт администратора сайта. Лежит здесь, а не в двух шаблонах сразу:
 # номер показывается на странице «О нас» и на плавающей кнопке связи.
 ADMIN_PHONE = "+7 707 406 88 66"

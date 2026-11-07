@@ -146,7 +146,16 @@
         <span class="plan-text">
           <strong>{{ t('С продвижением') }}<span class="plan-price">{{ t('от 1 999 ₸') }}</span></strong>
           <span>{{ t('Карточка стоит в блоке «Продвижение» наверху каталога и наверху списка по вашему городу. На самой карточке стоит такая же пометка.') }}</span>
-          <span class="plan-terms">{{ t('1 месяц: 1 999 ₸. 6 месяцев: 9 999 ₸. Год: 14 999 ₸. Платить сейчас не нужно, реквизиты пришлём после проверки.') }}</span>
+          <span class="plan-terms">{{ t('Платить сейчас не нужно: выберите срок, реквизиты пришлём после проверки.') }}</span>
+          <span class="plan-months">
+            {% for plan in PROMO_PLANS %}
+              <label class="month-option">
+                <input type="radio" name="promo_term" value="{{ plan.code }}"
+                       {% if form.promo_term == plan.code or (not form.promo_term and loop.first) %}checked{% endif %}>
+                <span>{{ t(plan.label) }}<b>{{ plan.price|price }} ₸</b></span>
+              </label>
+            {% endfor %}
+          </span>
         </span>
       </label>
     </div>

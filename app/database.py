@@ -93,6 +93,8 @@ CREATE TABLE IF NOT EXISTS applications (
     -- Человек выбрал платное продвижение в анкете. Сама оплата идёт
     -- мимо сайта, это только отметка для администратора.
     wants_promo INTEGER NOT NULL DEFAULT 0,
+    -- Какой срок продвижения выбрал человек: '1m', '6m', '12m' или пусто.
+    promo_term TEXT NOT NULL DEFAULT '',
     age_from INTEGER,
     age_to INTEGER,
     price_from INTEGER,
@@ -332,6 +334,10 @@ def migrate_application_columns(conn: sqlite3.Connection) -> None:
     if "wants_promo" not in columns:
         conn.execute(
             "ALTER TABLE applications ADD COLUMN wants_promo INTEGER NOT NULL DEFAULT 0"
+        )
+    if "promo_term" not in columns:
+        conn.execute(
+            "ALTER TABLE applications ADD COLUMN promo_term TEXT NOT NULL DEFAULT ''"
         )
 
 
