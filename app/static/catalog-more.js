@@ -48,4 +48,6 @@
   document.addEventListener("catalog:sorted", render);
 
   render();
+  // Дальше прячет карточки скрипт, ограничение стилями больше не нужно.
+  document.documentElement.classList.remove("cards-limited");
 })();

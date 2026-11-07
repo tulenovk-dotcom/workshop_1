@@ -3,6 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  {#- Метка ставится до отрисовки: по ней стили сразу прячут карточки после
+      десятой, и список не успевает мелькнуть во всю длину. Без скриптов
+      метки нет, и каталог виден целиком, как и раньше. Запасной таймер
+      снимает ограничение, если catalog-more.js почему-то не загрузился:
+      лучше длинный список, чем десять карточек без кнопки. -#}
+  <script>
+    document.documentElement.className += " cards-limited";
+    setTimeout(function () {
+      document.documentElement.classList.remove("cards-limited");
+    }, 4000);
+  </script>
   {% if NOINDEX %}<meta name="robots" content="noindex, nofollow">{% endif %}
   <title>{% block title %}{{ t('Каталог помощи детям с аутизмом в Казахстане') }}{% endblock %}</title>
   <meta name="description" content="{% block description %}{{ t('Где получить помощь ребёнку с РАС в Казахстане: реабилитационные центры, клиники, частные специалисты, детские сады и школы. У каждого метода указан уровень доказательности.') }}{% endblock %}">
