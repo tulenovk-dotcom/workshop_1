@@ -23,6 +23,12 @@ TEST_POINTS = [
     (49.9483, 82.6279),   # Усть-Каменогорск
 ]
 
+# Какие демо-записи «оплатили» продвижение. Нужны, чтобы на стенде было
+# видно блок платных мест: там их четыре, то есть больше трёх, и окно из
+# трёх по ним ездит, как на настоящем каталоге.
+PROMO_DEMO_INDEXES = {0, 1, 4, 5}
+PROMO_DEMO_UNTIL = "2099-12-31"
+
 TEST_PROVIDERS = [
     {
         "provider_type": "center",
@@ -368,6 +374,12 @@ def seed_if_empty(with_demo: bool = False) -> None:
             data = {key: value for key, value in item.items() if key != "methods"}
             data["is_test"] = 1
             data["is_pinned"] = 0
+            # Срок продвижения у демо-записей: первым четырём ставим год
+            # вперёд, чтобы на стенде было видно блок платных мест и его
+            # ротацию. В боевой базе демо-записей нет.
+            data["promo_until"] = (
+                PROMO_DEMO_UNTIL if index in PROMO_DEMO_INDEXES else ""
+            )
             data.setdefault("logo_path", "")
             data["lat"], data["lng"] = TEST_POINTS[index] if index < len(TEST_POINTS) else (None, None)
             crud.create_provider(

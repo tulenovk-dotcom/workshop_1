@@ -85,7 +85,7 @@
 {#- Карточка места занятий в списке. Одна на каталог и помощника, чтобы одно
     и то же место выглядело одинаково. matched - пункты помощника, которые
     это место закрывает; total - сколько пунктов человек выбрал. -#}
-{% macro provider_card(p, methods, matched=None, total=0) %}
+{% macro provider_card(p, methods, matched=None, total=0, promo=False) %}
   <article class="card provider-card" data-provider-id="{{ p.id }}"
            {% if p.lat is not none and p.lng is not none %}data-lat="{{ p.lat }}" data-lng="{{ p.lng }}"{% endif %}>
     <div class="pc-media">
@@ -98,6 +98,12 @@
         <p class="match-badge{% if matched|length < total %} match-partial{% endif %}">
           {{ t('Подходит по %s из %s')|format(matched|length, total) }}{% if matched|length < total %}: {% for c in matched %}{{ t(c.label)|lower }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}
         </p>
+      {% endif %}
+      {% if promo %}
+        {#- Пометка синяя, а не зелёная: зелёный, янтарный и красный на сайте
+            значат уровень доказательности метода, и платная метка этими
+            цветами сбивала бы главное. -#}
+        <p class="promo-mark"><span class="badge-promo">{{ t('Продвижение') }}</span></p>
       {% endif %}
       <h2 class="pc-name"><a href="{{ url('/providers/' ~ p.id) }}">{{ p.name }}</a></h2>
 

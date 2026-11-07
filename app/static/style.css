@@ -1322,6 +1322,40 @@ input:focus, select:focus, textarea:focus {
 .rating-count { font-weight: var(--w-regular); color: var(--muted); }
 .rating-empty { font-weight: var(--w-regular); color: var(--muted); font-size: 0.88rem; }
 
+/* Блок платных мест. Отбит заливкой и рамкой, чтобы читался отдельно от
+   каталога: платное должно быть видно, а не притворяться обычной выдачей. */
+.promo-block {
+  margin: 0 0 26px;
+  padding: 16px 16px 4px;
+  background: var(--surface-soft);
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-block);
+}
+
+.promo-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  margin: 0 0 10px;
+}
+
+.promo-head strong { font-size: 1rem; font-weight: var(--w-bold); }
+.promo-head span { color: var(--muted); font-size: 0.9rem; }
+
+.promo-mark { margin: 0; }
+
+.badge-promo {
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: var(--w-semibold);
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  border: 1px solid #c3d6ea;
+}
+
 /* --- Метки доказательности --- */
 
 .badges { display: flex; flex-wrap: wrap; gap: 6px; }

@@ -22,7 +22,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import crud, geo
+from . import crud, promo, geo
 from .database import DB_PATH, db_session, init_db, read_or_create_secret
 from .notifications import notify_new_application
 from .i18n import (
@@ -794,15 +794,22 @@ def index(
         "proven_only": bool(proven_only),
     }
     with db_session() as conn:
-        providers = crud.search_providers(conn, filters)
+        found = crud.search_providers(conn, filters)
+        # Блок платных мест отбирается уже из найденного: сначала честная
+        # выдача по фильтрам, и только потом реклама среди неё.
+        promoted, providers = promo.split(found)
         methods_map = {
             pid: offered_methods(rows)
             for pid, rows in crud.methods_for_providers(
-                conn, [p["id"] for p in providers]
+                conn, [p["id"] for p in found]
             ).items()
         }
         context = {
             "providers": providers,
+            "promoted": promoted,
+            # Счётчик «Найдено» считает все подходящие записи, вместе с теми,
+            # что уехали в блок: иначе число разойдётся с тем, что на экране.
+            "found_count": len(found),
             "methods_map": methods_map,
             # В фильтре весь справочник, кроме методов без доказательств:
             # искать место занятий по ним незачем, а прочитать о них можно
@@ -1896,6 +1903,7 @@ def provider_prefill(conn, application) -> tuple[dict, set[int]]:
         "logo_path": application["logo_path"],
         "is_test": 0,
         "is_pinned": 0,
+        "promo_until": "",
         "lat": None,
         "lng": None,
     }
@@ -1907,6 +1915,23 @@ def provider_prefill(conn, application) -> tuple[dict, set[int]]:
 # широта и долгота или вставлено что-то не то.
 KZ_LAT = (40.0, 56.5)
 KZ_LNG = (46.0, 88.0)
+
+
+def clean_promo_until(value) -> str:
+    """Дата окончания продвижения из формы админки.
+
+    Пустое поле означает, что продвижение не оплачено. Любая строка, не
+    похожая на дату, тоже считается пустой: лучше не показать платное
+    место, чем показывать его вечно из-за опечатки.
+    """
+    text = (value or "").strip()
+    if not text:
+        return ""
+    try:
+        datetime.strptime(text, "%Y-%m-%d")
+    except ValueError:
+        return ""
+    return text
 
 
 def parse_point(text: str) -> tuple[float | None, float | None]:
@@ -1950,6 +1975,9 @@ def provider_form_data(
         "logo_path": logo_path,
         "is_test": 1 if form["is_test"] else 0,
         "is_pinned": 1 if form["is_pinned"] else 0,
+        # Срок продвижения: дата «ГГГГ-ММ-ДД» или пусто. Проверяем формат,
+        # чтобы опечатка не превратилась в вечное платное место.
+        "promo_until": clean_promo_until(form["promo_until"]),
     }
     data["lat"], data["lng"] = parse_point(form["coords"])
     method_ids = [int(code) for code in method_codes if code.isdigit()]

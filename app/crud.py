@@ -22,6 +22,7 @@ PROVIDER_FIELDS = (
     "logo_path",
     "is_test",
     "is_pinned",
+    "promo_until",
     "lat",
     "lng",
 )

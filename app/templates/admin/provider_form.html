@@ -197,6 +197,17 @@
     </label>
   </div>
 
+  {# Срок продвижения. Пока дата не прошла, карточка попадает в блок
+     «Платные места» наверху каталога и наверху своего города. Кончился
+     срок - карточка опускается сама, выключать руками не надо. #}
+  <div class="field">
+    <label for="promo_until">Продвижение оплачено до</label>
+    <input type="date" id="promo_until" name="promo_until"
+           value="{{ fd.promo_until if fd and fd.promo_until else '' }}">
+    <p class="hint">Пусто - продвижения нет. Карточка в блоке стоит
+      до конца этого дня включительно.</p>
+  </div>
+
   <div class="field field-wide logo-field">
     <label for="logo">Фото или логотип</label>
     <div class="logo-field-row">

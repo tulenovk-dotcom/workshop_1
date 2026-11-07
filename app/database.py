@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS providers (
     logo_path TEXT NOT NULL DEFAULT '',
     is_test INTEGER NOT NULL DEFAULT 0,
     is_pinned INTEGER NOT NULL DEFAULT 0,
+    -- До какой даты оплачено продвижение, 'ГГГГ-ММ-ДД'. Пусто - не оплачено.
+    promo_until TEXT NOT NULL DEFAULT '',
     lat REAL,
     lng REAL,
     created_at TEXT NOT NULL
@@ -329,12 +331,13 @@ def migrate_request_columns(conn: sqlite3.Connection) -> None:
 
 
 def migrate_provider_columns(conn: sqlite3.Connection) -> None:
-    """Точка на карте у места занятий и закрепление в выдаче.
+    """Точка на карте, закрепление в выдаче и срок продвижения.
 
     Старым базам столбцов не хватает, добавляем пустыми. Пока точка не
     заполнена в админке, место просто не показывается на карте - в списке
     каталога оно остаётся как было. Закрепление по умолчанию выключено,
-    так что порядок выдачи у существующих баз не меняется.
+    так что порядок выдачи у существующих баз не меняется. Срок
+    продвижения пустой: платных мест у существующих записей нет.
     """
     columns = {row["name"] for row in conn.execute("PRAGMA table_info(providers)")}
     for name in ("lat", "lng"):
@@ -343,6 +346,10 @@ def migrate_provider_columns(conn: sqlite3.Connection) -> None:
     if "is_pinned" not in columns:
         conn.execute(
             "ALTER TABLE providers ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0"
+        )
+    if "promo_until" not in columns:
+        conn.execute(
+            "ALTER TABLE providers ADD COLUMN promo_until TEXT NOT NULL DEFAULT ''"
         )
 
 
