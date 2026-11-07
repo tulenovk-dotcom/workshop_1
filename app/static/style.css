@@ -1323,6 +1323,11 @@ input:focus, select:focus, textarea:focus {
 .rating-empty { font-weight: var(--w-regular); color: var(--muted); font-size: 0.88rem; }
 
 /* Выбор размещения в анкете и реквизиты на экране «Спасибо». */
+/* У .field стоит display: flex, и он перебивает скрытие через hidden.
+   Без этой строки спрятанный блок всё равно виден - на этом уже
+   спотыкалась кнопка координат в админке (.coords-row .btn[hidden]). */
+.plan-picker[hidden] { display: none; }
+
 .plan-list { display: grid; gap: 10px; }
 
 .plan-option {
