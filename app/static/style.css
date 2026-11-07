@@ -1381,8 +1381,10 @@ input:focus, select:focus, textarea:focus {
 .promo-block {
   margin: 0 0 26px;
   padding: 16px 16px 4px;
-  background: var(--surface-soft);
-  border: 1.5px solid var(--line);
+  /* Тёплая заливка - те же токены, что у плашки «Не знаете, что искать?»:
+     второй жёлтый на сайте заводить незачем. */
+  background: var(--warm-bg);
+  border: 1.5px solid var(--warm-line);
   border-radius: var(--r-block);
 }
 
@@ -1395,7 +1397,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .promo-head strong { font-size: 1rem; font-weight: var(--w-bold); }
-.promo-head span { color: var(--muted); font-size: 0.9rem; }
+.promo-head span { color: var(--amber); font-size: 0.9rem; }
 
 .promo-mark { margin: 0; }
 
