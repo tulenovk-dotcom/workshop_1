@@ -36,6 +36,17 @@
     }
   }
 
+  // Нажали на срок - значит выбрали платное. Иначе человек ткнёт в
+  // «6 месяцев», а отправится бесплатное размещение, и он об этом
+  // не узнает.
+  var terms = picker.querySelectorAll('input[name="promo_term"]');
+  Array.prototype.forEach.call(terms, function (term) {
+    term.addEventListener("change", function () {
+      var paid = picker.querySelector('input[value="promo"]');
+      if (paid) { paid.checked = true; }
+    });
+  });
+
   choice.addEventListener("change", update);
   if (other) { other.addEventListener("input", update); }
   update();
