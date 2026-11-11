@@ -1078,6 +1078,42 @@ input:focus, select:focus, textarea:focus {
    hidden надо отдельно убрать, иначе кнопка не спрячется. */
 .more-wrap { display: flex; justify-content: center; margin: 18px 0 0; }
 .more-wrap[hidden] { display: none; }
+
+/* Страница города: короткая шапка и ссылки на другие города внизу.
+   Ссылки - пилюли с числом мест: как чипы возраста в фильтре, только
+   ведут на другую страницу, а не выбирают значение. */
+.city-head .home-lead { max-width: 60ch; }
+
+.city-others { margin-top: 36px; }
+.city-others h2 { margin-top: 0; }
+
+.city-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.city-link {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: var(--w-semibold);
+  text-decoration: none;
+}
+.city-link span { color: var(--muted); font-weight: var(--w-regular); }
+.city-link:hover { border-color: var(--accent); color: var(--accent); }
+.city-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Город в карточке места - ссылка на страницу города. */
+.city-ref { color: inherit; }
 @media (max-width: 640px) {
   .more-wrap .btn { width: 100%; }
 }

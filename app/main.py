@@ -56,8 +56,11 @@ from .reference import (
     APPLICANT_KINDS,
     APPLICATION_STATUSES,
     CITIES,
+    CITY_BY_SLUG,
     CITY_NAMES,
+    CITY_NAMES_KK,
     CITY_OTHER,
+    CITY_PAGES,
     CONCERN_CODES,
     CONCERNS,
     EVIDENCE_LEVELS,
@@ -912,6 +915,8 @@ def provider_detail(request: Request, provider_id: int, review: str = ""):
             ),
             "reviews": crud.published_reviews(conn, provider_id),
             "review_status": review,
+            # Город в карточке ведёт на страницу города, если она есть.
+            "city_slug": CITY_PAGES.get(provider["city"], {}).get("slug"),
         }
     return render(request, "provider.html", context)
 
@@ -1266,11 +1271,18 @@ def sitemap() -> Response:
         with db_session() as conn:
             # Карточки берём из базы на каждый запрос: завели новое место -
             # оно появилось в карте само, без правки кода.
-            paths += [
-                f"/providers/{row['id']}"
-                for row in crud.list_providers_admin(conn)
+            real = [
+                row for row in crud.list_providers_admin(conn)
                 if not row["is_test"]
             ]
+            # Страницы городов - только там, где есть настоящие карточки:
+            # пустую страницу города поисковику не показываем.
+            paths += [
+                f"/{CITY_PAGES[name]['slug']}"
+                for name in sorted({row["city"] for row in real})
+                if name in CITY_PAGES
+            ]
+            paths += [f"/providers/{row['id']}" for row in real]
 
     body = []
     for path in paths:
@@ -2435,3 +2447,71 @@ class _FormDefaults(dict):
 
 def _form_defaults(form) -> _FormDefaults:
     return _FormDefaults({key: str(value) for key, value in form.items()})
+
+
+# --- Страницы городов --------------------------------------------------------
+
+def places_count(count: int, lang: str) -> str:
+    """«1 место», «3 места», «10 мест»; по-казахски «10 орын»."""
+    if lang == "kk":
+        return f"{count} орын"
+    if count % 10 == 1 and count % 100 != 11:
+        word = "место"
+    elif count % 10 in (2, 3, 4) and count % 100 not in (12, 13, 14):
+        word = "места"
+    else:
+        word = "мест"
+    return f"{count} {word}"
+
+
+def city_title(name: str, lang: str) -> str:
+    return CITY_NAMES_KK.get(name, name) if lang == "kk" else name
+
+
+# Маршрут объявлен последним: адрес из одного слова совпал бы с любой
+# страницей, а так сначала проверяются все остальные. Незнакомое слово -
+# не город, отдаём «не найдено».
+@app.get("/{city_slug}", response_class=HTMLResponse)
+def city_page(request: Request, city_slug: str):
+    name = CITY_BY_SLUG.get(city_slug)
+    if name is None:
+        raise HTTPException(status_code=404, detail="Страница не найдена")
+    lang = request_lang(request)
+    with db_session() as conn:
+        found = crud.search_providers(conn, {"city": name})
+        # Город без единой карточки - пустая страница. Её не показываем:
+        # человеку нечего на ней делать, а поисковику не нужно её видеть.
+        if not found:
+            raise HTTPException(status_code=404, detail="Страница не найдена")
+        promoted, providers = promo.split(found)
+        methods_map = {
+            pid: offered_methods(rows)
+            for pid, rows in crud.methods_for_providers(
+                conn, [p["id"] for p in found]
+            ).items()
+        }
+        counts = crud.city_counts(conn)
+    page = CITY_PAGES[name]
+    others = sorted(
+        (
+            {
+                "name": city_title(other, lang),
+                "slug": CITY_PAGES[other]["slug"],
+                "count": n,
+            }
+            for other, n in counts.items()
+            if other != name and other in CITY_PAGES
+        ),
+        key=lambda c: (-c["count"], c["name"]),
+    )
+    context = {
+        "city_name": name,
+        "city_label": city_title(name, lang),
+        "city_in": page["in_kk"] if lang == "kk" else page["in_ru"],
+        "count_text": places_count(len(found), lang),
+        "providers": providers,
+        "promoted": promoted,
+        "methods_map": methods_map,
+        "other_cities": others,
+    }
+    return render(request, "city.html", context)

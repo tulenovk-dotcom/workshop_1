@@ -43,7 +43,7 @@
 
   <h2>{{ t('Информация') }}</h2>
   <dl class="info-grid">
-    <div><dt>{{ t('Город') }}</dt><dd>{{ provider.city }}</dd></div>
+    <div><dt>{{ t('Город') }}</dt><dd>{% if city_slug %}<a class="city-ref" href="{{ url('/' ~ city_slug) }}">{{ provider.city }}</a>{% else %}{{ provider.city }}{% endif %}</dd></div>
     {% if provider.district %}<div><dt>{{ t('Район') }}</dt><dd>{{ provider.district }}</dd></div>{% endif %}
     {% if provider.address %}<div><dt>{{ t('Адрес') }}</dt><dd>{{ provider.address }}
       {#- 2ГИС ищет по городу и адресу: так находится само здание с его

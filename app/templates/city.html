@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui with context %}
+
+{#- Страница города: вход из поиска по запросу «аутизм центр Алматы».
+    Намеренно короче главной: заголовок, одна строка и сразу карточки.
+    Фильтры остаются на главной, сюда их не дублируем. -#}
+{% block title %}{{ t('Помощь детям с аутизмом (РАС) %(city)s: центры и специалисты')|format(city=city_in) }}{% endblock %}
+{% block description %}{{ t('Где заниматься с ребёнком с аутизмом (РАС) %(city)s: %(count)s - реабилитационные центры, коррекционные сады, частные специалисты. Цены, возраст детей, отзывы.')|format(city=city_in, count=count_text) }}{% endblock %}
+
+{% block content %}
+<p class="breadcrumbs"><a href="{{ url('/') }}">{{ t('Каталог') }}</a> › {{ city_label }}</p>
+
+<section class="city-head">
+  <h1>{{ t('Помощь детям с аутизмом %(city)s')|format(city=city_in) }}</h1>
+  <p class="home-lead">{{ t('%(count)s %(city)s. Связаться можно прямо из карточки.')|format(count=count_text, city=city_in) }}</p>
+</section>
+
+{% if promoted %}
+<div class="promo-block">
+  <p class="promo-head"><strong>{{ t('Продвижение') }}</strong></p>
+  <div class="cards">
+    {% for p in promoted %}
+      {{ ui.provider_card(p, methods_map.get(p.id, []), promo=True) }}
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="cards" data-page-size="10">
+  {% for p in providers %}
+    {{ ui.provider_card(p, methods_map.get(p.id, [])) }}
+  {% endfor %}
+</div>
+
+<div class="more-wrap" data-more hidden>
+  <button type="button" class="btn" data-show-more data-label="{{ t('Показать ещё') }}">{{ t('Показать ещё') }}</button>
+</div>
+
+{% if other_cities %}
+<nav class="city-others" aria-labelledby="city-others-title">
+  <h2 id="city-others-title">{{ t('Другие города') }}</h2>
+  <ul class="city-links">
+    {% for c in other_cities %}
+      <li><a class="city-link" href="{{ url('/' ~ c.slug) }}">{{ c.name }} <span>{{ c.count }}</span></a></li>
+    {% endfor %}
+  </ul>
+</nav>
+{% endif %}
+
+<script src="{{ static_url('catalog-more.js') }}" defer></script>
+{% endblock %}
