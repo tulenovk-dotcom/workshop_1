@@ -123,11 +123,16 @@
     оплачен, а не поставлен редакцией. -#}
 {% if not request.url.path.startswith('/admin') %}
 <aside class="ad-strip">
+  {#- Подпись, текст и ссылка идут одним абзацем, а не тремя ячейками в
+      ряд: на телефоне ряд разваливался на четыре строки с рваным краем
+      слева. Абзац переносится как обычный текст - ровно по левому краю. -#}
   <div class="container ad-strip-inner">
-    <span class="ad-strip-tag">{{ t('Реклама') }}</span>
-    <p class="ad-strip-text">{{ t('Центрам и клиникам: NeuroscanAI собирает планы специалистов из одного анализа.') }}</p>
-    <a class="ad-strip-link" href="https://neuroscanai.io/" target="_blank"
-       rel="sponsored nofollow noopener">{{ t('Первый анализ бесплатно') }}</a>
+    <p class="ad-strip-text">
+      <span class="ad-strip-tag">{{ t('Реклама') }}</span>
+      {{ t('Центрам и клиникам: NeuroscanAI собирает планы специалистов из одного анализа.') }}
+      <a class="ad-strip-link" href="https://neuroscanai.io/" target="_blank"
+         rel="sponsored nofollow noopener">{{ t('Первый анализ бесплатно') }}</a>
+    </p>
   </div>
 </aside>
 {% endif %}

@@ -185,50 +185,45 @@ a { color: var(--accent); }
   border-bottom: 1px solid #c9dbed;
 }
 .ad-strip-inner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
   padding-top: 8px;
   padding-bottom: 8px;
 }
+/* Всё одной строкой текста: подпись, сообщение и ссылка. На узком экране
+   абзац переносится сам, ровно по левому краю. Раньше это были три ячейки
+   в ряд, и на телефоне они расползались на четыре строки. */
+.ad-strip-text {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--accent-dark);
+}
 .ad-strip-tag {
-  flex: none;
+  display: inline-block;
+  margin-right: 6px;
   padding: 2px 8px;
   border-radius: 7px;
   background: var(--surface);
   color: var(--muted);
   font-size: 0.74rem;
   font-weight: var(--w-semibold);
+  white-space: nowrap;
 }
-/* Текст тянется и переносится внутри себя, а не уезжает на свою строку:
-   иначе на телефоне подпись, две строки текста и ссылка дают четыре
-   строки, и заголовок страницы уходит под сгиб. */
-.ad-strip-text {
-  flex: 1 1 220px;
-  min-width: 0;
-  margin: 0;
-  font-size: 0.9rem;
-  color: var(--accent-dark);
-}
-/* Ссылка прижата к правому краю, пока строка помещается в одну. Когда
-   полоса переносится, прижимать не к чему, и она встаёт под текстом. */
+/* Ссылка не разрывается посередине: «Первый анализ» на одной строке, а
+   «бесплатно» на другой читается как обрывок. */
 .ad-strip-link {
-  margin-left: auto;
-  font-size: 0.9rem;
+  margin-left: 4px;
   font-weight: var(--w-black);
   color: var(--accent-dark);
   text-decoration: underline;
   text-underline-offset: 3px;
+  white-space: nowrap;
 }
 .ad-strip-link:hover { color: var(--accent); }
 .ad-strip-link:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
 @media (max-width: 700px) {
-  .ad-strip-link { margin-left: 0; }
-  .ad-strip-inner { gap: 6px 10px; padding-top: 7px; padding-bottom: 7px; }
-  .ad-strip-text,
-  .ad-strip-link { font-size: 0.85rem; }
+  .ad-strip-inner { padding-top: 7px; padding-bottom: 7px; }
+  .ad-strip-text { font-size: 0.85rem; }
 }
 
 .header-inner {
