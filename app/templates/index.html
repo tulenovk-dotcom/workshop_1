@@ -205,7 +205,7 @@
   <button type="button" class="btn" data-show-more data-label="{{ t('Показать ещё') }}">{{ t('Показать ещё') }}</button>
 </div>
 
-<section class="home-bands home-bands-three">
+<section class="home-bands">
   <a class="band band-dark" href="{{ url('/early-signs') }}">
     <strong>{{ t('Сомневаетесь, нужна ли помощь?') }}</strong>
     <span>{{ t('Ранние признаки аутизма по возрастам: на что обратить внимание и когда идти к специалисту.') }}</span>
@@ -216,9 +216,6 @@
     <span>{{ t('Разместитесь в каталоге бесплатно, родители найдут вас сами.') }}</span>
     <span class="band-link">{{ t('Разместиться в каталоге') }}</span>
   </a>
-  {#- Третья плашка обращается туда же, куда и соседняя слева: к центрам.
-      Родитель пролистывает обе. -#}
-  {{ ui.partner_band() }}
 </section>
 
 <script src="{{ static_url('catalog-map.js') }}" defer></script>

@@ -916,78 +916,6 @@ input:focus, select:focus, textarea:focus {
 .band-dark .band-link { color: #fff; }
 .band-dark:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
 
-/* Третья плашка в полосе - партнёрская. Три колонки только там, где они
-   помещаются: ниже 900px карточки встают в столбик, иначе на планшете
-   остаётся по 230px на карточку, и заголовок ломается на четыре строки. */
-.home-bands-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-
-/* --- Партнёрская плашка ---
-   Реклама стороннего продукта, адресованная центрам, а не родителям.
-   Выглядит иначе соседних плашек намеренно: своя подложка и левая линия
-   акцентом, чтобы её не приняли за раздел сайта. Тёплый жёлтый не берём -
-   он уже занят помощником «Не знаете, что искать?» и блоком платных мест,
-   и третий жёлтый на странице перестал бы что-либо означать.
-   Подпись «Реклама» видна всегда, а не при наведении. */
-.partner {
-  display: block;
-  padding: 20px 22px 20px 26px;
-  background: var(--surface-soft);
-  border: 1.5px solid var(--line);
-  border-left: 5px solid var(--accent);
-  border-radius: var(--r-block);
-  color: var(--text);
-  text-decoration: none;
-}
-.partner:hover { border-color: var(--accent); border-left-color: var(--accent-dark); }
-.partner:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-
-.partner-mark { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; }
-.partner-logo {
-  flex: none;
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--accent);
-  color: #fff;
-  font-size: 0.82rem;
-  font-weight: var(--w-black);
-}
-.partner-name { font-size: 0.95rem; font-weight: var(--w-bold); }
-.partner-tag {
-  margin-left: auto;
-  padding: 3px 9px;
-  border-radius: 8px;
-  background: #e3e8ed;
-  color: var(--muted);
-  font-size: 0.76rem;
-  font-weight: var(--w-semibold);
-}
-.partner-title {
-  display: block;
-  margin: 0 0 6px;
-  font-family: var(--font-display);
-  font-size: 1.1rem;
-  font-weight: var(--w-black);
-  line-height: 1.3;
-}
-.partner-text { margin: 0 0 10px; color: var(--muted); font-size: 0.95rem; }
-.partner-link {
-  display: block;
-  font-weight: var(--w-black);
-  color: var(--accent);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-/* Широкий вариант - в анкете размещения, где места больше и можно
-   перечислить роли специалистов списком. */
-.partner-wide { margin: 28px 0 0; }
-.partner-wide ul { margin: 0 0 12px; padding-left: 18px; color: var(--muted); font-size: 0.95rem; }
-.partner-wide li { margin: 0 0 3px; }
-
 /* --- Помощник «Помогите выбрать» --- */
 
 .visually-hidden {
@@ -1113,7 +1041,6 @@ input:focus, select:focus, textarea:focus {
 @media (max-width: 900px) {
   .home-top { grid-template-columns: 1fr; gap: 20px; }
   .helper-link { max-width: none; }
-  .home-bands-three { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 640px) {
