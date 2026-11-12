@@ -173,6 +173,56 @@ a { color: var(--accent); }
   border-bottom: 1px solid var(--line);
 }
 
+/* --- Рекламная полоса под шапкой ---
+   Реклама стороннего продукта, адресованная центрам и клиникам. Набрана
+   тише служебных полос наверху: заливка из акцентного светлого токена,
+   без тёмного фона и без крупного кегля. Громкой ей быть нельзя - сайт
+   открывают родители в тяжёлый момент, и первое, что они видят, не должно
+   кричать. Опознаётся полоса не цветом, а подписью «Реклама»: цвета на
+   этом сайте заняты уровнями доказательности. */
+.ad-strip {
+  background: var(--accent-soft);
+  border-bottom: 1px solid #c9dbed;
+}
+.ad-strip-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.ad-strip-tag {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: var(--w-semibold);
+}
+.ad-strip-text {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--accent-dark);
+}
+/* Ссылка прижата к правому краю, пока строка помещается в одну. Когда
+   полоса переносится, прижимать не к чему, и она встаёт под текстом. */
+.ad-strip-link {
+  margin-left: auto;
+  font-size: 0.9rem;
+  font-weight: var(--w-black);
+  color: var(--accent-dark);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ad-strip-link:hover { color: var(--accent); }
+.ad-strip-link:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+@media (max-width: 700px) {
+  .ad-strip-link { margin-left: 0; }
+}
+
 .header-inner {
   display: flex;
   flex-wrap: wrap;
