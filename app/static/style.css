@@ -173,33 +173,51 @@ a { color: var(--accent); }
   border-bottom: 1px solid var(--line);
 }
 
-/* --- Рекламная полоса под шапкой ---
-   Реклама стороннего продукта, адресованная центрам и клиникам. Набрана
-   тише служебных полос наверху: заливка из акцентного светлого токена,
-   без тёмного фона и без крупного кегля. Громкой ей быть нельзя - сайт
-   открывают родители в тяжёлый момент, и первое, что они видят, не должно
-   кричать. Опознаётся полоса не цветом, а подписью «Реклама»: цвета на
-   этом сайте заняты уровнями доказательности. */
-.ad-strip {
+/* --- Рекламный баннер под шапкой ---
+   Реклама стороннего продукта, адресованная центрам и клиникам. Собран из
+   деталей, которые на сайте уже есть: плита во всю ширину, как служебные
+   полосы наверху, квадрат со скруглением --r-control под знак, как у
+   логотипов в карточках, и готовая кнопка .btn-outline. Вторых кнопок и
+   вторых отступов баннер не заводит.
+
+   Заливка тише служебных полос: светлый акцентный токен, без тёмного фона
+   и без крупного кегля. Громким баннеру быть нельзя - сайт открывают
+   родители в тяжёлый момент, и первое, что они видят, не должно кричать.
+   Опознаётся реклама подписью, а не цветом: цвета на этом сайте заняты
+   уровнями доказательности. */
+.ad-banner {
   background: var(--accent-soft);
   border-bottom: 1px solid #c9dbed;
 }
-.ad-strip-inner {
-  padding-top: 8px;
-  padding-bottom: 8px;
+.ad-banner-inner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-top: 14px;
+  padding-bottom: 14px;
 }
-/* Всё одной строкой текста: подпись, сообщение и ссылка. На узком экране
-   абзац переносится сам, ровно по левому краю. Раньше это были три ячейки
-   в ряд, и на телефоне они расползались на четыре строки. */
-.ad-strip-text {
-  margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  color: var(--accent-dark);
+/* Знак рекламодателя в своём квадрате. Квадрат держит чужие цвета внутри
+   себя и не даёт им разойтись по странице. */
+.ad-banner-logo {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-control);
 }
-.ad-strip-tag {
-  display: inline-block;
-  margin-right: 6px;
+.ad-banner-body { min-width: 0; }
+
+.ad-banner-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 2px;
+}
+.ad-banner-name {
+  font-size: 0.85rem;
+  font-weight: var(--w-bold);
+  color: var(--muted);
+}
+.ad-banner-tag {
   padding: 2px 8px;
   border-radius: 7px;
   background: var(--surface);
@@ -208,22 +226,44 @@ a { color: var(--accent); }
   font-weight: var(--w-semibold);
   white-space: nowrap;
 }
-/* Ссылка не разрывается посередине: «Первый анализ» на одной строке, а
-   «бесплатно» на другой читается как обрывок. */
-.ad-strip-link {
-  margin-left: 4px;
+.ad-banner-title {
+  margin: 0 0 2px;
+  font-family: var(--font-display);
+  font-size: var(--step-1);
   font-weight: var(--w-black);
+  line-height: 1.25;
   color: var(--accent-dark);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  white-space: nowrap;
 }
-.ad-strip-link:hover { color: var(--accent); }
-.ad-strip-link:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.ad-banner-text {
+  margin: 0;
+  font-size: 0.93rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+/* Кнопка прижата к правому краю, пока строка помещается в один ряд. */
+.ad-banner-cta { margin-left: auto; }
+.ad-banner-cta:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 
-@media (max-width: 700px) {
-  .ad-strip-inner { padding-top: 7px; padding-bottom: 7px; }
-  .ad-strip-text { font-size: 0.85rem; }
+/* На узком экране ряд встаёт в столбик, а кнопка растягивается во всю
+   ширину: на телефоне в неё целятся пальцем. */
+@media (max-width: 760px) {
+  .ad-banner-inner {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .ad-banner-logo { width: 40px; height: 40px; }
+  .ad-banner-body { flex: 1 1 200px; }
+  .ad-banner-title { font-size: 1.05rem; }
+  .ad-banner-text { font-size: 0.88rem; }
+  .ad-banner-cta {
+    margin-left: 0;
+    width: 100%;
+    text-align: center;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
 }
 
 .header-inner {
