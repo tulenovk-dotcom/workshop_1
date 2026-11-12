@@ -201,7 +201,12 @@ a { color: var(--accent); }
   font-size: 0.74rem;
   font-weight: var(--w-semibold);
 }
+/* Текст тянется и переносится внутри себя, а не уезжает на свою строку:
+   иначе на телефоне подпись, две строки текста и ссылка дают четыре
+   строки, и заголовок страницы уходит под сгиб. */
 .ad-strip-text {
+  flex: 1 1 220px;
+  min-width: 0;
   margin: 0;
   font-size: 0.9rem;
   color: var(--accent-dark);
@@ -221,6 +226,9 @@ a { color: var(--accent); }
 
 @media (max-width: 700px) {
   .ad-strip-link { margin-left: 0; }
+  .ad-strip-inner { gap: 6px 10px; padding-top: 7px; padding-bottom: 7px; }
+  .ad-strip-text,
+  .ad-strip-link { font-size: 0.85rem; }
 }
 
 .header-inner {
