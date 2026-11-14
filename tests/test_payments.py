@@ -100,6 +100,14 @@ class ОстатокСрока(unittest.TestCase):
         self.assertEqual(payments.left_text(-2), "кончилось 2 дня назад")
         self.assertEqual(payments.left_text(None), "")
 
+    def test_карточки_словами(self):
+        """В итогах страницы стояло «1 карточек продвигается сейчас»."""
+        self.assertEqual(payments.active_cards_text(1), "карточка продвигается сейчас")
+        self.assertEqual(payments.active_cards_text(3), "карточки продвигаются сейчас")
+        self.assertEqual(payments.active_cards_text(0), "карточек продвигается сейчас")
+        self.assertEqual(payments.active_cards_text(11), "карточек продвигается сейчас")
+        self.assertEqual(payments.active_cards_text(21), "карточка продвигается сейчас")
+
     def test_оплаты_словами(self):
         self.assertEqual(payments.plural_payments(1), "оплата")
         self.assertEqual(payments.plural_payments(3), "оплаты")
