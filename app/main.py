@@ -22,7 +22,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import crud, promo, geo
+from . import crud, growth, promo, geo
 from .database import DB_PATH, db_session, init_db, read_or_create_secret
 from .notifications import notify_new_application
 from .i18n import (
@@ -1701,6 +1701,106 @@ def visits_chart(series: list[dict]) -> dict:
             for part in (0, 0.5, 1)
         ],
     }
+
+
+def growth_chart(series: list[dict]) -> dict:
+    """Геометрия графика подключений. Столбик собран из двух частей.
+
+    Внизу организации, сверху частные специалисты: вопрос владельца звучит
+    «сколько центров подключается», и ответ на него должен читаться с
+    графика, а не только из таблицы. Части рисуются одна поверх другой -
+    сначала весь столбик светлым, потом нижняя часть тёмным. Так скругление
+    остаётся у всего столбика разом, а не у каждого куска по отдельности.
+    """
+    count = len(series)
+    top = nice_ceiling(max((point["total"] for point in series), default=0))
+    bar_width = (CHART_WIDTH - CHART_GAP * (count - 1)) / count
+    step = max(1, count // 6)
+
+    bars = []
+    for index, point in enumerate(series):
+        whole = point["total"] / top * CHART_PLOT
+        lower = point["centers"] / top * CHART_PLOT
+        bars.append({
+            "x": round(index * (bar_width + CHART_GAP), 2),
+            "width": round(bar_width, 2),
+            "y": round(CHART_BASE - whole, 2),
+            "height": round(whole, 2),
+            "centers_y": round(CHART_BASE - lower, 2),
+            "centers_height": round(lower, 2),
+            "radius": round(min(3, bar_width / 2), 2),
+            "total": point["total"],
+            "middle": round(index * (bar_width + CHART_GAP) + bar_width / 2, 2),
+            "label": point["label"],
+            "show_label": index % step == 0 or index == count - 1,
+            "title": point["title"],
+        })
+
+    # Подписываем самый урожайный столбик и последний. Числа у каждого
+    # превратили бы график в кашу, а точные значения есть в таблице.
+    best = max(range(count), key=lambda i: series[i]["total"]) if count else 0
+    for index in {best, count - 1} if count else ():
+        if bars[index]["total"]:
+            bars[index]["value_label"] = True
+
+    return {
+        "width": CHART_WIDTH,
+        "height": CHART_HEIGHT,
+        "base": CHART_BASE,
+        "label_y": CHART_LABEL_Y,
+        "gutter": CHART_GUTTER,
+        "right": CHART_RIGHT,
+        "top": top,
+        "bars": bars,
+        "lines": [
+            {"y": round(CHART_BASE - part * CHART_PLOT, 2), "value": round(top * part)}
+            for part in (0, 0.5, 1)
+        ],
+    }
+
+
+@app.get("/admin/growth", response_class=HTMLResponse)
+def admin_growth(request: Request, step: str = "day", days: int = 30):
+    """Динамика подключений: сколько карточек появлялось и когда.
+
+    Персональных данных здесь нет - только даты появления карточек и их
+    тип. Ни имён, ни телефонов, ни адресов.
+    """
+    if guard := require_admin(request):
+        return guard
+    if step not in growth.STEPS:
+        step = "day"
+    if days not in growth.DAY_PERIODS:
+        days = 30
+    with db_session() as conn:
+        rows = crud.provider_growth_rows(conn)
+        providers_test = crud.test_providers_count(conn)
+    points = growth.series(rows, step=step, days=days)
+    period_total = sum(point["total"] for point in points)
+
+    context = {
+        "step": step,
+        "days": days,
+        "day_periods": growth.DAY_PERIODS,
+        "points": list(reversed(points)),
+        "chart": growth_chart(points),
+        "providers_total": len(rows),
+        "providers_test": providers_test,
+        "period_total": period_total,
+        "period_centers": sum(point["centers"] for point in points),
+        "period_specialists": sum(point["specialists"] for point in points),
+        "period_months": len(points),
+    }
+    # «В среднем» считается от показанного срока: за неделю в разбивке по
+    # дням и за месяц в разбивке по месяцам. Делить месяцы на недели незачем -
+    # в месяцах и смотрят на месяцы.
+    if step == "month":
+        context["average"] = round(period_total / max(1, len(points)), 1)
+        context["average_label"] = "в среднем за месяц"
+    else:
+        context["average"] = round(period_total / days * 7, 1)
+        context["average_label"] = "в среднем за неделю"
+    return render(request, "admin/growth.html", context)
 
 
 @app.get("/admin/stats", response_class=HTMLResponse)
