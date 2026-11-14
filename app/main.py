@@ -1611,6 +1611,9 @@ CHART_GUTTER = 60
 # за его край, иначе у неё срезается хвост.
 CHART_RIGHT = 28
 CHART_GAP = 2
+# Предел толщины столбика на графике подключений: в разбивке по
+# месяцам их бывает два-три на всю ширину.
+CHART_BAR_MAX = 56
 
 
 def plural_views(count: int) -> str:
@@ -1714,15 +1717,20 @@ def growth_chart(series: list[dict]) -> dict:
     """
     count = len(series)
     top = nice_ceiling(max((point["total"] for point in series), default=0))
-    bar_width = (CHART_WIDTH - CHART_GAP * (count - 1)) / count
+    # Каждому столбику своё место равной ширины, сам столбик стоит в нём по
+    # центру. Толщина ограничена: в разбивке по месяцам столбиков бывает
+    # два-три, и без предела они растягивались бы в плиты во всю страницу.
+    slot = CHART_WIDTH / count
+    bar_width = min(slot - CHART_GAP, CHART_BAR_MAX)
     step = max(1, count // 6)
 
     bars = []
     for index, point in enumerate(series):
         whole = point["total"] / top * CHART_PLOT
         lower = point["centers"] / top * CHART_PLOT
+        left = index * slot + (slot - bar_width) / 2
         bars.append({
-            "x": round(index * (bar_width + CHART_GAP), 2),
+            "x": round(left, 2),
             "width": round(bar_width, 2),
             "y": round(CHART_BASE - whole, 2),
             "height": round(whole, 2),
@@ -1730,7 +1738,7 @@ def growth_chart(series: list[dict]) -> dict:
             "centers_height": round(lower, 2),
             "radius": round(min(3, bar_width / 2), 2),
             "total": point["total"],
-            "middle": round(index * (bar_width + CHART_GAP) + bar_width / 2, 2),
+            "middle": round(left + bar_width / 2, 2),
             "label": point["label"],
             "show_label": index % step == 0 or index == count - 1,
             "title": point["title"],
