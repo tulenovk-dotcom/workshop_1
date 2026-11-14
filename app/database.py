@@ -58,6 +58,11 @@ CREATE TABLE IF NOT EXISTS providers (
     is_pinned INTEGER NOT NULL DEFAULT 0,
     -- До какой даты оплачено продвижение, 'ГГГГ-ММ-ДД'. Пусто - не оплачено.
     promo_until TEXT NOT NULL DEFAULT '',
+    -- О каком сроке уже предупредили, что он кончается, и когда.
+    -- Хранится сам срок, а не только дата разговора: продлили - значение
+    -- перестало совпадать с promo_until, и напоминание вернётся само.
+    promo_notified_for TEXT NOT NULL DEFAULT '',
+    promo_notified_at TEXT NOT NULL DEFAULT '',
     lat REAL,
     lng REAL,
     created_at TEXT NOT NULL
@@ -191,6 +196,34 @@ CREATE TABLE IF NOT EXISTS contact_clicks (
     is_bot INTEGER NOT NULL DEFAULT 0
 );
 
+-- Оплаты продвижения: по строке на каждую полученную оплату.
+--
+-- Строки не переписываются: продление добавляет новую, и видно всю
+-- историю - сколько раз платили и сколько всего получено. Срок показа
+-- лежит отдельно, в providers.promo_until: по нему каталог решает, кого
+-- ставить в блок платных мест, и его можно поправить руками.
+--
+-- Персональных данных посетителей здесь нет: это деньги организаций,
+-- которые сами просили о платном размещении. Название места занятий
+-- записано рядом с оплатой на память - карточку могут удалить, а запись
+-- о полученных деньгах должна остаться.
+CREATE TABLE IF NOT EXISTS promo_payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    provider_id INTEGER REFERENCES providers(id) ON DELETE SET NULL,
+    provider_name TEXT NOT NULL DEFAULT '',
+    -- Код тарифа из PROMO_PLANS: '1m', '6m', '12m'.
+    plan TEXT NOT NULL DEFAULT '',
+    months INTEGER NOT NULL DEFAULT 1,
+    -- Сумма в тенге. Может отличаться от цены тарифа: скидка, часть вперёд.
+    amount INTEGER NOT NULL DEFAULT 0,
+    -- Когда заплатили и за какой срок показа, 'ГГГГ-ММ-ДД'.
+    paid_on TEXT NOT NULL,
+    period_from TEXT NOT NULL DEFAULT '',
+    period_until TEXT NOT NULL DEFAULT '',
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -220,6 +253,8 @@ CREATE INDEX IF NOT EXISTS idx_visit_log_ip ON visit_log(ip, created_at);
 CREATE INDEX IF NOT EXISTS idx_visit_log_people ON visit_log(is_bot, created_at);
 CREATE INDEX IF NOT EXISTS idx_clicks_provider ON contact_clicks(provider_id, is_bot);
 CREATE INDEX IF NOT EXISTS idx_clicks_time ON contact_clicks(created_at, is_bot);
+CREATE INDEX IF NOT EXISTS idx_promo_payments_provider ON promo_payments(provider_id, paid_on);
+CREATE INDEX IF NOT EXISTS idx_promo_payments_day ON promo_payments(paid_on);
 """
 
 
@@ -363,7 +398,7 @@ def migrate_request_columns(conn: sqlite3.Connection) -> None:
 
 
 def migrate_provider_columns(conn: sqlite3.Connection) -> None:
-    """Точка на карте, закрепление в выдаче и срок продвижения.
+    """Точка на карте, закрепление в выдаче, срок продвижения и отметка о нём.
 
     Старым базам столбцов не хватает, добавляем пустыми. Пока точка не
     заполнена в админке, место просто не показывается на карте - в списке
@@ -383,6 +418,13 @@ def migrate_provider_columns(conn: sqlite3.Connection) -> None:
         conn.execute(
             "ALTER TABLE providers ADD COLUMN promo_until TEXT NOT NULL DEFAULT ''"
         )
+    # Отметка «предупредил о продлении». Пустая у существующих записей:
+    # значит, о сроке ещё не говорили, и напоминание покажется.
+    for name in ("promo_notified_for", "promo_notified_at"):
+        if name not in columns:
+            conn.execute(
+                f"ALTER TABLE providers ADD COLUMN {name} TEXT NOT NULL DEFAULT ''"
+            )
 
 
 def init_db() -> None:

@@ -6,6 +6,10 @@
   <a href="/admin/applications">Заявки{% if mod.applications %} ({{ mod.applications }}){% endif %}</a>
   <a href="/admin/reviews">Отзывы{% if mod.reviews %} ({{ mod.reviews }}){% endif %}</a>
   <a href="/admin/requests">Обращения{% if mod.requests %} ({{ mod.requests }}){% endif %}</a>
+  {% set promo_due = promo_due_count() %}
+  {#- Тот же янтарный сигнал, что у модерации: «здесь ждут вашего действия». #}
+  <a{% if promo_due %} class="admin-nav-flag"{% endif %}
+     href="/admin/payments{% if promo_due %}#due{% endif %}">Оплаты{% if promo_due %} (пора написать: {{ promo_due }}){% endif %}</a>
   <a href="/admin/methods">Справочник методов</a>
   <a href="/admin/stats">Статистика</a>
   <a href="/admin/growth">Подключения</a>

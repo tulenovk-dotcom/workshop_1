@@ -1,8 +1,10 @@
 """Стартовое наполнение базы: справочник методов и тестовые провайдеры."""
 
-from . import crud
+from datetime import timedelta
+
+from . import crud, payments
 from .database import db_session
-from .reference import DEFAULT_METHODS, METHOD_TRANSLATIONS_KK
+from .reference import DEFAULT_METHODS, METHOD_TRANSLATIONS_KK, promo_plan
 
 # Все записи ниже — выдуманные, нужны только для проверки интерфейса.
 # Точки на карте для тестовых записей, по порядку списка ниже. Адреса
@@ -23,11 +25,23 @@ TEST_POINTS = [
     (49.9483, 82.6279),   # Усть-Каменогорск
 ]
 
-# Какие демо-записи «оплатили» продвижение. Нужны, чтобы на стенде было
-# видно блок платных мест: там их четыре, то есть больше трёх, и окно из
-# трёх по ним ездит, как на настоящем каталоге.
-PROMO_DEMO_INDEXES = {0, 1, 4, 5}
-PROMO_DEMO_UNTIL = "2099-12-31"
+# Какие демо-записи «оплатили» продвижение: номер в списке ниже, через
+# сколько дней от сегодняшнего кончается срок, какой тариф и сколько
+# заплатили (None - по цене тарифа).
+#
+# Нужны для двух вещей. Во-первых, блок платных мест в каталоге: идущих
+# сроков четыре, то есть больше трёх, и окно из трёх по ним ездит, как на
+# настоящем каталоге. Во-вторых, страница «Оплаты»: сроки разные, чтобы на
+# стенде было видно все состояния - кончается через три дня, кончился пять
+# дней назад, идёт ещё долго. Даты считаются от дня запуска, а база на
+# стенде пересоздаётся при каждом выкате, поэтому состояния не устаревают.
+PROMO_DEMO = {
+    0: (3, "1m", None),
+    1: (40, "6m", None),
+    4: (200, "12m", None),
+    5: (12, "1m", 1500),
+    6: (-5, "1m", None),
+}
 
 TEST_PROVIDERS = [
     {
@@ -374,19 +388,37 @@ def seed_if_empty(with_demo: bool = False) -> None:
             data = {key: value for key, value in item.items() if key != "methods"}
             data["is_test"] = 1
             data["is_pinned"] = 0
-            # Срок продвижения у демо-записей: первым четырём ставим год
-            # вперёд, чтобы на стенде было видно блок платных мест и его
-            # ротацию. В боевой базе демо-записей нет.
-            data["promo_until"] = (
-                PROMO_DEMO_UNTIL if index in PROMO_DEMO_INDEXES else ""
-            )
+            # Срок продвижения у демо-записей - см. PROMO_DEMO выше. В
+            # боевой базе демо-записей нет.
+            demo_promo = PROMO_DEMO.get(index)
+            until = ""
+            if demo_promo:
+                until = (payments.today_local() + timedelta(days=demo_promo[0])).isoformat()
+            data["promo_until"] = until
             data.setdefault("logo_path", "")
             data["lat"], data["lng"] = TEST_POINTS[index] if index < len(TEST_POINTS) else (None, None)
-            crud.create_provider(
+            provider_id = crud.create_provider(
                 conn,
                 data,
                 [method_ids[code] for code in item["methods"] if code in method_ids],
             )
+            if demo_promo:
+                _, plan_code, amount = demo_promo
+                plan = promo_plan(plan_code)
+                paid_on = payments.add_months(
+                    payments.parse_day(until), -plan["months"]
+                ).isoformat()
+                crud.create_promo_payment(conn, {
+                    "provider_id": provider_id,
+                    "provider_name": data["name"],
+                    "plan": plan["code"],
+                    "months": plan["months"],
+                    "amount": plan["price"] if amount is None else amount,
+                    "paid_on": paid_on,
+                    "period_from": paid_on,
+                    "period_until": until,
+                    "note": "тестовая оплата" + (", скидка" if amount is not None else ""),
+                })
 
         if not fresh:
             return
