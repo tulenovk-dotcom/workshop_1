@@ -26,7 +26,7 @@
 </div>
 {% endif %}
 
-<div class="cards" data-page-size="10">
+<div class="cards" data-catalog-list data-page-size="10">
   {% for p in providers %}
     {{ ui.provider_card(p, methods_map.get(p.id, [])) }}
   {% endfor %}
