@@ -109,6 +109,9 @@ CREATE TABLE IF NOT EXISTS applications (
     logo_path TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL DEFAULT 'new',
     admin_note TEXT NOT NULL DEFAULT '',
+    -- Заявку заполнил администратор, а не сам специалист. Нужно, чтобы
+    -- на странице «Подключения» отличать своих от пришедших со стороны.
+    by_admin INTEGER NOT NULL DEFAULT 0,
     provider_id INTEGER REFERENCES providers(id) ON DELETE SET NULL,
     consent_at TEXT NOT NULL,
     author_ip_hash TEXT,
@@ -338,6 +341,13 @@ def migrate_application_columns(conn: sqlite3.Connection) -> None:
     if "promo_term" not in columns:
         conn.execute(
             "ALTER TABLE applications ADD COLUMN promo_term TEXT NOT NULL DEFAULT ''"
+        )
+    # Кто заполнил заявку. Старым заявкам ставим ноль - «пришла со
+    # стороны»: гадать задним числом нельзя, а отметить свои можно руками
+    # на странице «Подключения», по отпечатку адреса.
+    if "by_admin" not in columns:
+        conn.execute(
+            "ALTER TABLE applications ADD COLUMN by_admin INTEGER NOT NULL DEFAULT 0"
         )
 
 

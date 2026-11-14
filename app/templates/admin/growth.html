@@ -6,10 +6,10 @@
 <h1>Подключения</h1>
 {% include "admin/_nav.html" %}
 
-<p class="admin-summary">Сколько карточек появлялось в каталоге и когда.
-  Считается появление карточки, а не поданная заявка: заявку могут
-  отклонить или прислать дважды, а карточку можно завести и руками, без
-  заявки. Имён, телефонов и адресов здесь нет - только даты и числа.</p>
+<p class="admin-summary">Кто и когда просился в каталог. Считается заявка по
+  дате подачи, а не карточка по дате появления: карточку заводят, когда
+  заявку одобрили, а одобряете вы их пачками - и график показывал бы ваш
+  ритм вместо ритма людей. Имён, телефонов и адресов здесь нет.</p>
 
 <nav class="stat-periods">
   {% if step == 'day' %}
@@ -36,34 +36,34 @@
 
 <section class="stat-strip">
   <p class="stat-figure">
-    <span class="stat-num">{{ providers_total }}</span>
-    <span class="stat-label">карточек в каталоге</span>
+    <span class="stat-num">{{ period_own }}</span>
+    <span class="stat-label">разместились сами
+      {%- if step == 'month' %} за {{ period_months }} мес.
+      {%- else %} за {{ days }} дней{% endif %}</span>
   </p>
   <p class="stat-figure">
-    <span class="stat-num">{{ period_total }}</span>
-    <span class="stat-label">
-      {%- if step == 'month' %}появилось за {{ period_months }} мес.
-      {%- else %}появилось за {{ days }} дней{% endif %}</span>
+    <span class="stat-num">{{ period_by_admin }}</span>
+    <span class="stat-label">завели вы</span>
   </p>
   <p class="stat-figure">
     <span class="stat-num">{{ average }}</span>
-    <span class="stat-label">{{ average_label }}</span>
+    <span class="stat-label">заявок {{ average_label }}</span>
   </p>
 </section>
 
-{% if providers_test %}
-  <p class="hint">Тестовых записей среди них: {{ providers_test }}. На стенде
-    они составляют весь каталог, поэтому из счёта не выброшены.</p>
-{% endif %}
+<p class="hint">За этот срок из {{ period_total }} заявок карточками стали
+  {{ period_cards }}; от частных специалистов пришло
+  {{ period_specialists }}. Всего в каталоге {{ providers_total }} карточек,
+  заявок за всё время {{ applications_total }}.</p>
 
 <figure class="stat-chart">
   <svg viewBox="-{{ chart.gutter }} 0 {{ chart.width + chart.gutter + chart.right }} {{ chart.height }}"
        preserveAspectRatio="xMidYMid meet" role="img"
-       aria-label="Новые карточки каталога
+       aria-label="Заявки на размещение
                    {% if step == 'month' %}по месяцам{% else %}по дням за {{ days }} дней{% endif %}.
-                   Всего за срок {{ period_total }}: организаций
-                   {{ period_centers }}, частных специалистов
-                   {{ period_specialists }}. Точные числа - в таблице ниже.">
+                   Всего {{ period_total }}: разместились сами
+                   {{ period_own }}, завёл администратор
+                   {{ period_by_admin }}. Точные числа - в таблице ниже.">
     {% for line in chart.lines %}
       <line class="stat-chart-grid" x1="0" x2="{{ chart.width }}"
             y1="{{ line.y }}" y2="{{ line.y }}"></line>
@@ -75,13 +75,13 @@
        остаётся у столбика целиком, а не у каждого куска. #}
     {% for bar in chart.bars %}
       {% if bar.height %}
-        <rect class="growth-bar-specialists" x="{{ bar.x }}" y="{{ bar.y }}"
+        <rect class="growth-bar-admin" x="{{ bar.x }}" y="{{ bar.y }}"
               width="{{ bar.width }}" height="{{ bar.height }}"
               rx="{{ bar.radius }}"><title>{{ bar.title }}</title></rect>
       {% endif %}
-      {% if bar.centers_height %}
-        <rect class="growth-bar-centers" x="{{ bar.x }}" y="{{ bar.centers_y }}"
-              width="{{ bar.width }}" height="{{ bar.centers_height }}"
+      {% if bar.own_height %}
+        <rect class="growth-bar-own" x="{{ bar.x }}" y="{{ bar.own_y }}"
+              width="{{ bar.width }}" height="{{ bar.own_height }}"
               rx="{{ bar.radius }}"><title>{{ bar.title }}</title></rect>
       {% endif %}
       {% if bar.value_label %}
@@ -98,9 +98,9 @@
 
 <p class="growth-legend">
   <span class="growth-legend-item">
-    <span class="growth-key growth-key-centers"></span>организации</span>
+    <span class="growth-key growth-key-own"></span>разместились сами</span>
   <span class="growth-legend-item">
-    <span class="growth-key growth-key-specialists"></span>частные специалисты</span>
+    <span class="growth-key growth-key-admin"></span>завели вы</span>
 </p>
 
 <div class="table-wrap">
@@ -108,30 +108,69 @@
     <thead>
       <tr>
         <th>{% if step == 'month' %}Месяц{% else %}День{% endif %}</th>
-        <th class="stat-col-num">Организации</th>
-        <th class="stat-col-num">Частные специалисты</th>
+        <th class="stat-col-num">Сами</th>
+        <th class="stat-col-num">Завели вы</th>
         <th class="stat-col-num">Всего</th>
-        <th class="stat-col-num">В каталоге</th>
+        <th class="stat-col-num">Стали карточкой</th>
       </tr>
     </thead>
     <tbody>
       {% for point in points %}
         <tr>
           <td>{{ point.period }}</td>
-          <td class="stat-col-num">{{ point.centers }}</td>
-          <td class="stat-col-num">{{ point.specialists }}</td>
+          <td class="stat-col-num">{{ point.own }}</td>
+          <td class="stat-col-num">{{ point.by_admin }}</td>
           <td class="stat-col-num">{{ point.total }}</td>
-          <td class="stat-col-num muted">{{ point.running }}</td>
+          <td class="stat-col-num muted">{{ point.cards }}</td>
         </tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
 
-<p class="hint">Столбец «В каталоге» - сколько карточек накопилось к концу
-  этого {% if step == 'month' %}месяца{% else %}дня{% endif %}, считая и те,
-  что появились раньше показанного срока.</p>
+<p class="hint">Столбец «Стали карточкой» меняется задним числом: заявка
+  подана в один день, а одобрена может быть позже. Поэтому у последних дней
+  это число обычно меньше, чем будет потом.</p>
 
-<p class="hint">Сколько заявок пришло и сколько из них одобрено - на странице
+<h2>Чьи это заявки</h2>
+
+<p class="hint">Заявку заполняет то сам специалист, то вы - по телефону или
+  со слов организации. С 14.11.2026 это записывается сразу. Заявки,
+  поданные раньше, по умолчанию считаются пришедшими со стороны, и свои
+  среди них нужно отметить руками.</p>
+
+<p class="hint">Отличить их можно по отпечатку адреса: сам адрес из него не
+  восстановить, но видно, что записи сделаны с одного устройства. Нажмите
+  кнопку с того адреса, с которого заводили заявки. Сетей могло быть
+  несколько - тогда и нажать нужно с каждой.</p>
+
+{% if marked == '1' %}
+  <p class="notice notice-ok">Отмечено как ваши: {{ changed }}
+    {{ 'заявка' if changed == 1 else 'заявок' }}.</p>
+{% elif marked == '0' %}
+  <p class="notice notice-ok">Отметка снята с {{ changed }}
+    {{ 'заявки' if changed == 1 else 'заявок' }}.</p>
+{% endif %}
+
+{% if from_here.total %}
+  <p>С адреса, с которого вы сейчас смотрите, подано заявок:
+    <strong>{{ from_here.total }}</strong>. Отмечено как ваши:
+    {{ from_here.marked }}.</p>
+  <form class="actions" method="post" action="/admin/growth/fingerprint">
+    {% if from_here.marked < from_here.total %}
+      <button type="submit" name="mark" value="1"
+              class="btn btn-primary">Это мои заявки</button>
+    {% endif %}
+    {% if from_here.marked %}
+      <button type="submit" name="mark" value="0" class="btn btn-ghost">Снять
+        отметку</button>
+    {% endif %}
+  </form>
+{% else %}
+  <p>С адреса, с которого вы сейчас смотрите, заявок не подавали - отмечать
+    нечего.</p>
+{% endif %}
+
+<p class="hint">Сколько заявок одобрено и сколько отклонено - на странице
   <a href="/admin/stats">Статистика</a>.</p>
 {% endblock %}

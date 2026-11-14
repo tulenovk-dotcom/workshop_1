@@ -1,19 +1,25 @@
-"""Динамика подключений: сколько карточек появлялось в каталоге и когда.
+"""Динамика подключений: кто и когда просился в каталог.
 
-Отвечает на вопрос владельца «растём ли мы и с какой скоростью»: по дням -
-чтобы видеть будни, по месяцам - чтобы видеть общую линию.
+Отвечает на вопрос владельца «сколько специалистов разместили свои
+карточки» - по дням, чтобы видеть будни, и по месяцам, чтобы видеть общую
+линию.
 
-Подключением считается появление карточки в каталоге, а не поданная заявка.
-Заявку могут отклонить, прислать дважды или завести карточку без заявки
-вовсе - руками в админке. Если считать заявки, каталог будет выглядеть
-больше, чем он есть.
+Считается **заявка на размещение по дате подачи**, а не по дате появления
+карточки. Разница не умозрительная: карточка появляется, когда заявку
+одобрили, а одобряют их пачками. На живом сайте 1 ноября 2026 года в
+каталоге прибавилось сразу 21 карточка - это был разбор накопившегося, а
+не двадцать один человек, пришедший за один день. По дате подачи виден
+ритм людей, по дате карточки - ритм администратора.
 
-Карточки делятся на организации и частных специалистов. Слово «центр» в
-обиходе означает организацию, а четверть каталога - частные специалисты, и
-складывать их в одно число значит отвечать не на тот вопрос.
+Заявки делятся на два вида: заполненные самим специалистом и заведённые
+администратором - по телефону или со слов организации. Для владельца это
+разные вещи: первое показывает, что о каталоге узнают и идут сами, второе
+- что каталог пополняется его собственными руками. Отличаются они по
+столбцу `by_admin`; у заявок, поданных до появления этого столбца, он
+пустой, и их можно отметить задним числом по отпечатку адреса.
 
-День берётся по времени Казахстана: в базе время гринвичское, и карточка,
-заведённая вечером, иначе попала бы во вчерашний столбик. Это та же
+День берётся по времени Казахстана: в базе время гринвичское, и заявка,
+поданная поздним вечером, иначе попала бы во вчерашний столбик. Это та же
 ошибка, на которой один раз споткнулась страница «Посетители».
 
 Модуль нарочно написан без новой записи типов (`str | None`): его читает
@@ -25,9 +31,9 @@ from datetime import datetime, timedelta
 
 from .timeutil import KZ_TIME, to_local
 
-# Какой тип места считается частным специалистом; всё остальное -
-# организация. Код типа берётся из `reference.PROVIDER_TYPES`.
-SPECIALIST_TYPE = "specialist"
+# Какой вид заявителя считается частным специалистом; всё остальное -
+# организация. Код берётся из `reference.APPLICANT_KINDS`.
+SPECIALIST_KIND = "specialist"
 
 MONTHS_SHORT = ("янв", "фев", "мар", "апр", "мая", "июн",
                 "июл", "авг", "сен", "окт", "ноя", "дек")
@@ -46,16 +52,25 @@ MONTHS_SHOWN = 24
 STEPS = ("day", "month")
 
 
-def plural_cards(count):
-    """«1 карточка», «2 карточки», «5 карточек»."""
+def plural_applications(count):
+    """«1 заявка», «2 заявки», «5 заявок»."""
     if 11 <= count % 100 <= 14:
-        return "карточек"
+        return "заявок"
     tail = count % 10
     if tail == 1:
-        return "карточка"
+        return "заявка"
     if tail in (2, 3, 4):
-        return "карточки"
-    return "карточек"
+        return "заявки"
+    return "заявок"
+
+
+def _field(row, name, default=0):
+    """Поле строки базы или обычного словаря - тест обходится без базы."""
+    try:
+        value = row[name]
+    except (KeyError, IndexError, TypeError):
+        return default
+    return default if value is None else value
 
 
 def _month_key(moment):
@@ -66,12 +81,8 @@ def _day_key(moment):
     return moment.strftime("%Y-%m-%d")
 
 
-def _bucket(moment, step):
-    return _month_key(moment) if step == "month" else _day_key(moment)
-
-
 def _day_label(key):
-    year, month, day = key.split("-")
+    _, month, day = key.split("-")
     return "%d %s" % (int(day), MONTHS_SHORT[int(month) - 1])
 
 
@@ -116,7 +127,8 @@ def _keys(step, days, first, today):
             key = "%04d-%02d" % (index // 12, index % 12 + 1)
         # Каталог старше срока показа - оставляем последние месяцы.
         if key <= last:
-            keys = [_shift_month(last, back) for back in range(MONTHS_SHOWN - 1, -1, -1)]
+            keys = [_shift_month(last, back)
+                    for back in range(MONTHS_SHOWN - 1, -1, -1)]
         return keys
     return [
         _day_key(today - timedelta(days=back)) for back in range(days - 1, -1, -1)
@@ -124,17 +136,15 @@ def _keys(step, days, first, today):
 
 
 def series(rows, step="day", days=30, now=None):
-    """Подключения по дням или по месяцам, от старых к новым.
+    """Заявки по дням или по месяцам, от старых к новым.
 
-    `rows` - записи с полями `created_at` и `provider_type`, как их отдаёт
-    `crud.provider_growth_rows`. Принимаем и обычные пары, чтобы тест мог
-    обойтись без базы.
+    `rows` - записи с полями `created_at`, `by_admin`, `applicant_kind` и
+    `provider_id`, как их отдаёт `crud.application_growth_rows`. Подойдёт и
+    обычный словарь с теми же ключами: так тест обходится без базы.
 
-    У каждой точки: сколько появилось организаций, сколько частных
-    специалистов, сколько всего и сколько карточек в каталоге накопилось к
-    концу этого дня или месяца. Накопленное считается по всему каталогу, а
-    не по показанному окну: иначе «всего» на графике за неделю разошлось бы
-    с числом карточек в каталоге.
+    У каждой точки: сколько заявок подали сами специалисты, сколько завёл
+    администратор, сколько всего, сколько из них уже стали карточкой и
+    сколько пришло от частных специалистов.
     """
     if step not in STEPS:
         step = "day"
@@ -142,49 +152,50 @@ def series(rows, step="day", days=30, now=None):
 
     counted = []
     for row in rows:
-        created = row["created_at"] if hasattr(row, "keys") else row[0]
-        kind = row["provider_type"] if hasattr(row, "keys") else row[1]
-        moment = to_local(created)
+        moment = to_local(_field(row, "created_at", ""))
         if moment is None:
-            # Битая дата - запись не выбрасываем из каталога, но и в
-            # столбик поставить её некуда.
+            # Битая дата - заявку не теряем, но в столбик её поставить
+            # некуда.
             continue
-        counted.append((_bucket(moment, step), kind == SPECIALIST_TYPE))
-    counted.sort()
+        key = _month_key(moment) if step == "month" else _day_key(moment)
+        counted.append({
+            "key": key,
+            "by_admin": 1 if _field(row, "by_admin") else 0,
+            "card": 1 if _field(row, "provider_id", None) else 0,
+            "specialist": 1 if _field(row, "applicant_kind", "") == SPECIALIST_KIND else 0,
+        })
+    counted.sort(key=lambda item: item["key"])
 
-    first = counted[0][0] if counted else None
-    if step == "month" and first is not None:
-        first = first[:7]
-    keys = _keys(step, days, first, today)
+    keys = _keys(step, days, counted[0]["key"] if counted else None, today)
+    known = set(keys)
 
     buckets = {}
-    for key, is_specialist in counted:
-        centers, specialists = buckets.get(key, (0, 0))
-        buckets[key] = (centers + (0 if is_specialist else 1),
-                        specialists + (1 if is_specialist else 0))
+    for item in counted:
+        if item["key"] not in known:
+            continue
+        bucket = buckets.setdefault(
+            item["key"], {"own": 0, "by_admin": 0, "cards": 0, "specialists": 0}
+        )
+        bucket["by_admin" if item["by_admin"] else "own"] += 1
+        bucket["cards"] += item["card"]
+        bucket["specialists"] += item["specialist"]
 
     points = []
-    running = 0
-    index = 0
     for key in keys:
-        # Всё, что появилось до начала этого столбика, уже в каталоге.
-        while index < len(counted) and counted[index][0] < key:
-            running += 1
-            index += 1
-        centers, specialists = buckets.get(key, (0, 0))
-        running += centers + specialists
-        index += centers + specialists
-        total = centers + specialists
-        label = _month_label(key) if step == "month" else _day_label(key)
+        bucket = buckets.get(key, {"own": 0, "by_admin": 0, "cards": 0,
+                                   "specialists": 0})
+        total = bucket["own"] + bucket["by_admin"]
         title = _month_title(key) if step == "month" else _day_title(key)
         points.append({
             "key": key,
-            "label": label,
-            "title": "%s - %d %s" % (title, total, plural_cards(total)),
+            "label": _month_label(key) if step == "month" else _day_label(key),
             "period": title,
-            "centers": centers,
-            "specialists": specialists,
+            "title": "%s - %d %s, из них сами %d"
+                     % (title, total, plural_applications(total), bucket["own"]),
+            "own": bucket["own"],
+            "by_admin": bucket["by_admin"],
             "total": total,
-            "running": running,
+            "cards": bucket["cards"],
+            "specialists": bucket["specialists"],
         })
     return points

@@ -370,6 +370,7 @@ APPLICATION_FIELDS = (
     "wants_promo",
     "promo_term",
     "author_ip_hash",
+    "by_admin",
 )
 
 
@@ -714,22 +715,48 @@ def provider_counts_by(conn: sqlite3.Connection, column: str) -> list[sqlite3.Ro
     ).fetchall()
 
 
-def provider_growth_rows(conn: sqlite3.Connection) -> list[sqlite3.Row]:
-    """Когда появилась каждая карточка и какого она типа.
+def application_growth_rows(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Когда подали каждую заявку, кто её заполнил и стала ли она карточкой.
 
     Возвращаем сырые строки, а не готовые суммы по дням: день считается по
     времени Казахстана, а в базе время гринвичское, и в SQLite перевести
-    его надёжно нечем. Карточек в каталоге сотни, не миллионы, поэтому
-    группировать их в Python дешевле, чем изобретать перевод пояса в
-    запросе. Тестовые записи не отбрасываем, а помечаем: на стенде они
-    составляют весь каталог, и страница без них была бы пустой.
+    его надёжно нечем. Заявок сотни, не миллионы, поэтому группировать их
+    в Python дешевле, чем изобретать перевод пояса в запросе.
     """
     return conn.execute(
-        "SELECT created_at, provider_type, is_test"
-        "  FROM providers"
+        "SELECT created_at, by_admin, applicant_kind, provider_id"
+        "  FROM applications"
         " WHERE created_at <> ''"
         " ORDER BY created_at"
     ).fetchall()
+
+
+def applications_from_fingerprint(conn: sqlite3.Connection, ip_hash: str) -> dict:
+    """Сколько заявок пришло с одного устройства и сколько из них уже
+    отмечено как свои. Нужно для отметки задним числом: до появления
+    столбца `by_admin` отличить свои заявки можно только по отпечатку."""
+    if not ip_hash:
+        return {"total": 0, "marked": 0}
+    row = conn.execute(
+        "SELECT COUNT(*) AS total, SUM(by_admin) AS marked"
+        "  FROM applications WHERE author_ip_hash = ?",
+        (ip_hash,),
+    ).fetchone()
+    return {"total": int(row["total"]), "marked": int(row["marked"] or 0)}
+
+
+def mark_applications_from_fingerprint(
+    conn: sqlite3.Connection, ip_hash: str, by_admin: bool
+) -> int:
+    """Отметить или снять отметку «заполнил администратор» у всех заявок с
+    одного отпечатка. Обратимо: второй кнопкой отметка снимается."""
+    if not ip_hash:
+        return 0
+    cur = conn.execute(
+        "UPDATE applications SET by_admin = ? WHERE author_ip_hash = ?",
+        (1 if by_admin else 0, ip_hash),
+    )
+    return int(cur.rowcount)
 
 
 def provider_counts_by_method(conn: sqlite3.Connection) -> list[sqlite3.Row]:
