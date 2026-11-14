@@ -2281,6 +2281,68 @@ input:focus, select:focus, textarea:focus {
 
 .moderation-text { font-size: 0.93rem; }
 
+/* --- Оплаты продвижения ---
+   Страница - счёт, а не витрина: таблицы те же, что у статистики, и суммы
+   выровнены по разряду. Выделен один блок - «Кому написать», потому что
+   только там от администратора ждут действия. Подложка тёплая, из тех же
+   токенов, что у блока «Продвижение» в каталоге: так продвижение узнаётся
+   одним цветом и снаружи, и в админке, и второй жёлтый заводить незачем. */
+
+.pay-section { margin: 28px 0 0; }
+
+.stat-num.pay-sum { white-space: nowrap; }
+
+.pay-due {
+  margin: 0 0 8px;
+  padding: 16px 18px;
+  background: var(--warm-bg);
+  border: 1.5px solid var(--warm-line);
+  border-radius: var(--r-block);
+}
+
+.pay-due h2 { margin: 0 0 4px; }
+
+.pay-due-note {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: var(--step--1);
+}
+
+.pay-due-list { margin: 0; padding: 0; list-style: none; }
+
+/* Кто - когда - что сделать, в одну строку на широком экране и столбиком
+   на телефоне. Строки разделены линией, а не отдельными карточками: это
+   один список дел, а не набор плиток. */
+.pay-due-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) auto;
+  gap: 8px 16px;
+  align-items: center;
+  padding: 12px 0;
+  border-top: 1px solid var(--warm-line);
+}
+
+.pay-due-item:first-child { border-top: 0; padding-top: 4px; }
+
+.pay-due-who a { font-weight: var(--w-semibold); }
+
+.pay-due-when { margin: 0; }
+.pay-due-when strong { display: block; color: var(--amber); }
+
+@media (max-width: 760px) {
+  .pay-due-item { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Кончившиеся сроки остаются в таблице, но тише идущих. */
+.pay-row-ended > td { color: var(--muted); }
+
+.pay-period { white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+.pay-total > td {
+  font-weight: var(--w-semibold);
+  border-bottom: 0;
+}
+
 /* --- Персональные данные в админке --- */
 
 .data-actions {

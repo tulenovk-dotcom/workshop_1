@@ -1214,3 +1214,146 @@ def contact_clicks_total(conn: sqlite3.Connection, days: int | None = None) -> i
             (visit_log_since(days),),
         ).fetchone()
     return int(row["n"])
+
+
+# --- Оплаты продвижения -----------------------------------------------------
+#
+# Правила сроков и напоминаний - в app/payments.py. Здесь только чтение и
+# запись: какие строки взять из базы и куда положить новую оплату.
+
+PROMO_PAYMENT_FIELDS = (
+    "provider_id",
+    "provider_name",
+    "plan",
+    "months",
+    "amount",
+    "paid_on",
+    "period_from",
+    "period_until",
+    "note",
+)
+
+
+def create_promo_payment(conn: sqlite3.Connection, data: dict) -> int:
+    """Записать полученную оплату. Срок в карточке ставит вызывающий код."""
+    columns = ", ".join(PROMO_PAYMENT_FIELDS)
+    marks = ", ".join("?" for _ in PROMO_PAYMENT_FIELDS)
+    cursor = conn.execute(
+        f"INSERT INTO promo_payments ({columns}, created_at) VALUES ({marks}, ?)",
+        tuple(data[name] for name in PROMO_PAYMENT_FIELDS) + (now_iso(),),
+    )
+    return int(cursor.lastrowid)
+
+
+def get_promo_payment(conn: sqlite3.Connection, payment_id: int) -> sqlite3.Row | None:
+    return conn.execute(
+        "SELECT * FROM promo_payments WHERE id = ?", (payment_id,)
+    ).fetchone()
+
+
+def delete_promo_payment(conn: sqlite3.Connection, payment_id: int) -> None:
+    """Убрать ошибочно записанную оплату. Срок в карточке не трогается:
+    откатить его вслепую нельзя - его могли поправить и руками."""
+    conn.execute("DELETE FROM promo_payments WHERE id = ?", (payment_id,))
+
+
+def list_promo_payments(conn: sqlite3.Connection, limit: int = 500) -> list[sqlite3.Row]:
+    """Журнал оплат, свежие сверху. Название берётся из карточки, а если
+    карточку удалили - из записи, сделанной в день оплаты."""
+    return conn.execute(
+        """
+        SELECT pay.*,
+               COALESCE(p.name, pay.provider_name) AS name,
+               p.city AS city,
+               COALESCE(p.is_test, 0) AS is_test,
+               p.id IS NULL AS is_gone
+          FROM promo_payments pay
+          LEFT JOIN providers p ON p.id = pay.provider_id
+         ORDER BY pay.paid_on DESC, pay.id DESC
+         LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+
+
+def promo_money(conn: sqlite3.Connection, month_prefix: str) -> dict:
+    """Сколько получено всего и за месяц. Месяц - начало даты, «ГГГГ-ММ»."""
+    row = conn.execute(
+        """
+        SELECT COALESCE(SUM(amount), 0) AS total,
+               COALESCE(SUM(CASE WHEN paid_on LIKE ? || '-%' THEN amount END), 0)
+                 AS month,
+               COUNT(*) AS payments
+          FROM promo_payments
+        """,
+        (month_prefix,),
+    ).fetchone()
+    return {
+        "total": int(row["total"]),
+        "month": int(row["month"]),
+        "payments": int(row["payments"]),
+    }
+
+
+def promo_providers(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Места занятий, у которых есть срок продвижения или хоть одна оплата.
+
+    К каждому - сколько раз платили, сколько всего и когда в последний раз.
+    Те, у кого срок поставлен руками без записанной оплаты, тоже здесь:
+    иначе подаренный месяц выпал бы из виду, и о нём забыли бы напомнить.
+    """
+    return conn.execute(
+        """
+        SELECT p.id, p.name, p.city, p.is_test, p.phone, p.whatsapp,
+               p.promo_until, p.promo_notified_for, p.promo_notified_at,
+               COUNT(pay.id) AS payments,
+               COALESCE(SUM(pay.amount), 0) AS paid_total,
+               MAX(pay.paid_on) AS last_paid_on
+          FROM providers p
+          LEFT JOIN promo_payments pay ON pay.provider_id = p.id
+         WHERE TRIM(p.promo_until) <> '' OR pay.id IS NOT NULL
+         GROUP BY p.id
+         ORDER BY p.promo_until, p.name
+        """
+    ).fetchall()
+
+
+def provider_choices(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Короткий список мест для выбора в форме оплаты: имя, город, срок."""
+    return conn.execute(
+        "SELECT id, name, city, is_test, promo_until FROM providers"
+        " ORDER BY is_test, lower_ru(name)"
+    ).fetchall()
+
+
+def set_promo_until(conn: sqlite3.Connection, provider_id: int, until: str) -> None:
+    conn.execute(
+        "UPDATE providers SET promo_until = ? WHERE id = ?", (until, provider_id)
+    )
+
+
+def mark_promo_notified(conn: sqlite3.Connection, provider_id: int) -> None:
+    """Отметить, что о нынешнем сроке предупредили. Запоминается сам срок:
+    после продления отметка перестаёт совпадать и напоминание вернётся."""
+    conn.execute(
+        "UPDATE providers SET promo_notified_for = promo_until,"
+        " promo_notified_at = ? WHERE id = ?",
+        (now_iso(), provider_id),
+    )
+
+
+def clear_promo_notified(conn: sqlite3.Connection, provider_id: int) -> None:
+    """Снять отметку, если нажали по ошибке."""
+    conn.execute(
+        "UPDATE providers SET promo_notified_for = '', promo_notified_at = ''"
+        " WHERE id = ?",
+        (provider_id,),
+    )
+
+
+def promo_terms(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Только сроки и отметки - для счётчика в меню админки, на каждой странице."""
+    return conn.execute(
+        "SELECT id, promo_until, promo_notified_for FROM providers"
+        " WHERE TRIM(promo_until) <> ''"
+    ).fetchall()

@@ -22,7 +22,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import crud, growth, promo, geo
+from . import crud, growth, payments, promo, geo
 from .database import DB_PATH, db_session, init_db, read_or_create_secret
 from .notifications import notify_new_application
 from .i18n import (
@@ -555,6 +555,18 @@ def moderation_counts() -> dict:
     }
 
 
+def promo_due_count() -> int:
+    """Скольким местам пора написать о продлении. Меню админки показывает
+    число на каждой странице, чтобы о сроке не надо было помнить самому."""
+    today = payments.today_local()
+    with db_session() as conn:
+        rows = crud.promo_terms(conn)
+    return sum(
+        1 for row in rows
+        if payments.needs_message(row["promo_until"], row["promo_notified_for"], today)
+    )
+
+
 templates.env.globals.update(
     ADMIN_PHONE=ADMIN_PHONE,
     PROMO_PLANS=PROMO_PLANS,
@@ -583,6 +595,7 @@ templates.env.globals.update(
     POLICY_VERSION=POLICY_VERSION,
     POLICY_UPDATED=POLICY_UPDATED,
     moderation_counts=moderation_counts,
+    promo_due_count=promo_due_count,
     health_markers=health_markers,
     static_url=static_url,
     manifest_url=manifest_url,
@@ -2055,6 +2068,150 @@ def admin_clicks(request: Request, days: int = 30):
             "all_time_total": crud.contact_clicks_total(conn),
         }
     return render(request, "admin/clicks.html", context)
+
+
+# --- Оплаты продвижения -----------------------------------------------------
+#
+# Одна страница на всё, что связано с деньгами: итоги, кому пора написать,
+# у кого какой срок и журнал оплат. Правила сроков - в app/payments.py.
+
+MONTHS_IN = ("январе", "феврале", "марте", "апреле", "мае", "июне",
+             "июле", "августе", "сентябре", "октябре", "ноябре", "декабре")
+
+
+def promo_row(row, today) -> dict:
+    """Строка таблицы сроков с посчитанным остатком и состоянием."""
+    left = payments.days_left(row["promo_until"], today)
+    notified_for = (row["promo_notified_for"] or "").strip()
+    return {
+        **dict(row),
+        "left": left,
+        "left_text": payments.left_text(left),
+        "active": left is not None and left >= 0,
+        "due": payments.needs_message(row["promo_until"], notified_for, today),
+        # Отметка относится только к нынешнему сроку. После продления она
+        # остаётся в базе, но к новому сроку уже не подходит.
+        "notified": bool(notified_for) and notified_for == row["promo_until"],
+    }
+
+
+@app.get("/admin/payments", response_class=HTMLResponse)
+def admin_payments(request: Request, saved: int = 0, removed: int = 0,
+                   error: str = "", provider: int = 0):
+    if guard := require_admin(request):
+        return guard
+    today = payments.today_local()
+    with db_session() as conn:
+        money = crud.promo_money(conn, today.strftime("%Y-%m"))
+        rows = [promo_row(row, today) for row in crud.promo_providers(conn)]
+        journal = crud.list_promo_payments(conn)
+        choices = crud.provider_choices(conn)
+        saved_payment = crud.get_promo_payment(conn, saved) if saved else None
+
+    # Идущие сроки - по близости конца, кончившиеся - свежие сверху, без
+    # срока (оплаты есть, срок стёрли руками) - в самом конце.
+    active = sorted((r for r in rows if r["active"]), key=lambda r: r["left"])
+    ended = sorted((r for r in rows if r["left"] is not None and not r["active"]),
+                   key=lambda r: r["left"], reverse=True)
+    undated = [r for r in rows if r["left"] is None]
+    due = sorted((r for r in rows if r["due"]), key=lambda r: r["left"])
+
+    context = {
+        "money": money,
+        "month_in": MONTHS_IN[today.month - 1],
+        "active_count": len(active),
+        "due": due,
+        "rows": active + ended + undated,
+        "journal": journal,
+        "choices": choices,
+        "chosen_provider": provider,
+        "today": today.isoformat(),
+        "saved_payment": saved_payment,
+        "removed": removed,
+        "error": error,
+        "payments_word": payments.plural_payments(money["payments"]),
+        "due_soon_days": payments.DUE_SOON_DAYS,
+        "due_past_days": payments.DUE_PAST_DAYS,
+    }
+    return render(request, "admin/payments.html", context)
+
+
+@app.post("/admin/payments/new")
+async def admin_payment_create(request: Request):
+    """Записать оплату и продлить срок в карточке.
+
+    Срок в карточке после оплаты никогда не становится короче прежнего:
+    запись старой оплаты задним числом не должна отнять у человека дни,
+    которые ему уже поставили. Укоротить срок можно только в карточке.
+    """
+    if guard := require_admin(request):
+        return guard
+    form = _form_defaults(await request.form())
+    provider_id = parse_int(form["provider_id"])
+    plan = promo_plan(form["plan"])
+    paid_on = payments.parse_day(form["paid_on"])
+    exact_until = payments.parse_day(form["until"])
+    amount_digits = re.sub(r"\D", "", form["amount"])
+    if not provider_id or not plan or not paid_on:
+        return RedirectResponse(
+            f"/admin/payments?error=1&provider={provider_id or 0}#pay-form",
+            status_code=REDIRECT,
+        )
+    with db_session() as conn:
+        provider = crud.get_provider(conn, provider_id)
+        if provider is None:
+            return RedirectResponse(
+                "/admin/payments?error=1#pay-form", status_code=REDIRECT
+            )
+        # Непонятное значение в карточке за срок не считаем: иначе оно
+        # при сравнении строк «победило» бы настоящую дату.
+        current = (provider["promo_until"] or "").strip()
+        if not payments.parse_day(current):
+            current = ""
+        if exact_until:
+            period_from, period_until = paid_on.isoformat(), exact_until.isoformat()
+        else:
+            period_from, period_until = payments.term(
+                current, paid_on.isoformat(), plan["months"]
+            )
+        payment_id = crud.create_promo_payment(conn, {
+            "provider_id": provider_id,
+            "provider_name": provider["name"],
+            "plan": plan["code"],
+            "months": plan["months"],
+            # Пустая сумма - цена тарифа. Своя сумма - как ввели: скидка,
+            # часть вперёд, первый клиент по особой цене.
+            "amount": int(amount_digits) if amount_digits else plan["price"],
+            "paid_on": paid_on.isoformat(),
+            "period_from": period_from,
+            "period_until": period_until,
+            "note": form["note"].strip()[:300],
+        })
+        crud.set_promo_until(conn, provider_id, max(current, period_until))
+    return RedirectResponse(f"/admin/payments?saved={payment_id}", status_code=REDIRECT)
+
+
+@app.post("/admin/payments/{payment_id}/delete")
+def admin_payment_delete(request: Request, payment_id: int):
+    if guard := require_admin(request):
+        return guard
+    with db_session() as conn:
+        crud.delete_promo_payment(conn, payment_id)
+    return RedirectResponse("/admin/payments?removed=1#journal", status_code=REDIRECT)
+
+
+@app.post("/admin/payments/notified/{provider_id}")
+async def admin_payment_notified(request: Request, provider_id: int):
+    """Отметка «предупредил о продлении» - или её снятие, если нажали зря."""
+    if guard := require_admin(request):
+        return guard
+    form = _form_defaults(await request.form())
+    with db_session() as conn:
+        if form["undo"]:
+            crud.clear_promo_notified(conn, provider_id)
+        else:
+            crud.mark_promo_notified(conn, provider_id)
+    return RedirectResponse("/admin/payments#terms", status_code=REDIRECT)
 
 
 def application_methods(conn, application) -> list:

@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}Админка - оплаты{% endblock %}
+
+{% block content %}
+<h1>Оплаты</h1>
+{% include "admin/_nav.html" %}
+
+<p class="admin-summary">Всё о платном продвижении в одном месте: сколько
+  получено, кому пора напомнить о продлении и у кого какой срок. Запишите
+  оплату в форме ниже - срок в карточке продлится сам.</p>
+
+{% if saved_payment %}
+  {% set plan = PROMO_PLANS | selectattr("code", "equalto", saved_payment.plan) | first %}
+  <p class="notice notice-ok">Записано: «{{ saved_payment.provider_name }}»,
+    {{ plan.label if plan else saved_payment.months ~ ' мес.' }},
+    {{ saved_payment.amount|price }} ₸. Продвижение до
+    {{ saved_payment.period_until|local_date }}.</p>
+{% endif %}
+{% if removed %}
+  <p class="notice notice-warn">Оплата удалена из журнала. Срок в карточке
+    не менялся: если он теперь неверный, поправьте его в карточке места
+    занятий.</p>
+{% endif %}
+
+<section class="stat-strip">
+  <p class="stat-figure">
+    <span class="stat-num pay-sum">{{ money.total|price }} ₸</span>
+    <span class="stat-label">получено всего</span>
+  </p>
+  <p class="stat-figure">
+    <span class="stat-num pay-sum">{{ money.month|price }} ₸</span>
+    <span class="stat-label">получено в {{ month_in }}</span>
+  </p>
+  <p class="stat-figure">
+    <span class="stat-num">{{ active_count }}</span>
+    <span class="stat-label">карточек продвигается сейчас</span>
+  </p>
+  <p class="stat-figure">
+    <span class="stat-num">{{ due|length }}</span>
+    <span class="stat-label">пора написать</span>
+  </p>
+</section>
+
+{#- Единственное место страницы, где нужно действие, поэтому оно и выделено.
+    WhatsApp здесь открывается напрямую, а не через /go: это переписка
+    администратора, и в счётчик переходов родителей она попадать не должна. #}
+{% if due %}
+<section class="pay-due" id="due">
+  <h2>Кому написать</h2>
+  <p class="pay-due-note">Срок кончается в ближайшие {{ due_soon_days }} дней
+    или кончился не больше {{ due_past_days }} дней назад. Написали - нажмите
+    «Предупредил», и запись уйдёт отсюда до следующего срока.</p>
+  <ul class="pay-due-list">
+    {% for r in due %}
+      {% set until = r.promo_until|local_date %}
+      {% if r.active %}
+        {% set text = 'Здравствуйте! Это каталог erekshe.kz. Продвижение карточки «' ~ r.name ~ '» оплачено до ' ~ until ~ '. Хотите продлить?' %}
+      {% else %}
+        {% set text = 'Здравствуйте! Это каталог erekshe.kz. Продвижение карточки «' ~ r.name ~ '» закончилось ' ~ until ~ '. Хотите продлить?' %}
+      {% endif %}
+      <li class="pay-due-item">
+        <div class="pay-due-who">
+          <a href="/admin/providers/{{ r.id }}/edit">{{ r.name }}</a>
+          {% if r.is_test %}<span class="chip chip-test">тест</span>{% endif %}
+          <div class="muted">{{ r.city }}</div>
+        </div>
+        <p class="pay-due-when">
+          <strong>{{ r.left_text|capitalize }}</strong>
+          <span class="muted">{{ 'оплачено до' if r.active else 'было оплачено до' }} {{ until }}</span>
+        </p>
+        <div class="row-actions">
+          {% if r.whatsapp %}
+            <a class="btn btn-small btn-primary" target="_blank" rel="noopener"
+               href="{{ r.whatsapp|wa_link }}?text={{ text|urlencode }}">Написать в WhatsApp</a>
+          {% elif r.phone %}
+            <a class="btn btn-small btn-primary" href="tel:{{ r.phone }}">Позвонить</a>
+          {% endif %}
+          <form method="post" action="/admin/payments/notified/{{ r.id }}">
+            <button type="submit" class="btn btn-small">Предупредил</button>
+          </form>
+          <a class="btn btn-small btn-ghost"
+             href="/admin/payments?provider={{ r.id }}#pay-form">Записать оплату</a>
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section id="terms" class="pay-section">
+  <h2>Сроки продвижения</h2>
+  {% if rows %}
+    <div class="table-wrap">
+      <table class="admin-table stat-table">
+        <thead>
+          <tr>
+            <th>Место занятий</th>
+            <th>Оплачено до</th>
+            <th>Срок</th>
+            <th class="stat-col-num">Оплат</th>
+            <th class="stat-col-num">Получено</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+            <tr{% if not r.active %} class="pay-row-ended"{% endif %}>
+              <td>
+                <a href="/admin/providers/{{ r.id }}/edit">{{ r.name }}</a>
+                {% if r.is_test %}<span class="chip chip-test">тест</span>{% endif %}
+                <div class="muted">{{ r.city }}</div>
+              </td>
+              <td>{{ r.promo_until|local_date if r.promo_until else '—' }}</td>
+              <td>
+                {{ r.left_text or 'срок не задан' }}
+                {% if r.notified %}
+                  <div class="muted">предупредили {{ r.promo_notified_at|local_date }}</div>
+                {% elif r.due %}
+                  <div><span class="chip chip-flag">пора написать</span></div>
+                {% endif %}
+              </td>
+              <td class="stat-col-num">{{ r.payments }}</td>
+              <td class="stat-col-num">{{ r.paid_total|price }} ₸</td>
+              <td class="row-actions">
+                <a class="btn btn-small"
+                   href="/admin/payments?provider={{ r.id }}#pay-form">Продлить</a>
+                {% if r.notified %}
+                  <form method="post" action="/admin/payments/notified/{{ r.id }}">
+                    <input type="hidden" name="undo" value="1">
+                    <button type="submit" class="btn btn-small btn-ghost">Снять отметку</button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="hint">Срок кончается в конце указанного дня: «до 14.12» значит,
+      что четырнадцатого карточка ещё стоит наверху каталога. Карточки без
+      записанной оплаты здесь тоже есть - если срок поставили в карточке
+      руками.</p>
+  {% else %}
+    <p class="empty">Платных карточек пока нет. Первая появится здесь, когда
+      вы запишете оплату в форме ниже.</p>
+  {% endif %}
+</section>
+
+<section id="pay-form" class="method-editor pay-section">
+  <h2>Записать оплату</h2>
+  {% if error %}
+    <p class="notice notice-warn">Выберите место занятий, срок и дату оплаты:
+      без них оплату не записать. Ничего не сохранено.</p>
+  {% endif %}
+  <form class="admin-form" method="post" action="/admin/payments/new">
+    <div class="field field-wide">
+      <label for="provider_id">Место занятий *</label>
+      <select id="provider_id" name="provider_id" required>
+        <option value="">Выберите из каталога</option>
+        {% for c in choices %}
+          <option value="{{ c.id }}"{% if c.id == chosen_provider %} selected{% endif %}>
+            {{ c.name }}, {{ c.city }}{% if c.promo_until %} - оплачено до {{ c.promo_until|local_date }}{% endif %}{% if c.is_test %} (тест){% endif %}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="plan">Срок *</label>
+      <select id="plan" name="plan" required>
+        {% for plan in PROMO_PLANS %}
+          <option value="{{ plan.code }}">{{ plan.label }} - {{ plan.price|price }} ₸</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="paid_on">Дата оплаты *</label>
+      <input type="date" id="paid_on" name="paid_on" required value="{{ today }}">
+    </div>
+
+    <div class="field">
+      <label for="amount">Сумма, ₸</label>
+      <input type="text" id="amount" name="amount" inputmode="numeric"
+             placeholder="по цене срока">
+      <p class="hint">Пусто - цена выбранного срока. Своя сумма - если была
+        скидка или оплата частями.</p>
+    </div>
+
+    <div class="field">
+      <label for="until">Оплачено до</label>
+      <input type="date" id="until" name="until">
+      <p class="hint">Пусто - посчитается само: за прежним сроком, если он
+        ещё идёт, иначе со дня оплаты. Заполните, если срок за эту оплату
+        уже стоит в карточке.</p>
+    </div>
+
+    <div class="field field-wide">
+      <label for="note">Заметка</label>
+      <input type="text" id="note" name="note" maxlength="300"
+             placeholder="Например: перевод на Kaspi, скидка на первый месяц">
+    </div>
+
+    <div class="filter-actions">
+      <button type="submit" class="btn btn-primary">Записать оплату</button>
+    </div>
+  </form>
+</section>
+
+<section id="journal" class="pay-section">
+  <h2>Все оплаты</h2>
+  {% if journal %}
+    <div class="table-wrap">
+      <table class="admin-table stat-table">
+        <thead>
+          <tr>
+            <th>Дата оплаты</th>
+            <th>Место занятий</th>
+            <th>Срок</th>
+            <th class="stat-col-num">Сумма</th>
+            <th>Показ</th>
+            <th>Заметка</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in journal %}
+            {% set plan = PROMO_PLANS | selectattr("code", "equalto", p.plan) | first %}
+            <tr>
+              <td>{{ p.paid_on|local_date }}</td>
+              <td>
+                {% if p.is_gone %}
+                  {{ p.name }} <span class="chip chip-test">карточка удалена</span>
+                {% else %}
+                  <a href="/admin/providers/{{ p.provider_id }}/edit">{{ p.name }}</a>
+                  {% if p.is_test %}<span class="chip chip-test">тест</span>{% endif %}
+                  <div class="muted">{{ p.city }}</div>
+                {% endif %}
+              </td>
+              <td>{{ plan.label if plan else p.months ~ ' мес.' }}</td>
+              <td class="stat-col-num">{{ p.amount|price }} ₸</td>
+              <td class="pay-period">{{ p.period_from|local_date }} - {{ p.period_until|local_date }}</td>
+              <td>{{ p.note }}</td>
+              <td>
+                {#- Текст вопроса собран через tojson: в названии может стоять
+                    апостроф, и обычная подстановка порвала бы строку скрипта. #}
+                {% set question = 'Удалить из журнала оплату «' ~ p.name ~ '» на ' ~ (p.amount|price) ~ ' ₸ от ' ~ (p.paid_on|local_date) ~ '? Срок в карточке при этом не изменится.' %}
+                <form method="post" action="/admin/payments/{{ p.id }}/delete"
+                      onsubmit='return confirm({{ question|tojson }});'>
+                  <button type="submit" class="btn btn-small btn-danger">Удалить</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr class="pay-total">
+            <td colspan="3">Итого, {{ money.payments }} {{ payments_word }}</td>
+            <td class="stat-col-num">{{ money.total|price }} ₸</td>
+            <td colspan="3"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <p class="hint">Удалить оплату можно, если её записали по ошибке. Срок в
+      карточке при этом не откатывается: его могли поправить и руками, и
+      угадать прежний нельзя.</p>
+  {% else %}
+    <p class="empty">Оплат пока не записано.</p>
+  {% endif %}
+</section>
+{% endblock %}

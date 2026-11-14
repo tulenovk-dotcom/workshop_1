@@ -85,6 +85,20 @@ CREATE TABLE applications (
 """
 
 
+# Места занятий в том виде, в каком они лежат на боевой базе до появления
+# отметки «предупредил о продлении». Только нужные тесту столбцы.
+СТАРЫЕ_МЕСТА = """
+CREATE TABLE providers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    provider_type TEXT NOT NULL,
+    name TEXT NOT NULL,
+    city TEXT NOT NULL,
+    promo_until TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+"""
+
+
 def столбцы(conn, таблица):
     return {row[1] for row in conn.execute(f"PRAGMA table_info({таблица})")}
 
@@ -102,6 +116,11 @@ def обновить(conn):
         conn.execute(
             "ALTER TABLE applications ADD COLUMN by_admin INTEGER NOT NULL DEFAULT 0"
         )
+    for имя in ("promo_notified_for", "promo_notified_at"):
+        if имя not in столбцы(conn, "providers"):
+            conn.execute(
+                f"ALTER TABLE providers ADD COLUMN {имя} TEXT NOT NULL DEFAULT ''"
+            )
     conn.executescript(_блоки["INDEXES"])
 
 
@@ -266,6 +285,67 @@ class ОбновлениеСуществующейБазы(unittest.TestCase):
             индексы,
             "migrate_request_columns должен вызываться до создания индексов",
         )
+
+
+
+class ОплатыПродвиженияНаСтаройБазе(unittest.TestCase):
+    """Журнал оплат и отметка о напоминании появились 14.11.2026.
+
+    На боевой базе таблицы promo_payments нет, а у providers нет столбцов
+    отметки. Проверяем, что обновление проходит и не трогает уже
+    поставленный срок продвижения.
+    """
+
+    def старая_база(self):
+        conn = sqlite3.connect(":memory:")
+        conn.executescript(СТАРЫЕ_МЕСТА)
+        conn.execute(
+            "INSERT INTO providers (provider_type, name, city, promo_until, created_at)"
+            " VALUES ('center', 'Сенім', 'Астана', '2026-12-14',"
+            " '2026-11-14T06:00:00+00:00')"
+        )
+        обновить(conn)
+        return conn
+
+    def test_столбцы_отметки_появляются(self):
+        conn = self.старая_база()
+        self.assertIn("promo_notified_for", столбцы(conn, "providers"))
+        self.assertIn("promo_notified_at", столбцы(conn, "providers"))
+
+    def test_срок_продвижения_не_тронут(self):
+        conn = self.старая_база()
+        строка = conn.execute(
+            "SELECT promo_until, promo_notified_for FROM providers"
+        ).fetchone()
+        self.assertEqual(строка, ("2026-12-14", ""))
+
+    def test_таблица_и_индексы_оплат_создаются(self):
+        conn = self.старая_база()
+        имена = {
+            row[0]
+            for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE name LIKE '%promo_payments%'"
+            )
+        }
+        self.assertIn("promo_payments", имена)
+        self.assertIn("idx_promo_payments_provider", имена)
+        self.assertIn("idx_promo_payments_day", имена)
+
+    def test_удаление_карточки_не_стирает_оплату(self):
+        """Деньги получены - запись о них остаётся, даже если карточки нет."""
+        conn = self.старая_база()
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute(
+            "INSERT INTO promo_payments (provider_id, provider_name, plan, months,"
+            " amount, paid_on, period_from, period_until, created_at)"
+            " VALUES (1, 'Сенім', '1m', 1, 1999, '2026-11-14', '2026-11-14',"
+            " '2026-12-14', '2026-11-14T06:00:00+00:00')"
+        )
+        conn.execute("DELETE FROM providers WHERE id = 1")
+        строка = conn.execute(
+            "SELECT provider_id, provider_name, amount FROM promo_payments"
+        ).fetchone()
+        self.assertEqual(строка, (None, "Сенім", 1999))
 
 
 if __name__ == "__main__":
