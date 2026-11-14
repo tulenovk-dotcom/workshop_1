@@ -2138,6 +2138,39 @@ def admin_payments(request: Request, saved: int = 0, removed: int = 0,
     return render(request, "admin/payments.html", context)
 
 
+def record_promo_payment(
+    conn, provider, plan, paid_on: str, amount: int, note: str, exact_until: str = ""
+) -> tuple[int, str]:
+    """Записать оплату в журнал и продлить срок в карточке.
+
+    Общая часть для формы на странице «Оплаты» и для карточки, созданной
+    по заявке с продвижением. Возвращает номер оплаты и новый срок.
+    """
+    # Непонятное значение в карточке за срок не считаем: иначе оно
+    # при сравнении строк «победило» бы настоящую дату.
+    current = (provider["promo_until"] or "").strip()
+    if not payments.parse_day(current):
+        current = ""
+    if exact_until:
+        period_from, period_until = paid_on, exact_until
+    else:
+        period_from, period_until = payments.term(current, paid_on, plan["months"])
+    payment_id = crud.create_promo_payment(conn, {
+        "provider_id": provider["id"],
+        "provider_name": provider["name"],
+        "plan": plan["code"],
+        "months": plan["months"],
+        "amount": amount,
+        "paid_on": paid_on,
+        "period_from": period_from,
+        "period_until": period_until,
+        "note": note,
+    })
+    until = max(current, period_until)
+    crud.set_promo_until(conn, provider["id"], until)
+    return payment_id, until
+
+
 @app.post("/admin/payments/new")
 async def admin_payment_create(request: Request):
     """Записать оплату и продлить срок в карточке.
@@ -2172,31 +2205,17 @@ async def admin_payment_create(request: Request):
             return RedirectResponse(
                 "/admin/payments?error=1#pay-form", status_code=REDIRECT
             )
-        # Непонятное значение в карточке за срок не считаем: иначе оно
-        # при сравнении строк «победило» бы настоящую дату.
-        current = (provider["promo_until"] or "").strip()
-        if not payments.parse_day(current):
-            current = ""
-        if exact_until:
-            period_from, period_until = paid_on.isoformat(), exact_until.isoformat()
-        else:
-            period_from, period_until = payments.term(
-                current, paid_on.isoformat(), plan["months"]
-            )
-        payment_id = crud.create_promo_payment(conn, {
-            "provider_id": provider_id,
-            "provider_name": provider["name"],
-            "plan": plan["code"],
-            "months": plan["months"],
+        payment_id, _ = record_promo_payment(
+            conn,
+            provider,
+            plan,
+            paid_on.isoformat(),
             # Пустая сумма - цена тарифа. Своя сумма - как ввели: скидка,
             # часть вперёд, первый клиент по особой цене.
-            "amount": int(amount_digits) if amount_digits else plan["price"],
-            "paid_on": paid_on.isoformat(),
-            "period_from": period_from,
-            "period_until": period_until,
-            "note": form["note"].strip()[:300],
-        })
-        crud.set_promo_until(conn, provider_id, max(current, period_until))
+            int(amount_digits) if amount_digits else plan["price"],
+            form["note"].strip()[:300],
+            exact_until.isoformat() if exact_until else "",
+        )
     return RedirectResponse(f"/admin/payments?saved={payment_id}", status_code=REDIRECT)
 
 
@@ -2231,6 +2250,18 @@ def application_methods(conn, application) -> list:
         codes = []
     by_code = {row["code"]: row for row in crud.list_methods(conn)}
     return [by_code[code] for code in codes if code in by_code]
+
+
+def application_promo_plan(application):
+    """Тариф продвижения, выбранный в заявке, - если по ней ещё не
+    создавали карточку. Повторно оплата не записывается: у заявки с
+    карточкой кнопки «Создать карточку» уже нет, но адрес формы можно
+    открыть и руками."""
+    if application is None or application["provider_id"]:
+        return None
+    if not application["wants_promo"]:
+        return None
+    return promo_plan(application["promo_term"])
 
 
 def provider_prefill(conn, application) -> tuple[dict, set[int]]:
@@ -2352,6 +2383,7 @@ def admin_provider_new(request: Request, from_application: str = ""):
     application_id = parse_int(from_application)
     prefill: dict | None = None
     selected: set[int] = set()
+    paid_plan = None
     with db_session() as conn:
         methods = crud.list_methods(conn)
         if application_id is not None:
@@ -2359,6 +2391,11 @@ def admin_provider_new(request: Request, from_application: str = ""):
             if application is None:
                 raise HTTPException(status_code=404, detail="Заявка не найдена")
             prefill, selected = provider_prefill(conn, application)
+            paid_plan = application_promo_plan(application)
+    paid_until = (
+        payments.add_months(payments.today_local(), paid_plan["months"]).isoformat()
+        if paid_plan else ""
+    )
     return render(
         request,
         "admin/provider_form.html",
@@ -2366,6 +2403,8 @@ def admin_provider_new(request: Request, from_application: str = ""):
             "provider": None,
             "prefill": prefill,
             "from_application": application_id,
+            "paid_plan": paid_plan,
+            "paid_until": paid_until,
             "methods": methods,
             "selected_methods": selected,
             "title": "Новое место занятий",
@@ -2383,10 +2422,14 @@ async def admin_provider_create(request: Request):
     # Карточка по заявке наследует присланное фото, пока администратор
     # не выберет в форме другой файл.
     base_logo = ""
+    application = None
     if application_id is not None:
         with db_session() as conn:
             application = crud.get_application(conn, application_id)
         base_logo = application["logo_path"] if application else ""
+    # Карточку по заявке с продвижением создают, когда оплата уже взята.
+    # Значит, оплата пишется в журнал сама, а срок в форме не вводится.
+    paid_plan = application_promo_plan(application)
 
     logo_path = await save_logo(form.get("logo"), base_logo)
     data, method_ids = provider_form_data(
@@ -2397,13 +2440,24 @@ async def admin_provider_create(request: Request):
         if application_id is not None:
             back += f"&from_application={application_id}"
         return RedirectResponse(back, status_code=REDIRECT)
+    if paid_plan:
+        data["promo_until"] = ""
     with db_session() as conn:
         provider_id = crud.create_provider(conn, data, method_ids)
         if application_id is not None and crud.get_application(conn, application_id):
             crud.link_application_to_provider(conn, application_id, provider_id)
-            return RedirectResponse(
-                f"/admin/applications/{application_id}?saved=1", status_code=REDIRECT
-            )
+            back = f"/admin/applications/{application_id}?saved=1"
+            if paid_plan:
+                payment_id, _ = record_promo_payment(
+                    conn,
+                    crud.get_provider(conn, provider_id),
+                    paid_plan,
+                    payments.today_iso(),
+                    paid_plan["price"],
+                    f"по заявке № {application_id}",
+                )
+                back += f"&paid={payment_id}"
+            return RedirectResponse(back, status_code=REDIRECT)
     return RedirectResponse("/admin", status_code=REDIRECT)
 
 
@@ -2477,15 +2531,19 @@ def admin_applications(request: Request):
 
 
 @app.get("/admin/applications/{application_id}", response_class=HTMLResponse)
-def admin_application_detail(request: Request, application_id: int):
+def admin_application_detail(request: Request, application_id: int, paid: str = ""):
     if guard := require_admin(request):
         return guard
     with db_session() as conn:
         application = crud.get_application(conn, application_id)
         if application is None:
             raise HTTPException(status_code=404, detail="Заявка не найдена")
+        # Оплата, записанная только что вместе с карточкой: показать, что
+        # она легла в журнал и до какого числа теперь продвижение.
+        payment_id = parse_int(paid)
         context = {
             "application": application,
+            "paid": crud.get_promo_payment(conn, payment_id) if payment_id else None,
             "methods": application_methods(conn, application),
             "consent": crud.get_consent(conn, "application", application_id),
             "actions": crud.data_actions_for(conn, "application", application_id),

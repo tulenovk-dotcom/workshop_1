@@ -9,7 +9,14 @@
 
 <p class="breadcrumbs"><a href="/admin/applications">← Ко всем заявкам</a></p>
 
-{% if request.query_params.get('saved') %}
+{% if paid %}
+  <p class="notice notice-ok">
+    Карточка создана, оплата продвижения записана: {{ paid.amount|price }} ₸
+    за {{ (PROMO_PLANS | selectattr("code", "equalto", paid.plan) | first or {}).get("label", paid.months ~ " мес.") }},
+    в каталоге наверху до {{ paid.period_until|local_date }}.
+    <a href="/admin/payments">Открыть «Оплаты»</a>
+  </p>
+{% elif request.query_params.get('saved') %}
   <p class="notice notice-ok">Изменения сохранены.</p>
 {% endif %}
 
