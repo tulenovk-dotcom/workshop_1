@@ -2097,7 +2097,7 @@ def promo_row(row, today) -> dict:
 
 @app.get("/admin/payments", response_class=HTMLResponse)
 def admin_payments(request: Request, saved: int = 0, removed: int = 0,
-                   error: str = "", provider: int = 0):
+                   error: str = "", error_until: str = "", provider: int = 0):
     if guard := require_admin(request):
         return guard
     today = payments.today_local()
@@ -2129,6 +2129,7 @@ def admin_payments(request: Request, saved: int = 0, removed: int = 0,
         "saved_payment": saved_payment,
         "removed": removed,
         "error": error,
+        "error_until": error_until,
         "payments_word": payments.plural_payments(money["payments"]),
         "due_soon_days": payments.DUE_SOON_DAYS,
         "due_past_days": payments.DUE_PAST_DAYS,
@@ -2152,6 +2153,13 @@ async def admin_payment_create(request: Request):
     paid_on = payments.parse_day(form["paid_on"])
     exact_until = payments.parse_day(form["until"])
     amount_digits = re.sub(r"\D", "", form["amount"])
+    # Ручную дату, которую не удалось разобрать, молча пропускать нельзя:
+    # срок посчитался бы сам и мог продлиться второй раз.
+    if form["until"].strip() and not exact_until:
+        return RedirectResponse(
+            f"/admin/payments?error_until=1&provider={provider_id or 0}#pay-form",
+            status_code=REDIRECT,
+        )
     if not provider_id or not plan or not paid_on:
         return RedirectResponse(
             f"/admin/payments?error=1&provider={provider_id or 0}#pay-form",

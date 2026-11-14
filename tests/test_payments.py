@@ -14,6 +14,19 @@ from app import payments
 СЕГОДНЯ = date(2026, 11, 14)
 
 
+class РазборДаты(unittest.TestCase):
+    def test_оба_вида_записи(self):
+        """В базе ГГГГ-ММ-ДД, в форму человек пишет ДД.ММ.ГГГГ."""
+        self.assertEqual(payments.parse_day("2026-12-18"), date(2026, 12, 18))
+        self.assertEqual(payments.parse_day("18.12.2026"), date(2026, 12, 18))
+        self.assertEqual(payments.parse_day(" 18.12.2026 "), date(2026, 12, 18))
+
+    def test_непонятное_и_пустое(self):
+        self.assertIsNone(payments.parse_day(""))
+        self.assertIsNone(payments.parse_day("18 декабря"))
+        self.assertIsNone(payments.parse_day("32.12.2026"))
+
+
 class ПрибавлениеМесяцев(unittest.TestCase):
     def test_обычный_месяц(self):
         self.assertEqual(payments.add_months(date(2026, 11, 14), 1), date(2026, 12, 14))
@@ -38,6 +51,12 @@ class СрокОплаты(unittest.TestCase):
         """Тот самый случай «Сенім»: 14.11 на месяц - до 14.12."""
         self.assertEqual(
             payments.term("", "2026-11-14", 1), ("2026-11-14", "2026-12-14")
+        )
+
+    def test_пример_владельца(self):
+        """Оплачено до 18.11, месяц оплатили 14.11 - до 18.12, а не до 14.12."""
+        self.assertEqual(
+            payments.term("2026-11-18", "2026-11-14", 1), ("2026-11-18", "2026-12-18")
         )
 
     def test_продление_встаёт_за_прежним_сроком(self):

@@ -2338,6 +2338,11 @@ input:focus, select:focus, textarea:focus {
 
 .pay-period { white-space: nowrap; font-variant-numeric: tabular-nums; }
 
+/* Свёрнутая ручная дата в форме оплаты. Поле внутри уже, чем вся строка:
+   дата короткая, и во всю ширину формы она терялась бы. */
+.pay-manual { margin: 0; }
+.pay-manual > .field { max-width: 320px; margin-top: 10px; }
+
 .pay-total > td {
   font-weight: var(--w-semibold);
   border-bottom: 0;

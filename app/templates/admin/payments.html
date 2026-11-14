@@ -153,6 +153,11 @@
     <p class="notice notice-warn">Выберите место занятий, срок и дату оплаты:
       без них оплату не записать. Ничего не сохранено.</p>
   {% endif %}
+  {% if error_until %}
+    <p class="notice notice-warn">Дата в поле «Оплачено до» непонятна.
+      Впишите её как 18.12.2026 или оставьте поле пустым. Ничего не
+      сохранено.</p>
+  {% endif %}
   <form class="admin-form" method="post" action="/admin/payments/new">
     <div class="field field-wide">
       <label for="provider_id">Место занятий *</label>
@@ -164,6 +169,9 @@
           </option>
         {% endfor %}
       </select>
+      <p class="hint">Если у места срок ещё идёт, новый встаёт за ним, а не
+        считается со дня оплаты: оплачено до 18.11, месяц оплатили 14.11 -
+        продвижение будет до 18.12. Если срок уже кончился - со дня оплаты.</p>
     </div>
 
     <div class="field">
@@ -180,20 +188,30 @@
       <input type="date" id="paid_on" name="paid_on" required value="{{ today }}">
     </div>
 
+    {#- Подсказка стоит над полем, а не под ним: в ряду формы поля прижаты
+        к низу ячейки, и подсказка снизу задирала бы это поле выше соседей. #}
     <div class="field">
       <label for="amount">Сумма, ₸</label>
+      <p class="hint">Пусто - по цене срока. 0 - если продвижение в подарок.</p>
       <input type="text" id="amount" name="amount" inputmode="numeric"
              placeholder="по цене срока">
-      <p class="hint">Пусто - цена выбранного срока. Своя сумма - если была
-        скидка или оплата частями.</p>
     </div>
 
-    <div class="field">
-      <label for="until">Оплачено до</label>
-      <input type="date" id="until" name="until">
-      <p class="hint">Пусто - посчитается само: за прежним сроком, если он
-        ещё идёт, иначе со дня оплаты. Заполните, если срок за эту оплату
-        уже стоит в карточке.</p>
+    {#- Ручная дата нужна редко - занести задним числом оплату, за которую
+        срок уже стоит в карточке. Поэтому свёрнута. Поле текстовое, а не
+        календарь: пустой календарь в Safari рисует серым сегодняшнее число,
+        и кажется, что срок уже поставлен до сегодня. #}
+    <div class="field field-wide">
+      <details class="stat-details pay-manual"{% if error_until %} open{% endif %}>
+        <summary>Срок за эту оплату уже поставлен в карточке вручную?</summary>
+        <div class="field">
+          <label for="until">Оплачено до</label>
+          <p class="hint">Тогда впишите эту дату, и срок второй раз не
+            продлится. Пусто - срок посчитается сам.</p>
+          <input type="text" id="until" name="until" inputmode="numeric"
+                 placeholder="ДД.ММ.ГГГГ" autocomplete="off">
+        </div>
+      </details>
     </div>
 
     <div class="field field-wide">
