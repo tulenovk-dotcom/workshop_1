@@ -1,7 +1,7 @@
 """Проверки блока платных мест (app/promo.py).
 
 Проверяется то, что легко сломать незаметно: порог в шесть карточек,
-размер блока, отсутствие дублей и ротация по часам. Запускается и на
+размер блока, отсутствие дублей и смена очереди по часам. Запускается и на
 старом Python: модуль чистый, базы и приложения ему не нужно.
 """
 
@@ -38,9 +38,47 @@ class PromoBlockTest(unittest.TestCase):
     def test_men_she_trjoh_oplativshih(self):
         """Двое оплативших - оба в блоке, и в списке их больше нет."""
         block, rest = promo.split(rows(8, paid_ids=(2, 5)), MOMENT)
-        self.assertEqual([r["id"] for r in block], [2, 5])
+        self.assertEqual({r["id"] for r in block}, {2, 5})
         self.assertNotIn(2, [r["id"] for r in rest])
         self.assertEqual(len(rest), 6)
+
+    def test_dvoe_menjajutsja_mestami_cherez_tri_chasa(self):
+        """При двух оплативших первое место переходит раз в три часа."""
+        found = rows(8, paid_ids=(2, 5))
+        first = [promo.split(found, MOMENT.replace(hour=h))[0][0]["id"]
+                 for h in range(24)]
+        # Внутри трёхчасового окна первый не меняется, на границе - меняется.
+        self.assertEqual(first[9:12], [first[9]] * 3)
+        self.assertNotEqual(first[11], first[12])
+        self.assertEqual(set(first), {2, 5})
+
+    def test_troe_pobyvali_pervymi(self):
+        """При трёх оплативших за сутки первым стоит каждый."""
+        found = rows(8, paid_ids=(1, 4, 7))
+        first = {promo.split(found, MOMENT.replace(hour=h))[0][0]["id"]
+                 for h in range(24)}
+        self.assertEqual(first, {1, 4, 7})
+
+    def test_sostav_bloka_ot_porjadka_ne_zavisit(self):
+        """Меняются только места: все трое в блоке в любой час."""
+        found = rows(8, paid_ids=(1, 4, 7))
+        for hour in range(24):
+            block, rest = promo.split(found, MOMENT.replace(hour=hour))
+            self.assertEqual({r["id"] for r in block}, {1, 4, 7})
+            self.assertEqual(len(rest), 5)
+
+    def test_chasy_ne_zakreplajutsja_pri_dvuh_i_trjoh(self):
+        """Через сутки в тот же час первым стоит другой.
+
+        Восемь трёхчасовых окон делятся и на двоих, и на четверых, так что
+        без суточной добавки за каждым закрепились бы одни и те же часы.
+        """
+        for paid_ids in ((2, 5), (1, 4, 7)):
+            found = rows(8, paid_ids=paid_ids)
+            today, _ = promo.split(found, MOMENT)
+            tomorrow, _ = promo.split(found, MOMENT.replace(day=8))
+            self.assertNotEqual([r["id"] for r in today],
+                                [r["id"] for r in tomorrow])
 
     def test_blok_ne_bolshe_trjoh(self):
         block, rest = promo.split(rows(12, paid_ids=(1, 2, 3, 4, 5)), MOMENT)
@@ -62,7 +100,7 @@ class PromoBlockTest(unittest.TestCase):
         """Срок «до сегодня» означает, что сегодня место ещё в блоке."""
         found = rows(8, paid_ids=(1, 2), until=MOMENT.date().isoformat())
         block, _ = promo.split(found, MOMENT)
-        self.assertEqual([r["id"] for r in block], [1, 2])
+        self.assertEqual({r["id"] for r in block}, {1, 2})
 
     def test_cherez_chas_okno_sdvinulos(self):
         """Через час состав меняется на одного, двое остаются."""
