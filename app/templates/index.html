@@ -187,7 +187,7 @@
   <p class="promo-head"><strong>{{ t('Продвижение') }}</strong></p>
   <div class="cards">
     {% for p in promoted %}
-      {{ ui.provider_card(p, methods_map.get(p.id, []), promo=True) }}
+      {{ ui.provider_card(p, methods_map.get(p.id, [])) }}
     {% endfor %}
   </div>
 </div>
