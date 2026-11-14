@@ -47,15 +47,22 @@ def today_iso():
     return today_local().isoformat()
 
 
+# В базе дата лежит как «ГГГГ-ММ-ДД», а человек в форме пишет её
+# по-нашему, «ДД.ММ.ГГГГ». Принимаются оба вида.
+DAY_FORMATS = ("%Y-%m-%d", "%d.%m.%Y")
+
+
 def parse_day(value):
-    """Строка «ГГГГ-ММ-ДД» в дату. Непонятное - None, а не падение."""
+    """Строка с датой в дату. Непонятное - None, а не падение."""
     text = (value or "").strip()
     if not text:
         return None
-    try:
-        return datetime.strptime(text, "%Y-%m-%d").date()
-    except (TypeError, ValueError):
-        return None
+    for pattern in DAY_FORMATS:
+        try:
+            return datetime.strptime(text, pattern).date()
+        except (TypeError, ValueError):
+            continue
+    return None
 
 
 def add_months(day, months):
