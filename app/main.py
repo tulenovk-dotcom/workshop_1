@@ -2372,23 +2372,31 @@ def admin_request_delete(request: Request, request_id: int):
 
 
 @app.get("/admin/methods", response_class=HTMLResponse)
-def admin_methods(request: Request):
+def admin_methods(request: Request, error: str = ""):
     if guard := require_admin(request):
         return guard
     with db_session() as conn:
-        context = {"methods": crud.list_methods(conn), "method": None}
+        context = {
+            "methods": crud.list_methods(conn),
+            "method": None,
+            "error": bool(error),
+        }
     return render(request, "admin/methods.html", context)
 
 
 @app.get("/admin/methods/{method_id}/edit", response_class=HTMLResponse)
-def admin_method_edit(request: Request, method_id: int):
+def admin_method_edit(request: Request, method_id: int, error: str = ""):
     if guard := require_admin(request):
         return guard
     with db_session() as conn:
         method = crud.get_method(conn, method_id)
         if method is None:
             raise HTTPException(status_code=404, detail="Метод не найден")
-        context = {"methods": crud.list_methods(conn), "method": method}
+        context = {
+            "methods": crud.list_methods(conn),
+            "method": method,
+            "error": bool(error),
+        }
     return render(request, "admin/methods.html", context)
 
 
@@ -2411,10 +2419,14 @@ async def admin_method_create(request: Request):
         return guard
     data = method_form_data(_form_defaults(await request.form()))
     if not data["code"] or not data["name"]:
-        return RedirectResponse("/admin/methods?error=1", status_code=REDIRECT)
+        return RedirectResponse(
+            "/admin/methods?error=1#method-form", status_code=REDIRECT
+        )
     with db_session() as conn:
-        crud.create_method(conn, data)
-    return RedirectResponse("/admin/methods", status_code=REDIRECT)
+        method_id = crud.create_method(conn, data)
+    # Возврат к самой записи, а не к началу списка: в справочнике два
+    # десятка строк, и без якоря непонятно, что изменилось.
+    return RedirectResponse(f"/admin/methods#method-{method_id}", status_code=REDIRECT)
 
 
 @app.post("/admin/methods/{method_id}/edit")
@@ -2424,11 +2436,12 @@ async def admin_method_update(request: Request, method_id: int):
     data = method_form_data(_form_defaults(await request.form()))
     if not data["code"] or not data["name"]:
         return RedirectResponse(
-            f"/admin/methods/{method_id}/edit?error=1", status_code=REDIRECT
+            f"/admin/methods/{method_id}/edit?error=1#method-form",
+            status_code=REDIRECT,
         )
     with db_session() as conn:
         crud.update_method(conn, method_id, data)
-    return RedirectResponse("/admin/methods", status_code=REDIRECT)
+    return RedirectResponse(f"/admin/methods#method-{method_id}", status_code=REDIRECT)
 
 
 @app.post("/admin/methods/{method_id}/delete")

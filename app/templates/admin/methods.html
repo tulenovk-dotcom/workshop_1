@@ -19,7 +19,8 @@
     </thead>
     <tbody>
       {% for m in methods %}
-        <tr>
+        {% set editing = method and method.id == m.id %}
+        <tr id="method-{{ m.id }}"{% if editing %} class="is-editing"{% endif %}>
           <td>{{ m.sort_order }}</td>
           <td><code>{{ m.code }}</code></td>
           <td>{{ m.name }}<div class="muted">{{ m.description|truncate(120) }}</div>
@@ -30,7 +31,12 @@
             {% endif %}</td>
           <td><span class="badge {{ EVIDENCE_LEVELS[m.evidence_level].css }}">{{ EVIDENCE_LEVELS[m.evidence_level].label }}</span></td>
           <td class="row-actions">
-            <a class="btn btn-small" href="/admin/methods/{{ m.id }}/edit">Изменить</a>
+            {% if editing %}
+              <a class="btn btn-small btn-ghost" href="#method-form">К форме</a>
+            {% else %}
+              <a class="btn btn-small"
+                 href="/admin/methods/{{ m.id }}/edit#method-form">Изменить</a>
+            {% endif %}
             <form method="post" action="/admin/methods/{{ m.id }}/delete"
                   onsubmit="return confirm('Удалить метод «{{ m.name }}» из справочника?');">
               <button type="submit" class="btn btn-small btn-danger">Удалить</button>
@@ -42,7 +48,15 @@
   </table>
 </div>
 
-<h2>{{ 'Изменить метод' if method else 'Добавить метод' }}</h2>
+{# Форма стоит под таблицей из двух десятков строк, поэтому ссылка
+   «Изменить» ведёт сюда якорем: иначе страница перезагружалась на то же
+   место, и казалось, что нажатие ничего не дало. #}
+<section id="method-form" class="method-editor">
+<h2>{{ 'Изменить «' ~ method.name ~ '»' if method else 'Добавить метод' }}</h2>
+
+{% if error %}
+  <p class="notice notice-warn">Код и название обязательны. Метод не сохранён.</p>
+{% endif %}
 
 {% set action = '/admin/methods/' ~ method.id ~ '/edit' if method else '/admin/methods/new' %}
 <form class="admin-form" method="post" action="{{ action }}">
@@ -96,7 +110,11 @@
 
   <div class="filter-actions">
     <button type="submit" class="btn btn-primary">Сохранить</button>
-    {% if method %}<a class="btn btn-ghost" href="/admin/methods">Отмена</a>{% endif %}
+    {% if method %}
+      <a class="btn btn-ghost"
+         href="/admin/methods#method-{{ method.id }}">Отмена</a>
+    {% endif %}
   </div>
 </form>
+</section>
 {% endblock %}
