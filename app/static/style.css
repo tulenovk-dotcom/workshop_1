@@ -1906,11 +1906,12 @@ input:focus, select:focus, textarea:focus {
 
 .stat-chart-bar { fill: var(--accent); }
 
-/* График подключений. Столбик из двух частей: внизу организации, сверху
-   частные специалисты. Второй цвет здесь не украшение - он отвечает на
-   вопрос «сколько именно центров», ради которого страница и сделана. */
-.growth-bar-centers { fill: var(--accent); }
-.growth-bar-specialists { fill: var(--accent-pale); }
+/* График подключений. Столбик из двух частей: внизу заявки, которые
+   заполнил сам специалист, сверху заведённые администратором. Второй цвет
+   здесь не украшение - он отвечает на вопрос, ради которого страница и
+   сделана: сколько людей пришли сами, а сколько мы собрали руками. */
+.growth-bar-own { fill: var(--accent); }
+.growth-bar-admin { fill: var(--accent-pale); }
 
 .growth-legend {
   display: flex;
@@ -1933,8 +1934,8 @@ input:focus, select:focus, textarea:focus {
   border-radius: 3px;
 }
 
-.growth-key-centers { background: var(--accent); }
-.growth-key-specialists { background: var(--accent-pale); }
+.growth-key-own { background: var(--accent); }
+.growth-key-admin { background: var(--accent-pale); }
 
 /* Сетка волосяная и сплошная: пунктир читался бы как «прогноз». */
 .stat-chart-grid { stroke: var(--line); stroke-width: 1; }

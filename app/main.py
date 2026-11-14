@@ -1478,6 +1478,10 @@ async def application_create(request: Request):
 
         data["logo_path"] = store_image(*image) if image else ""
         data["author_ip_hash"] = ip_hash
+        # Заявку заполняет то сам специалист, то администратор - по
+        # телефону или со слов организации. Отмечаем это сразу: задним
+        # числом отличить одно от другого нечем, кроме отпечатка адреса.
+        data["by_admin"] = 1 if request.session.get("admin") else 0
         # Выбор платного размещения проверяется заново: в браузере человек
         # мог отметить продвижение, а потом сменить город на тот, где его
         # не предлагают. Полагаться на то, что скрипт отработал, нельзя.
@@ -1709,11 +1713,12 @@ def visits_chart(series: list[dict]) -> dict:
 def growth_chart(series: list[dict]) -> dict:
     """Геометрия графика подключений. Столбик собран из двух частей.
 
-    Внизу организации, сверху частные специалисты: вопрос владельца звучит
-    «сколько центров подключается», и ответ на него должен читаться с
-    графика, а не только из таблицы. Части рисуются одна поверх другой -
-    сначала весь столбик светлым, потом нижняя часть тёмным. Так скругление
-    остаётся у всего столбика разом, а не у каждого куска по отдельности.
+    Внизу тёмным - заявки, которые заполнил сам специалист, сверху светлым
+    - заведённые администратором. Вопрос владельца звучит «сколько
+    специалистов разместили свои карточки», и ответ на него должен
+    читаться с графика, а не только из таблицы. Части рисуются одна поверх
+    другой - сначала весь столбик светлым, потом нижняя часть тёмным. Так
+    скругление остаётся у всего столбика разом, а не у каждого куска.
     """
     count = len(series)
     top = nice_ceiling(max((point["total"] for point in series), default=0))
@@ -1727,15 +1732,15 @@ def growth_chart(series: list[dict]) -> dict:
     bars = []
     for index, point in enumerate(series):
         whole = point["total"] / top * CHART_PLOT
-        lower = point["centers"] / top * CHART_PLOT
+        lower = point["own"] / top * CHART_PLOT
         left = index * slot + (slot - bar_width) / 2
         bars.append({
             "x": round(left, 2),
             "width": round(bar_width, 2),
             "y": round(CHART_BASE - whole, 2),
             "height": round(whole, 2),
-            "centers_y": round(CHART_BASE - lower, 2),
-            "centers_height": round(lower, 2),
+            "own_y": round(CHART_BASE - lower, 2),
+            "own_height": round(lower, 2),
             "radius": round(min(3, bar_width / 2), 2),
             "total": point["total"],
             "middle": round(left + bar_width / 2, 2),
@@ -1768,11 +1773,16 @@ def growth_chart(series: list[dict]) -> dict:
 
 
 @app.get("/admin/growth", response_class=HTMLResponse)
-def admin_growth(request: Request, step: str = "day", days: int = 30):
-    """Динамика подключений: сколько карточек появлялось и когда.
+def admin_growth(request: Request, step: str = "day", days: int = 30,
+                 marked: str = "", changed: int = 0):
+    """Динамика подключений: кто и когда просился в каталог.
 
-    Персональных данных здесь нет - только даты появления карточек и их
-    тип. Ни имён, ни телефонов, ни адресов.
+    Считаются заявки по дате подачи, а не карточки по дате появления:
+    карточка появляется, когда заявку одобрили, а одобряют их пачками, и
+    график показывал бы ритм администратора вместо ритма людей.
+
+    Персональных данных здесь нет - только даты, вид заявителя и отметка о
+    том, кто заполнил заявку. Ни имён, ни телефонов, ни адресов.
     """
     if guard := require_admin(request):
         return guard
@@ -1780,11 +1790,16 @@ def admin_growth(request: Request, step: str = "day", days: int = 30):
         step = "day"
     if days not in growth.DAY_PERIODS:
         days = 30
+    fingerprint = request_ip_hash(request)
     with db_session() as conn:
-        rows = crud.provider_growth_rows(conn)
-        providers_test = crud.test_providers_count(conn)
+        rows = crud.application_growth_rows(conn)
+        providers_total = sum(
+            row["n"] for row in crud.provider_counts_by(conn, "provider_type")
+        )
+        from_here = crud.applications_from_fingerprint(conn, fingerprint)
     points = growth.series(rows, step=step, days=days)
     period_total = sum(point["total"] for point in points)
+    period_own = sum(point["own"] for point in points)
 
     context = {
         "step": step,
@@ -1792,12 +1807,17 @@ def admin_growth(request: Request, step: str = "day", days: int = 30):
         "day_periods": growth.DAY_PERIODS,
         "points": list(reversed(points)),
         "chart": growth_chart(points),
-        "providers_total": len(rows),
-        "providers_test": providers_test,
+        "providers_total": providers_total,
+        "applications_total": len(rows),
         "period_total": period_total,
-        "period_centers": sum(point["centers"] for point in points),
+        "period_own": period_own,
+        "period_by_admin": period_total - period_own,
+        "period_cards": sum(point["cards"] for point in points),
         "period_specialists": sum(point["specialists"] for point in points),
         "period_months": len(points),
+        "from_here": from_here,
+        "marked": marked,
+        "changed": changed,
     }
     # «В среднем» считается от показанного срока: за неделю в разбивке по
     # дням и за месяц в разбивке по месяцам. Делить месяцы на недели незачем -
@@ -1809,6 +1829,32 @@ def admin_growth(request: Request, step: str = "day", days: int = 30):
         context["average"] = round(period_total / days * 7, 1)
         context["average_label"] = "в среднем за неделю"
     return render(request, "admin/growth.html", context)
+
+
+@app.post("/admin/growth/fingerprint")
+async def admin_growth_fingerprint(request: Request):
+    """Отметить заявки, поданные с нынешнего адреса, как свои - или снять
+    отметку.
+
+    До появления столбца `by_admin` заявки не различались, и отличить
+    заведённые администратором можно только по отпечатку адреса: сам адрес
+    из него не восстановить, но видно, что записи сделаны с одного
+    устройства. Администратор нажимает кнопку с того адреса, с которого
+    заводил заявки; сетей может быть несколько, и тогда нажатий тоже.
+
+    Действие обратимо: вторая кнопка снимает отметку с того же отпечатка.
+    """
+    if guard := require_admin(request):
+        return guard
+    form = await request.form()
+    mark = form.get("mark", "") == "1"
+    fingerprint = request_ip_hash(request)
+    with db_session() as conn:
+        changed = crud.mark_applications_from_fingerprint(conn, fingerprint, mark)
+    return RedirectResponse(
+        f"/admin/growth?marked={'1' if mark else '0'}&changed={changed}",
+        status_code=REDIRECT,
+    )
 
 
 @app.get("/admin/stats", response_class=HTMLResponse)

@@ -64,6 +64,27 @@ CREATE TABLE requests (
 """
 
 
+# Заявки на размещение в том виде, в каком они лежат на боевой базе до
+# появления отметки «заявку заполнил администратор».
+СТАРЫЕ_ЗАЯВКИ = """
+CREATE TABLE applications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    applicant_kind TEXT NOT NULL,
+    name TEXT NOT NULL,
+    city TEXT NOT NULL,
+    contact_person TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'new',
+    admin_note TEXT NOT NULL DEFAULT '',
+    provider_id INTEGER,
+    consent_at TEXT NOT NULL,
+    author_ip_hash TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+"""
+
+
 def столбцы(conn, таблица):
     return {row[1] for row in conn.execute(f"PRAGMA table_info({таблица})")}
 
@@ -77,6 +98,10 @@ def обновить(conn):
         )
     if "kind" not in столбцы(conn, "requests"):
         conn.execute("ALTER TABLE requests ADD COLUMN kind TEXT NOT NULL DEFAULT ''")
+    if "by_admin" not in столбцы(conn, "applications"):
+        conn.execute(
+            "ALTER TABLE applications ADD COLUMN by_admin INTEGER NOT NULL DEFAULT 0"
+        )
     conn.executescript(_блоки["INDEXES"])
 
 
@@ -116,6 +141,37 @@ class ОбновлениеСуществующейБазы(unittest.TestCase):
             )
         }
         self.assertIn("idx_visit_log_people", индексы)
+
+    def test_старым_заявкам_добавляется_отметка(self):
+        """Столбца `by_admin` на боевой базе ещё нет: таблица создана
+        раньше, а `CREATE TABLE IF NOT EXISTS` её не меняет."""
+        conn = sqlite3.connect(":memory:")
+        conn.executescript(СТАРЫЕ_ЗАЯВКИ)
+        conn.execute(
+            "INSERT INTO applications (applicant_kind, name, city,"
+            " contact_person, phone, consent_at, created_at, updated_at)"
+            " VALUES ('organization', 'Центр', 'Астана', 'Айгуль',"
+            " '+77000000000', '2026-11-01T06:00:00+00:00',"
+            " '2026-11-01T06:00:00+00:00', '2026-11-01T06:00:00+00:00')"
+        )
+        обновить(conn)
+        self.assertIn("by_admin", столбцы(conn, "applications"))
+
+    def test_старые_заявки_считаются_пришедшими_со_стороны(self):
+        """Гадать задним числом, кто заполнил заявку, нельзя: отметку
+        ставит администратор руками по отпечатку адреса."""
+        conn = sqlite3.connect(":memory:")
+        conn.executescript(СТАРЫЕ_ЗАЯВКИ)
+        conn.execute(
+            "INSERT INTO applications (applicant_kind, name, city,"
+            " contact_person, phone, consent_at, created_at, updated_at)"
+            " VALUES ('specialist', 'Логопед', 'Алматы', 'Асем',"
+            " '+77000000001', '2026-11-01T06:00:00+00:00',"
+            " '2026-11-01T06:00:00+00:00', '2026-11-01T06:00:00+00:00')"
+        )
+        обновить(conn)
+        строка = conn.execute("SELECT by_admin FROM applications").fetchone()
+        self.assertEqual(строка[0], 0)
 
     def test_обновление_можно_повторять(self):
         """Сайт перезапускают часто, и каждый запуск проходит этот путь."""
