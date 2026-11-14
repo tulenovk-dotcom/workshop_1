@@ -11,9 +11,10 @@
   "use strict";
 
   // Именно список каталога, а не блок продвижения: у того тоже класс
-  // .cards, и он стоит выше по странице. Без data-page-size скрипт
-  // брал бы три платные карточки и прятал бы кнопку как ненужную.
-  var list = document.querySelector(".cards[data-page-size]");
+  // .cards, и он стоит выше по странице. Пометка data-catalog-list стоит
+  // ровно на каталоге; без неё скрипт брал бы платные карточки и прятал
+  // бы кнопку как ненужную.
+  var list = document.querySelector("[data-catalog-list]");
   var more = document.querySelector("[data-more]");
   if (!list || !more) { return; }
 

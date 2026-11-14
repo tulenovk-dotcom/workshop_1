@@ -1,9 +1,9 @@
 /* Каталог: карта мест занятий и «Найти ближайшие ко мне».
  *
  * Карта открывается только по кнопке: до нажатия ни библиотека карты, ни
- * картинки OpenStreetMap не загружаются. На карте те же места, что в списке
- * под ней, то есть с учётом фильтров. Места без точки на карте остаются
- * только в списке.
+ * картинки OpenStreetMap не загружаются. На карте те же места, что нашлись
+ * по фильтрам: и список под картой, и блок продвижения над ним. Места без
+ * точки на карте остаются только в списке.
  *
  * «Ближайшие» спрашивают у браузера, где человек находится, и пересортируют
  * список по расстоянию. Расстояние считается здесь же, в браузере: место
@@ -14,16 +14,19 @@
 
   var tools = document.querySelector("[data-map-tools]");
   var box = document.getElementById("catalog-map");
-  var list = document.querySelector(".cards");
+  // Каталог - список под картой. Брать «первый список на странице» нельзя:
+  // перед ним может стоять блок продвижения со своими карточками, и карта
+  // тогда показывает только платные места.
+  var list = document.querySelector("[data-catalog-list]");
   if (!tools || !box || !list) { return; }
 
   var text = tools.dataset;
   var toggle = tools.querySelector("[data-map-toggle]");
   var nearButton = tools.querySelector("[data-near-me]");
   var status = tools.querySelector("[data-map-status]");
-  // Ни у одного места в списке нет точки - кнопки карты бесполезны,
+  // Ни у одного найденного места нет точки - кнопки карты бесполезны,
   // не показываем их совсем.
-  if (!list.querySelector(".provider-card[data-lat]")) { return; }
+  if (!document.querySelector(".provider-card[data-lat]")) { return; }
   tools.hidden = false;
 
   // Цвета берём из токенов сайта, а не пишем здесь свои.
@@ -38,8 +41,17 @@
 
   function say(message) { status.textContent = message || ""; }
 
-  function cards() {
+  // Карточки самого каталога. Их и только их можно переставлять: карточки
+  // блока продвижения куплены на верх страницы и остаются на месте.
+  function listCards() {
     return Array.prototype.slice.call(list.querySelectorAll(".provider-card"));
+  }
+
+  // Все найденные места на странице, вместе с блоком продвижения. Платное
+  // место - такое же найденное, и на карте ему место наравне с остальными.
+  function allCards() {
+    return Array.prototype.slice.call(
+      document.querySelectorAll(".provider-card"));
   }
 
   function point(card) {
@@ -107,7 +119,7 @@
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map);
 
-    cards().forEach(function (card) {
+    allCards().forEach(function (card) {
       var p = point(card);
       if (!p) { return; }
       markers[card.dataset.providerId] = window.L.circleMarker(p, {
@@ -119,7 +131,7 @@
 
   function fitView() {
     if (!map) { return; }
-    var points = cards().map(point).filter(Boolean);
+    var points = allCards().map(point).filter(Boolean);
     if (you) {
       // С местом человека: он и три ближайших к нему, а не вся страна.
       points.sort(function (a, b) { return distanceKm(you, a) - distanceKm(you, b); });
@@ -162,8 +174,8 @@
   });
 
   function sortByDistance() {
-    var all = cards();
-    all.forEach(function (card) {
+    // Расстояние подписываем всем, включая платные карточки...
+    allCards().forEach(function (card) {
       var p = point(card);
       card._km = p ? distanceKm(you, p) : Infinity;
       var label = card.querySelector("[data-distance]");
@@ -172,6 +184,8 @@
         label.textContent = p ? formatKm(card._km) : "";
       }
     });
+    // ...а переставляем только сам каталог.
+    var all = listCards();
     all.sort(function (a, b) { return a._km - b._km; });
     all.forEach(function (card) { list.appendChild(card); });
     // catalog-more.js пересчитает, какие карточки показывать после сортировки.
