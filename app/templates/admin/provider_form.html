@@ -200,6 +200,17 @@
   {# Срок продвижения. Пока дата не прошла, карточка попадает в блок
      «Платные места» наверху каталога и наверху своего города. Кончился
      срок - карточка опускается сама, выключать руками не надо. #}
+  {% if paid_plan %}
+  {#- Карточку по заявке с продвижением создают, когда оплата уже взята:
+      оплата запишется сама при сохранении, вводить срок руками не нужно. #}
+  <div class="field field-wide">
+    <span class="field-label">Продвижение</span>
+    <p class="notice notice-ok">В заявке выбран срок «{{ paid_plan.label }}» за {{ paid_plan.price|price }} ₸.
+      При сохранении карточки эта оплата запишется в
+      <a href="/admin/payments">«Оплаты»</a> сегодняшним числом, и карточка
+      будет наверху каталога до {{ paid_until|local_date }}.</p>
+  </div>
+  {% else %}
   <div class="field">
     <label for="promo_until">Продвижение оплачено до</label>
     <input type="date" id="promo_until" name="promo_until"
@@ -209,6 +220,7 @@
       странице <a href="/admin/payments">«Оплаты»</a>: срок поставится сам,
       а сумма попадёт в журнал.</p>
   </div>
+  {% endif %}
 
   <div class="field field-wide logo-field">
     <label for="logo">Фото или логотип</label>
