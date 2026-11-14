@@ -11,6 +11,10 @@
   --accent: #2b5a8c;
   --accent-dark: #1f4570;
   --accent-soft: #e6eef7;
+  /* Средний синий - для второй части столбика на графике
+     подключений. Светлее акцента, но ещё виден на белом: у
+     --accent-soft на фоне страницы столбик пропадал бы. */
+  --accent-pale: #9dbadb;
 
   /* Тёплая плашка помощника «Помогите выбрать». */
   --warm-bg: #fff6e3;
@@ -1901,6 +1905,36 @@ input:focus, select:focus, textarea:focus {
 .stat-chart svg { display: block; width: 100%; height: auto; }
 
 .stat-chart-bar { fill: var(--accent); }
+
+/* График подключений. Столбик из двух частей: внизу организации, сверху
+   частные специалисты. Второй цвет здесь не украшение - он отвечает на
+   вопрос «сколько именно центров», ради которого страница и сделана. */
+.growth-bar-centers { fill: var(--accent); }
+.growth-bar-specialists { fill: var(--accent-pale); }
+
+.growth-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 18px;
+  margin: -12px 0 20px;
+  color: var(--muted);
+  font-size: var(--step--1);
+}
+
+.growth-legend-item { display: inline-flex; align-items: center; gap: 7px; }
+
+/* Квадратик величиной со строчную букву: легенда читается как часть
+   фразы, а не как отдельная плашка. */
+.growth-key {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.growth-key-centers { background: var(--accent); }
+.growth-key-specialists { background: var(--accent-pale); }
 
 /* Сетка волосяная и сплошная: пунктир читался бы как «прогноз». */
 .stat-chart-grid { stroke: var(--line); stroke-width: 1; }

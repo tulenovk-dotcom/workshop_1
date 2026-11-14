@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Админка - подключения{% endblock %}
+
+{% block content %}
+<h1>Подключения</h1>
+{% include "admin/_nav.html" %}
+
+<p class="admin-summary">Сколько карточек появлялось в каталоге и когда.
+  Считается появление карточки, а не поданная заявка: заявку могут
+  отклонить или прислать дважды, а карточку можно завести и руками, без
+  заявки. Имён, телефонов и адресов здесь нет - только даты и числа.</p>
+
+<nav class="stat-periods">
+  {% if step == 'day' %}
+    <span class="stat-period stat-period-current">По дням</span>
+    <a class="stat-period" href="/admin/growth?step=month">По месяцам</a>
+  {% else %}
+    <a class="stat-period" href="/admin/growth?step=day&amp;days=30">По дням</a>
+    <span class="stat-period stat-period-current">По месяцам</span>
+  {% endif %}
+</nav>
+
+{% if step == 'day' %}
+  <nav class="stat-periods">
+    {% for period in day_periods %}
+      {% if period == days %}
+        <span class="stat-period stat-period-current">{{ period }} дней</span>
+      {% else %}
+        <a class="stat-period"
+           href="/admin/growth?step=day&amp;days={{ period }}">{{ period }} дней</a>
+      {% endif %}
+    {% endfor %}
+  </nav>
+{% endif %}
+
+<section class="stat-strip">
+  <p class="stat-figure">
+    <span class="stat-num">{{ providers_total }}</span>
+    <span class="stat-label">карточек в каталоге</span>
+  </p>
+  <p class="stat-figure">
+    <span class="stat-num">{{ period_total }}</span>
+    <span class="stat-label">
+      {%- if step == 'month' %}появилось за {{ period_months }} мес.
+      {%- else %}появилось за {{ days }} дней{% endif %}</span>
+  </p>
+  <p class="stat-figure">
+    <span class="stat-num">{{ average }}</span>
+    <span class="stat-label">{{ average_label }}</span>
+  </p>
+</section>
+
+{% if providers_test %}
+  <p class="hint">Тестовых записей среди них: {{ providers_test }}. На стенде
+    они составляют весь каталог, поэтому из счёта не выброшены.</p>
+{% endif %}
+
+<figure class="stat-chart">
+  <svg viewBox="-{{ chart.gutter }} 0 {{ chart.width + chart.gutter + chart.right }} {{ chart.height }}"
+       preserveAspectRatio="xMidYMid meet" role="img"
+       aria-label="Новые карточки каталога
+                   {% if step == 'month' %}по месяцам{% else %}по дням за {{ days }} дней{% endif %}.
+                   Всего за срок {{ period_total }}: организаций
+                   {{ period_centers }}, частных специалистов
+                   {{ period_specialists }}. Точные числа - в таблице ниже.">
+    {% for line in chart.lines %}
+      <line class="stat-chart-grid" x1="0" x2="{{ chart.width }}"
+            y1="{{ line.y }}" y2="{{ line.y }}"></line>
+      <text class="stat-chart-axis" x="-8" y="{{ line.y + 4 }}"
+            text-anchor="end">{{ line.value }}</text>
+    {% endfor %}
+
+    {# Сначала весь столбик светлым, потом нижняя часть тёмным: скругление
+       остаётся у столбика целиком, а не у каждого куска. #}
+    {% for bar in chart.bars %}
+      {% if bar.height %}
+        <rect class="growth-bar-specialists" x="{{ bar.x }}" y="{{ bar.y }}"
+              width="{{ bar.width }}" height="{{ bar.height }}"
+              rx="{{ bar.radius }}"><title>{{ bar.title }}</title></rect>
+      {% endif %}
+      {% if bar.centers_height %}
+        <rect class="growth-bar-centers" x="{{ bar.x }}" y="{{ bar.centers_y }}"
+              width="{{ bar.width }}" height="{{ bar.centers_height }}"
+              rx="{{ bar.radius }}"><title>{{ bar.title }}</title></rect>
+      {% endif %}
+      {% if bar.value_label %}
+        <text class="stat-chart-value" x="{{ bar.middle }}" y="{{ bar.y - 5 }}"
+              text-anchor="middle">{{ bar.total }}</text>
+      {% endif %}
+      {% if bar.show_label %}
+        <text class="stat-chart-axis" x="{{ bar.middle }}"
+              y="{{ chart.label_y }}" text-anchor="middle">{{ bar.label }}</text>
+      {% endif %}
+    {% endfor %}
+  </svg>
+</figure>
+
+<p class="growth-legend">
+  <span class="growth-legend-item">
+    <span class="growth-key growth-key-centers"></span>организации</span>
+  <span class="growth-legend-item">
+    <span class="growth-key growth-key-specialists"></span>частные специалисты</span>
+</p>
+
+<div class="table-wrap">
+  <table class="admin-table stat-table">
+    <thead>
+      <tr>
+        <th>{% if step == 'month' %}Месяц{% else %}День{% endif %}</th>
+        <th class="stat-col-num">Организации</th>
+        <th class="stat-col-num">Частные специалисты</th>
+        <th class="stat-col-num">Всего</th>
+        <th class="stat-col-num">В каталоге</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for point in points %}
+        <tr>
+          <td>{{ point.period }}</td>
+          <td class="stat-col-num">{{ point.centers }}</td>
+          <td class="stat-col-num">{{ point.specialists }}</td>
+          <td class="stat-col-num">{{ point.total }}</td>
+          <td class="stat-col-num muted">{{ point.running }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<p class="hint">Столбец «В каталоге» - сколько карточек накопилось к концу
+  этого {% if step == 'month' %}месяца{% else %}дня{% endif %}, считая и те,
+  что появились раньше показанного срока.</p>
+
+<p class="hint">Сколько заявок пришло и сколько из них одобрено - на странице
+  <a href="/admin/stats">Статистика</a>.</p>
+{% endblock %}

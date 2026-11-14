@@ -714,6 +714,24 @@ def provider_counts_by(conn: sqlite3.Connection, column: str) -> list[sqlite3.Ro
     ).fetchall()
 
 
+def provider_growth_rows(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Когда появилась каждая карточка и какого она типа.
+
+    Возвращаем сырые строки, а не готовые суммы по дням: день считается по
+    времени Казахстана, а в базе время гринвичское, и в SQLite перевести
+    его надёжно нечем. Карточек в каталоге сотни, не миллионы, поэтому
+    группировать их в Python дешевле, чем изобретать перевод пояса в
+    запросе. Тестовые записи не отбрасываем, а помечаем: на стенде они
+    составляют весь каталог, и страница без них была бы пустой.
+    """
+    return conn.execute(
+        "SELECT created_at, provider_type, is_test"
+        "  FROM providers"
+        " WHERE created_at <> ''"
+        " ORDER BY created_at"
+    ).fetchall()
+
+
 def provider_counts_by_method(conn: sqlite3.Connection) -> list[sqlite3.Row]:
     """Сколько мест предлагает каждый метод. Порядок - как в справочнике,
     чтобы страница статистики и фильтр на главной читались одинаково."""
