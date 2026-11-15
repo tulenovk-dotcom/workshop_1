@@ -140,23 +140,33 @@
           <span>{{ t('Карточка со всеми данными. Место в списке по оценкам родителей.') }}</span>
         </span>
       </label>
-      <label class="plan-option">
+      {#- Платный вариант окрашен так же, как блок «Продвижение» в каталоге:
+          человек сразу видит, как будет выглядеть место, за которое платит. -#}
+      <label class="plan-option plan-option-promo">
         <input type="radio" name="plan" value="promo"
                {% if form.plan == 'promo' %}checked{% endif %}>
         <span class="plan-text">
           <strong>{{ t('С продвижением') }}<span class="plan-price">{{ t('от 1 999 ₸') }}</span></strong>
-          <span>{{ t('Карточка стоит в блоке «Продвижение» наверху каталога и наверху списка по вашему городу.') }}</span>
-          <span>{{ t('В блоке три места. Если оплативших больше, они сменяют друг друга по очереди: каждая карточка стоит наверху по три часа подряд.') }}</span>
+          <span class="plan-lead">{{ t('Родители в вашем городе увидят вас первыми.') }}</span>
+          <span>{{ t('Карточка стоит в золотом блоке «Продвижение» наверху каталога и наверху списка по вашему городу.') }}</span>
           <span class="plan-terms">{{ t('Платить сейчас не нужно: выберите срок, реквизиты пришлём после проверки.') }}</span>
           <span class="plan-months">
             {% for plan in PROMO_PLANS %}
-              <label class="month-option">
+              {#- Последний срок в PROMO_PLANS самый длинный и самый дешёвый
+                  в пересчёте на месяц, его и отмечаем. -#}
+              <label class="month-option{% if loop.last %} month-best{% endif %}">
                 <input type="radio" name="promo_term" value="{{ plan.code }}"
                        {% if form.promo_term == plan.code or (not form.promo_term and loop.first) %}checked{% endif %}>
-                <span>{{ t(plan.label) }}<b>{{ plan.price|price }} ₸</b></span>
+                <span>
+                  <span class="month-main">{{ t(plan.label) }}<b>{{ plan.price|price }} ₸</b></span>
+                  {% if plan.months > 1 %}
+                    <small>{{ t('%s ₸/мес') % ((plan.price / plan.months + 0.5)|int|price) }}{% if loop.last %}, {{ t('выгоднее всего') }}{% endif %}</small>
+                  {% endif %}
+                </span>
               </label>
             {% endfor %}
           </span>
+          <span class="plan-note">{{ t('В блоке три места. Если желающих больше, карточки показываются по очереди, по 3 часа.') }}</span>
         </span>
       </label>
     </div>

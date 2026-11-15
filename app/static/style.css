@@ -1387,7 +1387,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .plan-option:hover { border-color: var(--accent); }
-.plan-option input { margin: 3px 0 0; accent-color: var(--accent); }
+.plan-option > input { align-self: flex-start; margin: 3px 0 0; accent-color: var(--accent); }
 .plan-option:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
 
 .plan-text { display: grid; gap: 4px; }
@@ -1416,6 +1416,30 @@ input:focus, select:focus, textarea:focus {
 .month-option input:checked + span { background: var(--accent-soft); border-color: var(--accent); }
 .month-option input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
 .plan-price { margin-left: 8px; font-weight: var(--w-semibold); color: var(--accent); }
+
+/* Платный вариант в тех же тёплых токенах, что и блок «Продвижение» в
+   каталоге (.promo-block): анкета показывает, как будет выглядеть место
+   наверху. Синий остаётся у радиокнопок и цен, чтобы выбор читался так же,
+   как в бесплатном варианте. */
+.plan-option-promo { background: var(--warm-bg); border-color: var(--warm-line); }
+.plan-option-promo:hover,
+.plan-option-promo:has(input:checked) { background: var(--warm-bg); border-color: var(--warm-mark); }
+.plan-option-promo:has(> input:checked) { box-shadow: 0 0 0 1.5px var(--warm-mark); }
+
+.plan-text .plan-lead { font-size: 1rem; font-weight: var(--w-semibold); color: var(--text); }
+.plan-text .plan-note { margin-top: 4px; font-size: 0.82rem; }
+
+/* Таблетка срока: сверху срок и сумма, под ними цена в месяц. Селекторы
+   с .plan-text, чтобы перебить общее правило .plan-text span. */
+.plan-text .month-option > span { flex-direction: column; align-items: flex-start; gap: 0; }
+.plan-text .month-option .month-main {
+  display: inline-flex; align-items: baseline; gap: 6px;
+  padding: 0; border: 0; border-radius: 0; background: none;
+  font-size: 0.9rem; color: var(--text);
+}
+.plan-text .month-option small { font-size: 0.78rem; color: var(--muted); }
+.month-best > span { border-color: var(--warm-mark); }
+.plan-text .month-best small { color: var(--amber); font-weight: var(--w-semibold); }
 
 .pay {
   margin: 18px 0 0;
