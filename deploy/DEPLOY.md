@@ -38,7 +38,9 @@ sudo nano /etc/erekshe/erekshe.env
 ```
 
 Обязательно подставить свои значения: `ADMIN_LOGIN`, `ADMIN_PASSWORD`,
-`SECRET_KEY`, `IP_SALT`. Ключи сгенерировать так:
+`SECRET_KEY`, `IP_SALT`. Если нужны оповещения о новых заявках в Телеграм -
+ещё `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHAT_ID`; без них сайт работает как
+раньше, просто молча. Ключи сгенерировать так:
 
 ```bash
 openssl rand -hex 32
