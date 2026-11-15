@@ -24,7 +24,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from . import crud, growth, payments, promo, geo
 from .database import DB_PATH, db_session, init_db, read_or_create_secret
-from .notifications import notify_new_application
+from .notifications import is_configured as telegram_configured, notify_new_application
 from .i18n import (
     DEFAULT_LANGUAGE,
     LANGUAGES,
@@ -111,6 +111,17 @@ SHOW_TEST_BANNER = os.environ.get("SHOW_TEST_BANNER") == "1"
 # сервера.
 TEST_NOTICE = os.environ.get("TEST_NOTICE") == "1"
 NOINDEX = os.environ.get("NOINDEX") == "1"
+
+# Оповещения о новых заявках уходят владельцу в Телеграм. Без переменных
+# TELEGRAM_BOT_TOKEN и TELEGRAM_CHAT_ID заявки принимаются как раньше,
+# просто сообщение не отправляется. Молча такое оставлять нельзя: со
+# стороны «оповещения не настроены» и «оповещения сломались» выглядят
+# одинаково, поэтому при запуске это видно в журнале.
+if not telegram_configured():
+    log.warning(
+        "Оповещения в Телеграм выключены: не заданы TELEGRAM_BOT_TOKEN"
+        " и TELEGRAM_CHAT_ID. Новые заявки будут приходить только в админку."
+    )
 
 # Демонстрационные записи наливаются в пустую базу только по явной просьбе.
 # На боевом сервере переменной нет, и каталог начинается с чистого листа.
