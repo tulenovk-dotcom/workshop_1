@@ -735,15 +735,23 @@ def language_links(request: Request) -> dict:
 
 def render(request: Request, template: str, context: dict) -> HTMLResponse:
     lang = request_lang(request)
+    # Адрес страницы без параметров: для canonical и og:url. Параметры
+    # фильтров в них не нужны - это одна и та же страница каталога.
+    # canonical указывает сам на себя: русская и казахская версии -
+    # разные страницы. Параметры фильтров в адрес не попадают: каталог
+    # с фильтрами и без них это одна страница.
+    page_url = SITE_URL + local_path(request, request.url.path)
     context = {
         **context,
         "lang": lang,
-        # Адрес страницы без параметров: для canonical и og:url. Параметры
-        # фильтров в них не нужны - это одна и та же страница каталога.
-        # canonical указывает сам на себя: русская и казахская версии -
-        # разные страницы. Параметры фильтров в адрес не попадают: каталог
-        # с фильтрами и без них это одна страница.
-        "page_url": SITE_URL + local_path(request, request.url.path),
+        "page_url": page_url,
+        # Готовый текст для кнопки связи с администратором: WhatsApp
+        # подставит его в поле ввода. Собирается здесь, а не в шаблоне,
+        # потому что в нём перенос строки, а в шаблоне его не записать.
+        "admin_chat_text": translate(
+            "Здравствуйте! У меня вопрос по сайту erekshe.kz.\nСтраница: %s", lang
+        )
+        % page_url,
         # Адреса обеих версий - для тегов hreflang в шапке страницы.
         "alt_urls": language_urls(request.url.path),
         # Внутренняя ссылка в текущей языковой версии.
