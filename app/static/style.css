@@ -1797,6 +1797,12 @@ input:focus, select:focus, textarea:focus {
 
 .admin-summary { color: var(--muted); }
 
+/* Поиск по записям каталога в админке. Поле не во всю ширину: длинная
+   строка ввода над таблицей читается как ещё одна строка таблицы. */
+.admin-search { max-width: 460px; margin: 4px 0 14px; }
+.admin-search .hint:empty { display: none; }
+tr[hidden] { display: none; }
+
 /* Номер выкаченной версии. Служебная строка - набрана тихо, чтобы не
    спорить с содержимым страницы. */
 .admin-version {

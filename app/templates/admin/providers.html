@@ -115,6 +115,18 @@
 
 <p><a class="btn btn-primary" href="/admin/providers/new">Добавить место занятий</a></p>
 
+{#- Поиск по записям: фильтрует таблицу прямо на странице, без запроса к
+    серверу. Ищет по названию, специальности, городу, району, адресу,
+    телефону и WhatsApp. В телефоне сравниваются только цифры, поэтому
+    «707 406» найдёт и «+7 (707) 406-..». Без скрипта поле спрятано, и
+    таблица просто показывается целиком. -#}
+<div class="field admin-search" hidden data-admin-search>
+  <label for="admin-q">Поиск по записям</label>
+  <input type="search" id="admin-q" autocomplete="off"
+         placeholder="Название, город, адрес или телефон">
+  <p class="hint" data-admin-search-count aria-live="polite"></p>
+</div>
+
 <div class="table-wrap">
   <table class="admin-table">
     <thead>
@@ -129,7 +141,8 @@
     </thead>
     <tbody>
       {% for p in providers %}
-        <tr>
+        <tr data-search="{{ [p.name, p.specialty, p.city, p.district, p.address]|select|join(' ') }}"
+            data-phones="{{ [p.phone, p.whatsapp]|select|join(' ') }}">
           <td>
             <div class="table-name">
               {{ ui.logo(p, 'xs') }}
@@ -156,4 +169,6 @@
     </tbody>
   </table>
 </div>
+<p class="notice" hidden data-admin-search-empty>Ничего не найдено. Проверьте написание или поищите по городу.</p>
+<script src="{{ static_url('admin-search.js') }}" defer></script>
 {% endblock %}
