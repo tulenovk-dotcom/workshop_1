@@ -23,12 +23,12 @@ def rows(count, paid_ids=(), until="2099-01-01"):
 
 
 class PromoBlockTest(unittest.TestCase):
-    def test_korotkiy_spisok_bez_bloka(self):
-        """Меньше шести найденных - блока нет, список не тронут."""
-        found = rows(5, paid_ids=(1, 2))
+    def test_korotkiy_spisok_s_blokom(self):
+        """Даже при двух найденных оплативший стоит в блоке наверху."""
+        found = rows(2, paid_ids=(2,))
         block, rest = promo.split(found, MOMENT)
-        self.assertEqual(block, [])
-        self.assertEqual(rest, found)
+        self.assertEqual([r["id"] for r in block], [2])
+        self.assertEqual([r["id"] for r in rest], [1])
 
     def test_nikto_ne_oplatil(self):
         block, rest = promo.split(rows(10), MOMENT)
@@ -131,19 +131,15 @@ class PromoBlockTest(unittest.TestCase):
         self.assertNotEqual([r["id"] for r in today], [r["id"] for r in tomorrow])
 
 
-class PromoCitiesTest(unittest.TestCase):
-    def test_tolko_goroda_s_shestju_i_bolshe(self):
-        counts = {"Астана": 16, "Алматы": 10, "Шымкент": 7,
-                  "Атырау": 5, "Тараз": 1}
-        self.assertEqual(promo.promo_cities(counts), ["Алматы", "Астана", "Шымкент"])
+class PromoAllowedTest(unittest.TestCase):
+    def test_lyuboy_gorod(self):
+        self.assertTrue(promo.promo_allowed("Тараз"))
+        self.assertTrue(promo.promo_allowed("Жезказган"))
 
-    def test_rovno_shest_prohodit(self):
-        self.assertEqual(promo.promo_cities({"Актау": 6}), ["Актау"])
-
-    def test_pustoy_spravochnik(self):
-        self.assertEqual(promo.promo_cities({}), [])
-        self.assertEqual(promo.promo_cities(None), [])
-
+    def test_bez_goroda(self):
+        self.assertFalse(promo.promo_allowed(""))
+        self.assertFalse(promo.promo_allowed("   "))
+        self.assertFalse(promo.promo_allowed(None))
 
 if __name__ == "__main__":
     unittest.main()

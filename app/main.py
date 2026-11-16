@@ -1350,10 +1350,6 @@ def application_form_context(conn, form: dict, errors: list[str]) -> dict:
         "form": form,
         "errors": errors,
         "selected_methods": set(form.get("methods", [])),
-        # Города, где продвижение имеет смысл предлагать. Список считается
-        # заново при каждом открытии анкеты: город включается сам, как
-        # только карточек в нём станет достаточно.
-        "promo_cities": promo.promo_cities(crud.city_counts(conn)),
     }
 
 
@@ -1517,8 +1513,8 @@ async def application_create(request: Request):
         # Выбор платного размещения проверяется заново: в браузере человек
         # мог отметить продвижение, а потом сменить город на тот, где его
         # не предлагают. Полагаться на то, что скрипт отработал, нельзя.
-        wants_promo = form.get("plan", "") == "promo" and data.get("city") in set(
-            promo.promo_cities(crud.city_counts(conn))
+        wants_promo = form.get("plan", "") == "promo" and promo.promo_allowed(
+            data.get("city")
         )
         data["wants_promo"] = 1 if wants_promo else 0
         # Срок - намерение, а не обязательство: человек ещё ничего не платил
