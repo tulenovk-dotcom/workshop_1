@@ -110,6 +110,36 @@
   </div>
 </header>
 
+{#- Рекламное место. Стоит под шапкой, а не над ней: наверху уже бывают
+    служебные полосы про стенд и тестовый режим, и реклама рядом с ними
+    читалась бы как сообщение сайта.
+
+    Пока рекламодателя нет, полоса предлагает это место: пунктирный квадрат
+    на месте знака показывает, что место свободно. Кнопка открывает WhatsApp
+    администратора с готовым текстом. Оформление то же, что будет у
+    настоящей рекламы: плита во всю ширину и кнопка `.btn-outline`.
+
+    В админке полосы нет - там администратор, а не посетитель. -#}
+{% if not request.url.path.startswith('/admin') %}
+<aside class="ad-banner" aria-label="{{ t('Реклама') }}">
+  <div class="container ad-banner-inner">
+    <span class="ad-banner-logo ad-banner-slot" aria-hidden="true">{{ t('ваш логотип') }}</span>
+
+    <div class="ad-banner-body">
+      <p class="ad-banner-brand">
+        <span class="ad-banner-name">{{ t('Место для рекламы') }}</span>
+        <span class="ad-banner-tag">{{ t('Реклама') }}</span>
+      </p>
+      <p class="ad-banner-title">{{ t('Здесь может быть ваша реклама') }}</p>
+    </div>
+
+    <a class="btn-outline ad-banner-cta"
+       href="{{ ADMIN_PHONE|wa_link }}?text={{ t('Здравствуйте! Хочу разместить рекламу на erekshe.kz.')|urlencode }}"
+       target="_blank" rel="noopener">{{ t('Узнать условия') }}</a>
+  </div>
+</aside>
+{% endif %}
+
 <main class="container">
   {% block content %}{% endblock %}
 </main>

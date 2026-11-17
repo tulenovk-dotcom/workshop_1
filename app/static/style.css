@@ -21,6 +21,15 @@
   --warm-line: #f2d79a;
   --warm-mark: #f2b84b;
 
+  /* Рекламная полоса: тёмный индиго с жёлтой кнопкой. Ни с одним цветом
+     сайта не совпадает, поэтому реклама не путается с каталогом и метками
+     доказательности. */
+  --ad-bg: #2a2466;
+  --ad-text: #ffffff;
+  --ad-muted: #cfcaf2;
+  --ad-mark: #ffd166;
+  --ad-mark-hover: #ffe08f;
+
   /* Скругления по уровню: крупные блоки мягче, мелкие - строже. */
   --r-block: 22px;
   --r-control: 14px;
@@ -175,6 +184,123 @@ a { color: var(--accent); }
 .site-header {
   background: var(--surface);
   border-bottom: 1px solid var(--line);
+}
+
+/* --- Рекламный баннер под шапкой ---
+   Реклама стороннего продукта, адресованная центрам и клиникам. Собран из
+   деталей, которые на сайте уже есть: плита во всю ширину, как служебные
+   полосы наверху, квадрат со скруглением --r-control под знак, как у
+   логотипов в карточках, и готовая кнопка .btn-outline. Вторых кнопок и
+   вторых отступов баннер не заводит.
+
+   Заливка тише служебных полос: светлый акцентный токен, без тёмного фона
+   и без крупного кегля. Громким баннеру быть нельзя - сайт открывают
+   родители в тяжёлый момент, и первое, что они видят, не должно кричать.
+   Опознаётся реклама подписью, а не цветом: цвета на этом сайте заняты
+   уровнями доказательности. */
+.ad-banner {
+  background: var(--ad-bg);
+}
+.ad-banner-inner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+/* Знак рекламодателя в своём квадрате. Квадрат держит чужие цвета внутри
+   себя и не даёт им разойтись по странице. */
+.ad-banner-logo {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-control);
+}
+.ad-banner-body { min-width: 0; }
+
+/* Свободное место под знак рекламодателя: пунктир вместо картинки. */
+.ad-banner-slot {
+  display: grid;
+  place-items: center;
+  border: 1.5px dashed var(--ad-mark);
+  color: var(--ad-mark);
+  font-size: 0.62rem;
+  font-weight: var(--w-semibold);
+  line-height: 1.15;
+  text-align: center;
+  padding: 2px;
+  overflow-wrap: anywhere;
+}
+
+.ad-banner-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 2px;
+}
+.ad-banner-name {
+  font-size: 0.85rem;
+  font-weight: var(--w-bold);
+  color: var(--ad-muted);
+}
+.ad-banner-tag {
+  padding: 2px 8px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--ad-muted);
+  font-size: 0.74rem;
+  font-weight: var(--w-semibold);
+  white-space: nowrap;
+}
+.ad-banner-title {
+  margin: 0 0 2px;
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  font-weight: var(--w-black);
+  line-height: 1.25;
+  color: var(--ad-text);
+}
+.ad-banner-text {
+  margin: 0;
+  font-size: 0.93rem;
+  line-height: 1.45;
+  color: var(--ad-muted);
+}
+/* Кнопка прижата к правому краю, пока строка помещается в один ряд. */
+.ad-banner .ad-banner-cta {
+  margin-left: auto;
+  background: var(--ad-mark);
+  border-color: var(--ad-mark);
+  color: var(--ad-bg);
+}
+.ad-banner .ad-banner-cta:hover {
+  background: var(--ad-mark-hover);
+  border-color: var(--ad-mark-hover);
+  color: var(--ad-bg);
+}
+.ad-banner-cta:focus-visible { outline: 3px solid var(--ad-mark); outline-offset: 3px; }
+
+/* На узком экране ряд встаёт в столбик, а кнопка растягивается во всю
+   ширину: на телефоне в неё целятся пальцем. */
+@media (max-width: 760px) {
+  .ad-banner-inner {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .ad-banner-logo { width: 40px; height: 40px; }
+  .ad-banner-slot { font-size: 0.5rem; }
+  .ad-banner-body { flex: 1 1 200px; }
+  .ad-banner-title { font-size: 1.05rem; }
+  .ad-banner-text { font-size: 0.88rem; }
+  .ad-banner-cta {
+    margin-left: 0;
+    width: 100%;
+    text-align: center;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
 }
 
 .header-inner {
