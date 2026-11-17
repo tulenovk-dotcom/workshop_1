@@ -6,7 +6,7 @@
 """
 
 import unittest
-from datetime import datetime
+from datetime import date, datetime
 
 from app import promo
 from app.timeutil import KZ_TIME
@@ -140,6 +140,72 @@ class PromoAllowedTest(unittest.TestCase):
         self.assertFalse(promo.promo_allowed(""))
         self.assertFalse(promo.promo_allowed("   "))
         self.assertFalse(promo.promo_allowed(None))
+
+class SravnenieSObychnoyTest(unittest.TestCase):
+    """Сравнение с карточкой, за которую не платили.
+
+    Главное, что тут проверяется: возраст карточки не должен портить
+    сравнение. Иначе оплативший, появившийся на сайте вчера, выглядел бы
+    хуже всех только потому, что вчера появился.
+    """
+
+    ОКНО = date(2026, 10, 18)
+    СЕГОДНЯ = date(2026, 11, 17)
+
+    def дней(self, появилась):
+        return promo.days_online(появилась, self.ОКНО, self.СЕГОДНЯ)
+
+    def test_vozrast_schitaetsya_ot_poyavleniya(self):
+        self.assertEqual(self.дней("2026-11-14"), 4)
+        self.assertEqual(self.дней("2026-11-17"), 1)
+
+    def test_staraya_kartochka_zhivyot_vsyo_okno(self):
+        self.assertEqual(self.дней("2026-01-01"), 31)
+
+    def test_vremya_v_date_ne_meshaet(self):
+        self.assertEqual(self.дней("2026-11-14T09:30:00+00:00"), 4)
+
+    def test_pustaya_data_schitaetsya_kak_vsyo_okno(self):
+        # Так среднее у обычных карточек занижается, а не завышается:
+        # ошибка в данных не должна делать продвижение красивее.
+        self.assertEqual(self.дней(""), 31)
+        self.assertEqual(self.дней("не дата"), 31)
+
+    def test_data_iz_budushchego_ne_daet_nol_dney(self):
+        self.assertEqual(self.дней("2027-01-01"), 1)
+
+    def test_srednee_v_den_ne_zavisit_ot_vozrasta(self):
+        # Две карточки получают одинаково - по одному открытию в день.
+        # Одна висит всё окно, вторая появилась четыре дня назад.
+        счётчики = {1: 31, 2: 4}
+        даты = {1: "2026-01-01", 2: "2026-11-14"}
+        в_день = promo.usual_per_day([1, 2], счётчики, даты, self.ОКНО, self.СЕГОДНЯ)
+        self.assertAlmostEqual(в_день, 1.0)
+
+    def test_odna_populyarnaya_ne_pereveshivaet_desyatok_obychnyh(self):
+        # Среднее берётся из дневных долей, а не делением общей суммы:
+        # иначе одна карточка с сотней открытий решала бы всё.
+        счётчики = {1: 100}
+        счётчики.update({i: 0 for i in range(2, 12)})
+        даты = {i: "2026-01-01" for i in range(1, 12)}
+        в_день = promo.usual_per_day(
+            list(range(1, 12)), счётчики, даты, self.ОКНО, self.СЕГОДНЯ
+        )
+        self.assertLess(в_день, 0.4)
+
+    def test_bez_obychnyh_kartochek_sravnivat_ne_s_chem(self):
+        self.assertEqual(promo.usual_per_day([], {}, {}, self.ОКНО, self.СЕГОДНЯ), 0.0)
+
+    def test_ozhidanie_za_stolko_zhe_dney(self):
+        self.assertAlmostEqual(promo.usual_for_days(0.5, 4), 2.0)
+        self.assertEqual(promo.usual_for_days(0.5, 0), 0)
+
+    def test_podpis_okruglyaetsya_i_ne_vryot_nulyom(self):
+        self.assertEqual(promo.usual_text(0), "0")
+        self.assertEqual(promo.usual_text(0.2), "меньше 1")
+        self.assertEqual(promo.usual_text(0.6), "1")
+        self.assertEqual(promo.usual_text(2.4), "2")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -2194,6 +2194,7 @@ def admin_payments(request: Request, saved: int = 0, removed: int = 0,
         opens = crud.provider_card_views(conn, payoff_days)
         clicks = crud.contact_clicks_counts(conn, payoff_days)
         shows_from = crud.promo_views_first_day(conn)
+        starts = crud.provider_start_days(conn)
 
     # Идущие сроки - по близости конца, кончившиеся - свежие сверху, без
     # срока (оплаты есть, срок стёрли руками) - в самом конце.
@@ -2203,8 +2204,20 @@ def admin_payments(request: Request, saved: int = 0, removed: int = 0,
     undated = [r for r in rows if r["left"] is None]
     due = sorted((r for r in rows if r["due"]), key=lambda r: r["left"])
 
-    payoff = [
-        {
+    # С чем сравнивать: обычная карточка, за которую не платили. Счёт идёт
+    # на день - иначе оплатившие, появившиеся на сайте неделю назад, рядом
+    # с висящими месяц выглядели бы провалом из-за одного возраста.
+    window_start = today - timedelta(days=payoff_days - 1)
+    paid_rows = active + ended + undated
+    paid_ids = {r["id"] for r in paid_rows}
+    free_ids = [pid for pid in starts if pid not in paid_ids]
+    opens_rate = promo.usual_per_day(free_ids, opens, starts, window_start, today)
+    clicks_rate = promo.usual_per_day(free_ids, clicks, starts, window_start, today)
+
+    payoff = []
+    for r in paid_rows:
+        days = promo.days_online(starts.get(r["id"], ""), window_start, today)
+        payoff.append({
             "id": r["id"],
             "name": r["name"],
             "city": r["city"],
@@ -2213,9 +2226,10 @@ def admin_payments(request: Request, saved: int = 0, removed: int = 0,
             "shows": shows.get(r["id"], 0),
             "opens": opens.get(r["id"], 0),
             "clicks": clicks.get(r["id"], 0),
-        }
-        for r in active + ended + undated
-    ]
+            "days": days,
+            "opens_usual": promo.usual_text(promo.usual_for_days(opens_rate, days)),
+            "clicks_usual": promo.usual_text(promo.usual_for_days(clicks_rate, days)),
+        })
 
     context = {
         "money": money,
@@ -2238,6 +2252,7 @@ def admin_payments(request: Request, saved: int = 0, removed: int = 0,
         "payoff": payoff,
         "payoff_days": payoff_days,
         "shows_from": shows_from,
+        "usual_cards": len(free_ids),
     }
     return render(request, "admin/payments.html", context)
 

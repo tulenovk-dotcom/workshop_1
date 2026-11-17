@@ -1177,6 +1177,19 @@ def contact_clicks_by_provider(
     ).fetchall()
 
 
+def provider_start_days(conn: sqlite3.Connection) -> dict[int, str]:
+    """День появления каждой карточки, «ГГГГ-ММ-ДД».
+
+    Нужен сравнению на странице оплат: карточка, заведённая вчера, не
+    могла набрать столько же, сколько висящая месяц, и делить её числа
+    надо на её собственный возраст.
+    """
+    rows = conn.execute(
+        "SELECT id, substr(created_at, 1, 10) AS day FROM providers"
+    ).fetchall()
+    return {int(row["id"]): (row["day"] or "") for row in rows}
+
+
 def contact_clicks_counts(conn: sqlite3.Connection, days: int) -> dict[int, int]:
     """Сколько раз за последние дни нажали кнопку связи у каждой карточки."""
     rows = conn.execute(
