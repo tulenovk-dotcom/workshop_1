@@ -2,6 +2,13 @@
 
 {% block title %}Админка - переходы{% endblock %}
 
+{% macro sort_th(key, label, num=True) -%}
+  {%- set next_order = 'desc' if (sort == key and order == 'asc') else 'asc' -%}
+  <th{% if num %} class="stat-col-num"{% endif %}>
+    <a class="sort-link" href="/admin/clicks?days={{ days }}&sort={{ key }}&order={{ next_order }}">{{ label }}{% if sort == key %} {{ '▲' if order == 'asc' else '▼' }}{% endif %}</a>
+  </th>
+{%- endmacro %}
+
 {% block content %}
 <h1>Переходы к специалистам</h1>
 {% include "admin/_nav.html" %}
@@ -15,7 +22,7 @@
     {% if period == days %}
       <span class="stat-period stat-period-current">{{ label }}</span>
     {% else %}
-      <a class="stat-period" href="/admin/clicks?days={{ period }}">{{ label }}</a>
+      <a class="stat-period" href="/admin/clicks?days={{ period }}&sort={{ sort }}&order={{ order }}">{{ label }}</a>
     {% endif %}
   {% endfor %}
 </nav>
@@ -48,15 +55,15 @@
     <table class="admin-table stat-table">
       <thead>
         <tr>
-          <th>Место занятий</th>
-          <th class="stat-col-num">Карточку открыли</th>
-          <th class="stat-col-num">Телефон</th>
-          <th class="stat-col-num">WhatsApp</th>
-          <th class="stat-col-num">Сайт</th>
-          <th class="stat-col-num">Instagram</th>
-          <th class="stat-col-num">Всего за период</th>
-          <th class="stat-col-num">Доля</th>
-          <th class="stat-col-num">За всё время</th>
+          {{ sort_th('name', 'Место занятий', False) }}
+          {{ sort_th('views', 'Карточку открыли') }}
+          {{ sort_th('phone', 'Телефон') }}
+          {{ sort_th('whatsapp', 'WhatsApp') }}
+          {{ sort_th('website', 'Сайт') }}
+          {{ sort_th('instagram', 'Instagram') }}
+          {{ sort_th('total', 'Всего за период') }}
+          {{ sort_th('share', 'Доля') }}
+          {{ sort_th('all_time', 'За всё время') }}
         </tr>
       </thead>
       <tbody>
@@ -82,6 +89,9 @@
       </tbody>
     </table>
   </div>
+
+  <p class="hint">Нажмите на заголовок колонки, чтобы отсортировать по ней;
+    повторное нажатие меняет порядок (▲ по возрастанию, ▼ по убыванию).</p>
 
   <p class="hint">Доля - это переходы, поделённые на открытия карточки.
     Прочерк значит, что карточку за этот срок не открывали ни разу, и делить
