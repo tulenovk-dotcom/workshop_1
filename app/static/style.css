@@ -21,6 +21,15 @@
   --warm-line: #f2d79a;
   --warm-mark: #f2b84b;
 
+  /* Рекламная полоса: тёмный индиго с жёлтой кнопкой. Ни с одним цветом
+     сайта не совпадает, поэтому реклама не путается с каталогом и метками
+     доказательности. */
+  --ad-bg: #2a2466;
+  --ad-text: #ffffff;
+  --ad-muted: #cfcaf2;
+  --ad-mark: #ffd166;
+  --ad-mark-hover: #ffe08f;
+
   /* Скругления по уровню: крупные блоки мягче, мелкие - строже. */
   --r-block: 22px;
   --r-control: 14px;
@@ -190,8 +199,7 @@ a { color: var(--accent); }
    Опознаётся реклама подписью, а не цветом: цвета на этом сайте заняты
    уровнями доказательности. */
 .ad-banner {
-  background: var(--accent-soft);
-  border-bottom: 1px solid #c9dbed;
+  background: var(--ad-bg);
 }
 .ad-banner-inner {
   display: flex;
@@ -214,8 +222,8 @@ a { color: var(--accent); }
 .ad-banner-slot {
   display: grid;
   place-items: center;
-  border: 1.5px dashed var(--accent);
-  color: var(--accent-dark);
+  border: 1.5px dashed var(--ad-mark);
+  color: var(--ad-mark);
   font-size: 0.62rem;
   font-weight: var(--w-semibold);
   line-height: 1.15;
@@ -233,13 +241,13 @@ a { color: var(--accent); }
 .ad-banner-name {
   font-size: 0.85rem;
   font-weight: var(--w-bold);
-  color: var(--muted);
+  color: var(--ad-muted);
 }
 .ad-banner-tag {
   padding: 2px 8px;
   border-radius: 7px;
-  background: var(--surface);
-  color: var(--muted);
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--ad-muted);
   font-size: 0.74rem;
   font-weight: var(--w-semibold);
   white-space: nowrap;
@@ -250,17 +258,27 @@ a { color: var(--accent); }
   font-size: var(--step-1);
   font-weight: var(--w-black);
   line-height: 1.25;
-  color: var(--accent-dark);
+  color: var(--ad-text);
 }
 .ad-banner-text {
   margin: 0;
   font-size: 0.93rem;
   line-height: 1.45;
-  color: var(--muted);
+  color: var(--ad-muted);
 }
 /* Кнопка прижата к правому краю, пока строка помещается в один ряд. */
-.ad-banner-cta { margin-left: auto; }
-.ad-banner-cta:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.ad-banner .ad-banner-cta {
+  margin-left: auto;
+  background: var(--ad-mark);
+  border-color: var(--ad-mark);
+  color: var(--ad-bg);
+}
+.ad-banner .ad-banner-cta:hover {
+  background: var(--ad-mark-hover);
+  border-color: var(--ad-mark-hover);
+  color: var(--ad-bg);
+}
+.ad-banner-cta:focus-visible { outline: 3px solid var(--ad-mark); outline-offset: 3px; }
 
 /* На узком экране ряд встаёт в столбик, а кнопка растягивается во всю
    ширину: на телефоне в неё целятся пальцем. */
