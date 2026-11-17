@@ -1485,11 +1485,6 @@ input:focus, select:focus, textarea:focus {
 
 .chip-test { background: #eceeed; color: var(--muted); }
 
-/* Метка «продвижение» в админке. Заливка та же, что у блока платных мест
-   в каталоге (--warm-bg): администратор видит метку и сразу вспоминает,
-   где эта карточка стоит у родителя. Второй жёлтый ради метки не заводим. */
-.chip-promo { background: var(--warm-bg); color: var(--amber); }
-
 /* Плашка «робот» в журнале посещений. Тише обычной: это служебная
    пометка о том, что запись не идёт в счёт, а не предупреждение. */
 .chip-bot { background: #eceeed; color: var(--muted); font-weight: var(--w-medium); }
