@@ -210,6 +210,20 @@ a { color: var(--accent); }
 }
 .ad-banner-body { min-width: 0; }
 
+/* Свободное место под знак рекламодателя: пунктир вместо картинки. */
+.ad-banner-slot {
+  display: grid;
+  place-items: center;
+  border: 1.5px dashed var(--accent);
+  color: var(--accent-dark);
+  font-size: 0.62rem;
+  font-weight: var(--w-semibold);
+  line-height: 1.15;
+  text-align: center;
+  padding: 2px;
+  overflow-wrap: anywhere;
+}
+
 .ad-banner-brand {
   display: flex;
   align-items: center;
@@ -258,6 +272,7 @@ a { color: var(--accent); }
     padding-bottom: 12px;
   }
   .ad-banner-logo { width: 40px; height: 40px; }
+  .ad-banner-slot { font-size: 0.5rem; }
   .ad-banner-body { flex: 1 1 200px; }
   .ad-banner-title { font-size: 1.05rem; }
   .ad-banner-text { font-size: 0.88rem; }
