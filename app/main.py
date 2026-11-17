@@ -2079,12 +2079,19 @@ def admin_clicks(
         days = 30
     with db_session() as conn:
         views = crud.provider_card_views(conn, days)
+        # «Сегодня» по Казахстану: срок в карточке кончается в конце дня,
+        # и по Гринвичу метка снималась бы на пять часов раньше срока.
+        today = payments.today_iso()
         rows = []
         for row in crud.contact_clicks_by_provider(conn, days):
             seen = views.get(int(row["id"]), 0)
             total = int(row["total"])
+            until = (row["promo_until"] or "").strip()
             rows.append({
                 **dict(row),
+                # Метка стоит, пока оплаченный срок идёт. Кончившийся срок
+                # метку снимает: иначе непонятно, за что сравнивать числа.
+                "promo": bool(until) and until >= today,
                 "views": seen,
                 # Доля считается от открытий карточки, но в числителе все
                 # переходы, в том числе сделанные прямо из списка каталога.
