@@ -2043,9 +2043,18 @@ def parse_visit_day(value: str, oldest: date, newest: date) -> date | None:
 # за всё время в таблице есть отдельной колонкой - оно не стареет.
 CLICK_PERIODS = ((7, "7 дней"), (30, "30 дней"))
 
+# По каким колонкам таблицы переходов можно сортировать. По умолчанию -
+# по возрастанию «Всего за период»: сверху те, к кому почти не переходят.
+CLICK_SORT_KEYS = (
+    "name", "views", "phone", "whatsapp", "website",
+    "instagram", "total", "share", "all_time",
+)
+
 
 @app.get("/admin/clicks", response_class=HTMLResponse)
-def admin_clicks(request: Request, days: int = 30):
+def admin_clicks(
+    request: Request, days: int = 30, sort: str = "total", order: str = "asc"
+):
     """Переходы по кнопкам связи - по строке на место занятий.
 
     Персональных данных здесь нет: счётчик переходов не знает, кто нажал.
@@ -2070,7 +2079,28 @@ def admin_clicks(request: Request, days: int = 30):
                 # таблицей об этом сказано словами.
                 "share": round(total / seen * 100) if seen else None,
             })
+        if sort not in CLICK_SORT_KEYS:
+            sort = "total"
+        if order not in {"asc", "desc"}:
+            order = "asc"
+
+        def sort_value(row):
+            value = row[sort]
+            if sort == "name":
+                return (str(value or "").casefold(),)
+            # Прочерк в «Доле» (карточку не открывали) - всегда в конце.
+            if value is None:
+                return (1, 0)
+            return (0, value)
+
+        # Внутри одинаковых значений - по названию, стабильно.
+        rows.sort(key=lambda row: str(row["name"] or "").casefold())
+        rows.sort(key=sort_value, reverse=(order == "desc"))
+        if sort == "share" and order == "desc":
+            rows.sort(key=lambda row: row["share"] is None)
         context = {
+            "sort": sort,
+            "order": order,
             "days": days,
             "periods": CLICK_PERIODS,
             "retention_days": crud.VISIT_LOG_DAYS,
