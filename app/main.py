@@ -8,6 +8,7 @@ import zlib
 from datetime import date, datetime, timedelta
 from html import escape
 from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import FastAPI, Form, HTTPException, Query, Request
 from fastapi.responses import (
@@ -1073,6 +1074,15 @@ CLICK_TARGETS = {
 }
 
 
+# Готовый текст первого сообщения в WhatsApp. Человек видит его в поле ввода
+# и отправляет сам (может поправить или стереть): так центр или специалист
+# сразу понимает, что клиент пришёл с erekshe.kz.
+WHATSAPP_GREETING = (
+    "Здравствуйте! Пишу вам с сайта erekshe.kz. "
+    "Хочу узнать подробнее о занятиях для ребёнка."
+)
+
+
 @app.get("/go/{kind}/{provider_id}")
 def go_to_contact(request: Request, kind: str, provider_id: int, src: str = "card"):
     """Отметить переход по кнопке связи и отправить человека дальше.
@@ -1098,6 +1108,9 @@ def go_to_contact(request: Request, kind: str, provider_id: int, src: str = "car
             if provider is None:
                 raise HTTPException(status_code=404, detail="Запись не найдена")
             target = as_link(provider[field])
+            if target and kind == "whatsapp":
+                greeting = translate(WHATSAPP_GREETING, request_lang(request))
+                target = f"{target}?text={quote(greeting)}"
             if target:
                 try:
                     # Робот отсеивается той же меркой, что и в журнале
