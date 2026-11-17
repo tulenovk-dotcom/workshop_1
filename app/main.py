@@ -362,6 +362,27 @@ async def count_visit(request: Request, call_next):
     return response
 
 
+def count_promo_views(conn, request: Request, promoted) -> None:
+    """Отметить, что блок продвижения показался этому человеку.
+
+    Считаются только живые люди: робот ничего не покупает, и платить за
+    его «просмотр» центру не за что. Мерка та же, что у счётчика
+    посещений, - подпись браузера плюс владелец адреса.
+
+    Счётчик не должен ронять каталог: если запись не удалась, человек всё
+    равно видит страницу, а в журнал уходит предупреждение.
+    """
+    if not promoted:
+        return
+    agent = user_agent(request)
+    if looks_like_bot(agent) or geo.hosting(request_ip(request)):
+        return
+    try:
+        crud.record_promo_views(conn, [p["id"] for p in promoted], crud.visit_day())
+    except Exception:
+        log.warning("Не удалось записать показ блока продвижения", exc_info=True)
+
+
 def consent_data(subject_type: str, record_id: int, request: Request) -> dict:
     """Отметка о согласии: что человек видел, когда и с какой страницы."""
     return {
@@ -838,6 +859,7 @@ def index(
         # Блок платных мест отбирается уже из найденного: сначала честная
         # выдача по фильтрам, и только потом реклама среди неё.
         promoted, providers = promo.split(found)
+        count_promo_views(conn, request, promoted)
         methods_map = {
             pid: offered_methods(rows)
             for pid, rows in crud.methods_for_providers(
@@ -2165,6 +2187,13 @@ def admin_payments(request: Request, saved: int = 0, removed: int = 0,
         journal = crud.list_promo_payments(conn)
         choices = crud.provider_choices(conn)
         saved_payment = crud.get_promo_payment(conn, saved) if saved else None
+        # Отдача продвижения. Срок один на все три числа - тот, за который
+        # известны открытия карточек: журнал посещений живёт 30 дней.
+        payoff_days = crud.VISIT_LOG_DAYS
+        shows = crud.promo_views_by_provider(conn, payoff_days)
+        opens = crud.provider_card_views(conn, payoff_days)
+        clicks = crud.contact_clicks_counts(conn, payoff_days)
+        shows_from = crud.promo_views_first_day(conn)
 
     # Идущие сроки - по близости конца, кончившиеся - свежие сверху, без
     # срока (оплаты есть, срок стёрли руками) - в самом конце.
@@ -2173,6 +2202,20 @@ def admin_payments(request: Request, saved: int = 0, removed: int = 0,
                    key=lambda r: r["left"], reverse=True)
     undated = [r for r in rows if r["left"] is None]
     due = sorted((r for r in rows if r["due"]), key=lambda r: r["left"])
+
+    payoff = [
+        {
+            "id": r["id"],
+            "name": r["name"],
+            "city": r["city"],
+            "is_test": r["is_test"],
+            "active": r["active"],
+            "shows": shows.get(r["id"], 0),
+            "opens": opens.get(r["id"], 0),
+            "clicks": clicks.get(r["id"], 0),
+        }
+        for r in active + ended + undated
+    ]
 
     context = {
         "money": money,
@@ -2192,6 +2235,9 @@ def admin_payments(request: Request, saved: int = 0, removed: int = 0,
         "payments_word": payments.plural_payments(money["payments"]),
         "due_soon_days": payments.DUE_SOON_DAYS,
         "due_past_days": payments.DUE_PAST_DAYS,
+        "payoff": payoff,
+        "payoff_days": payoff_days,
+        "shows_from": shows_from,
     }
     return render(request, "admin/payments.html", context)
 
@@ -2933,6 +2979,7 @@ def city_page(request: Request, city_slug: str):
         if not found:
             raise HTTPException(status_code=404, detail="Страница не найдена")
         promoted, providers = promo.split(found)
+        count_promo_views(conn, request, promoted)
         methods_map = {
             pid: offered_methods(rows)
             for pid, rows in crud.methods_for_providers(

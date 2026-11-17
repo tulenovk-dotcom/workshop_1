@@ -224,6 +224,21 @@ CREATE TABLE IF NOT EXISTS promo_payments (
     created_at TEXT NOT NULL
 );
 
+-- Показы блока продвижения: сколько раз карточка показалась наверху
+-- каталога. По строке на день и место занятий, а не на каждый показ:
+-- хранить миллион одинаковых отметок незачем, а число по дням отвечает на
+-- тот же вопрос.
+--
+-- О людях здесь не хранится ничего - только числа, поэтому срока хранения
+-- у таблицы нет. Показы роботам не считаются: робот ничего не покупает, и
+-- центру незачем платить за то, что его карточку «видел» поисковик.
+CREATE TABLE IF NOT EXISTS promo_views (
+    day TEXT NOT NULL,
+    provider_id INTEGER NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
+    views INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, provider_id)
+);
+
 CREATE TABLE IF NOT EXISTS requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -255,6 +270,7 @@ CREATE INDEX IF NOT EXISTS idx_clicks_provider ON contact_clicks(provider_id, is
 CREATE INDEX IF NOT EXISTS idx_clicks_time ON contact_clicks(created_at, is_bot);
 CREATE INDEX IF NOT EXISTS idx_promo_payments_provider ON promo_payments(provider_id, paid_on);
 CREATE INDEX IF NOT EXISTS idx_promo_payments_day ON promo_payments(paid_on);
+CREATE INDEX IF NOT EXISTS idx_promo_views_provider ON promo_views(provider_id, day);
 """
 
 

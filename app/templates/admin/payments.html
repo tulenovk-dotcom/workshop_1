@@ -288,4 +288,54 @@
     <p class="empty">Оплат пока не записано.</p>
   {% endif %}
 </section>
+
+{#- Отдача продвижения. Внизу страницы и отдельной таблицей: в «Сроках»
+    речь о деньгах и датах, а здесь о том, что центр за эти деньги получил.
+    Три числа в ряд, без долей и процентов: доли считаются на странице
+    «Переходы», а тут нужен короткий ответ центру при продлении. #}
+<section id="payoff" class="pay-section">
+  <h2>Что дало продвижение</h2>
+  {% if payoff %}
+    <div class="table-wrap">
+      <table class="admin-table stat-table">
+        <thead>
+          <tr>
+            <th>Место занятий</th>
+            <th class="stat-col-num">Показов в блоке</th>
+            <th class="stat-col-num">Открытий карточки</th>
+            <th class="stat-col-num">Переходов</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in payoff %}
+            <tr{% if not r.active %} class="pay-row-ended"{% endif %}>
+              <td>
+                <a href="/admin/providers/{{ r.id }}/edit">{{ r.name }}</a>
+                {% if r.is_test %}<span class="chip chip-test">тест</span>{% endif %}
+                <div class="muted">{{ r.city }}{% if not r.active %} · срок кончился{% endif %}</div>
+              </td>
+              <td class="stat-col-num">{{ r.shows }}</td>
+              <td class="stat-col-num">{{ r.opens }}</td>
+              <td class="stat-col-num">{{ r.clicks }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <p class="hint">Показ - это один раз, когда карточка показалась в блоке
+      наверху каталога живому человеку. Открытие - когда её страницу открыли
+      целиком. Переход - когда нажали кнопку связи: WhatsApp, телефон, сайт
+      или Instagram.</p>
+
+    <p class="hint">Все три числа - за последние {{ payoff_days }} дней, а не
+      за оплаченный срок: открытия карточек дольше не хранятся.
+      {% if shows_from %}Показы считаются с {{ shows_from|local_date }} - раньше
+      их не записывали, поэтому у старых сроков в этой колонке ноль.{% else %}
+      Показы начнут считаться с первого открытия каталога после этого
+      обновления.{% endif %}</p>
+  {% else %}
+    <p class="empty">Платных карточек пока нет - и считать нечего.</p>
+  {% endif %}
+</section>
 {% endblock %}

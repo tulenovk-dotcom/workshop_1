@@ -1177,6 +1177,16 @@ def contact_clicks_by_provider(
     ).fetchall()
 
 
+def contact_clicks_counts(conn: sqlite3.Connection, days: int) -> dict[int, int]:
+    """Сколько раз за последние дни нажали кнопку связи у каждой карточки."""
+    rows = conn.execute(
+        "SELECT provider_id, COUNT(*) AS n FROM contact_clicks"
+        " WHERE is_bot = 0 AND created_at >= ? GROUP BY provider_id",
+        (visit_log_since(days),),
+    ).fetchall()
+    return {int(row["provider_id"]): int(row["n"]) for row in rows}
+
+
 def provider_card_views(conn: sqlite3.Connection, days: int) -> dict[int, int]:
     """Сколько раз открывали карточку каждого места занятий.
 
@@ -1199,6 +1209,40 @@ def provider_card_views(conn: sqlite3.Connection, days: int) -> dict[int, int]:
         (visit_log_since(days),),
     ).fetchall()
     return {int(row["provider_id"]): int(row["views"]) for row in rows if row["provider_id"]}
+
+
+def record_promo_views(conn: sqlite3.Connection, provider_ids, day: str) -> None:
+    """Отметить, что эти карточки показались в блоке продвижения.
+
+    По строке на день и место занятий: при повторном показе прибавляется
+    единица, новая строка не заводится.
+    """
+    conn.executemany(
+        "INSERT INTO promo_views (day, provider_id, views) VALUES (?, ?, 1)"
+        " ON CONFLICT(day, provider_id) DO UPDATE SET views = views + 1",
+        [(day, int(pid)) for pid in provider_ids],
+    )
+
+
+def promo_views_by_provider(conn: sqlite3.Connection, days: int) -> dict[int, int]:
+    """Сколько раз каждая карточка показалась в блоке за последние дни."""
+    rows = conn.execute(
+        "SELECT provider_id, SUM(views) AS views FROM promo_views"
+        " WHERE day >= ? GROUP BY provider_id",
+        (visit_log_since(days)[:10],),
+    ).fetchall()
+    return {int(row["provider_id"]): int(row["views"] or 0) for row in rows}
+
+
+def promo_views_first_day(conn: sqlite3.Connection) -> str:
+    """Первый день, за который есть показы. Пусто - показов ещё не было.
+
+    Нужен подписи под таблицей: показы считаются не с начала работы сайта,
+    а с того дня, когда счётчик появился, и без этой даты числа выглядят
+    заниженными.
+    """
+    row = conn.execute("SELECT MIN(day) AS day FROM promo_views").fetchone()
+    return (row["day"] or "") if row else ""
 
 
 def contact_clicks_total(conn: sqlite3.Connection, days: int | None = None) -> int:
