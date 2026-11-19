@@ -1,7 +1,7 @@
 """Проверки блока платных мест (app/promo.py).
 
-Проверяется то, что легко сломать незаметно: порог в шесть карточек,
-размер блока, отсутствие дублей и смена очереди по часам. Запускается и на
+Проверяется то, что легко сломать незаметно: размер блока, отсутствие
+дублей и смена очереди по часам. Запускается и на
 старом Python: модуль чистый, базы и приложения ему не нужно.
 """
 
@@ -80,14 +80,20 @@ class PromoBlockTest(unittest.TestCase):
             self.assertNotEqual([r["id"] for r in today],
                                 [r["id"] for r in tomorrow])
 
-    def test_blok_ne_bolshe_trjoh(self):
+    def test_pjatero_oplativshih_stojat_vse(self):
+        """Пятеро помещаются в блок целиком: место есть для каждого."""
         block, rest = promo.split(rows(12, paid_ids=(1, 2, 3, 4, 5)), MOMENT)
+        self.assertEqual({r["id"] for r in block}, {1, 2, 3, 4, 5})
+        self.assertEqual(len(rest), 7)
+
+    def test_blok_ne_bolshe_pjati(self):
+        block, rest = promo.split(rows(12, paid_ids=(1, 2, 3, 4, 5, 6, 7)), MOMENT)
         self.assertEqual(len(block), promo.BLOCK_SIZE)
-        self.assertEqual(len(rest), 9)
+        self.assertEqual(len(rest), 7)
 
     def test_bez_dublej(self):
         """Карточка из блока не повторяется в списке ниже."""
-        block, rest = promo.split(rows(12, paid_ids=(1, 2, 3, 4, 5)), MOMENT)
+        block, rest = promo.split(rows(12, paid_ids=(1, 2, 3, 4, 5, 6, 7)), MOMENT)
         self.assertFalse({r["id"] for r in block} & {r["id"] for r in rest})
 
     def test_istjokshij_srok_ne_schitaetsja(self):
@@ -103,21 +109,21 @@ class PromoBlockTest(unittest.TestCase):
         self.assertEqual({r["id"] for r in block}, {1, 2})
 
     def test_cherez_chas_okno_sdvinulos(self):
-        """Через час состав меняется на одного, двое остаются."""
-        found = rows(12, paid_ids=(1, 2, 3, 4, 5))
+        """Через час состав меняется на одного, четверо остаются."""
+        found = rows(12, paid_ids=(1, 2, 3, 4, 5, 6, 7))
         first, _ = promo.split(found, MOMENT)
         later, _ = promo.split(found, MOMENT.replace(hour=11))
         self.assertNotEqual([r["id"] for r in first], [r["id"] for r in later])
-        self.assertEqual(len(set(r["id"] for r in first) & set(r["id"] for r in later)), 2)
+        self.assertEqual(len(set(r["id"] for r in first) & set(r["id"] for r in later)), 4)
 
     def test_za_sutki_pobyvali_vse(self):
-        """При пяти оплативших за пять часов наверху побывает каждый."""
-        found = rows(12, paid_ids=(1, 2, 3, 4, 5))
+        """При семи оплативших за семь часов наверху побывает каждый."""
+        found = rows(12, paid_ids=(1, 2, 3, 4, 5, 6, 7))
         seen = set()
-        for hour in range(5):
+        for hour in range(7):
             block, _ = promo.split(found, MOMENT.replace(hour=hour))
             seen |= {r["id"] for r in block}
-        self.assertEqual(seen, {1, 2, 3, 4, 5})
+        self.assertEqual(seen, {1, 2, 3, 4, 5, 6, 7})
 
     def test_chasy_ne_zakreplajutsja_za_mestom(self):
         """При двенадцати оплативших часы не повторяются день в день.
