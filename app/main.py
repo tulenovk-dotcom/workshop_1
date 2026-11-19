@@ -2177,7 +2177,8 @@ def promo_row(row, today) -> dict:
 
 @app.get("/admin/payments", response_class=HTMLResponse)
 def admin_payments(request: Request, saved: int = 0, removed: int = 0,
-                   error: str = "", error_until: str = "", provider: int = 0):
+                   error: str = "", error_until: str = "", error_amount: str = "",
+                   provider: int = 0):
     if guard := require_admin(request):
         return guard
     today = payments.today_local()
@@ -2246,6 +2247,7 @@ def admin_payments(request: Request, saved: int = 0, removed: int = 0,
         "removed": removed,
         "error": error,
         "error_until": error_until,
+        "error_amount": error_amount,
         "payments_word": payments.plural_payments(money["payments"]),
         "due_soon_days": payments.DUE_SOON_DAYS,
         "due_past_days": payments.DUE_PAST_DAYS,
@@ -2290,6 +2292,32 @@ def record_promo_payment(
     return payment_id, until
 
 
+def record_manual_promo(conn, provider_id: int, old_until, new_until: str,
+                        start: date, amount: int) -> int:
+    """Оплата за срок, поставленный в карточке руками.
+
+    Срок уже стоит в карточке, поэтому в журнал идёт ровно он, без
+    повторного продления. Возвращает номер оплаты.
+    """
+    until = payments.parse_day(new_until)
+    plan = manual_promo_plan(start, until)
+    old_day = payments.parse_day((old_until or "").strip())
+    note = "срок поставлен в карточке"
+    if old_day:
+        note += " (было до %s)" % old_day.strftime("%d.%m.%Y")
+    return crud.create_promo_payment(conn, {
+        "provider_id": provider_id,
+        "provider_name": crud.get_provider(conn, provider_id)["name"],
+        "plan": plan["code"],
+        "months": plan["months"],
+        "amount": amount,
+        "paid_on": payments.today_iso(),
+        "period_from": start.isoformat(),
+        "period_until": until.isoformat(),
+        "note": note,
+    })
+
+
 @app.post("/admin/payments/new")
 async def admin_payment_create(request: Request):
     """Записать оплату и продлить срок в карточке.
@@ -2305,7 +2333,7 @@ async def admin_payment_create(request: Request):
     plan = promo_plan(form["plan"])
     paid_on = payments.parse_day(form["paid_on"])
     exact_until = payments.parse_day(form["until"])
-    amount_digits = re.sub(r"\D", "", form["amount"])
+    amount = parse_amount(form["amount"])
     # Ручную дату, которую не удалось разобрать, молча пропускать нельзя:
     # срок посчитался бы сам и мог продлиться второй раз.
     if form["until"].strip() and not exact_until:
@@ -2316,6 +2344,14 @@ async def admin_payment_create(request: Request):
     if not provider_id or not plan or not paid_on:
         return RedirectResponse(
             f"/admin/payments?error=1&provider={provider_id or 0}#pay-form",
+            status_code=REDIRECT,
+        )
+    # Сумму вписывают руками всегда. Раньше пустое поле означало «по цене
+    # срока», и оплата могла уйти в журнал с суммой, которую никто не
+    # проверял. 0 - можно: так записывается продвижение в подарок.
+    if amount is None:
+        return RedirectResponse(
+            f"/admin/payments?error_amount=1&provider={provider_id}#pay-form",
             status_code=REDIRECT,
         )
     with db_session() as conn:
@@ -2329,9 +2365,8 @@ async def admin_payment_create(request: Request):
             provider,
             plan,
             paid_on.isoformat(),
-            # Пустая сумма - цена тарифа. Своя сумма - как ввели: скидка,
-            # часть вперёд, первый клиент по особой цене.
-            int(amount_digits) if amount_digits else plan["price"],
+            # Сумма - как ввели: полная цена, скидка, часть вперёд, подарок.
+            amount,
             form["note"].strip()[:300],
             exact_until.isoformat() if exact_until else "",
         )
@@ -2428,6 +2463,48 @@ KZ_LAT = (40.0, 56.5)
 KZ_LNG = (46.0, 88.0)
 
 
+def parse_amount(value) -> int | None:
+    """Сумма оплаты из формы админки. Пусто - None: сумму надо вписать.
+
+    Пробелы и «₸» допускаются: «1 999 ₸» - это 1999. Ноль - настоящая
+    сумма (продвижение в подарок), а не «не указано».
+    """
+    digits = re.sub(r"\D", "", value or "")
+    return int(digits) if digits else None
+
+
+def manual_promo_need(old_until, new_until: str):
+    """Ставят ли в карточке руками новый или более длинный срок продвижения.
+
+    Возвращает день, с которого считается новый срок, или None, если оплату
+    записывать не нужно: срок убрали, укоротили, оставили прежним или
+    поставили уже прошедшей датой.
+    """
+    new_day = payments.parse_day(new_until)
+    if new_day is None:
+        return None
+    today = payments.today_local()
+    if new_day < today:
+        return None
+    old_day = payments.parse_day((old_until or "").strip())
+    if old_day is not None and new_day <= old_day:
+        return None
+    return max(today, old_day) if old_day else today
+
+
+def manual_promo_plan(start: date, until: date) -> dict:
+    """Тариф для оплаты, срок которой поставили в карточке руками.
+
+    Срок считается по датам и округляется до месяцев. Совпал с тарифом -
+    берём тариф, нет - в журнале будет просто «N мес.».
+    """
+    months = max(1, round((until - start).days / 30.44))
+    for plan in PROMO_PLANS:
+        if plan["months"] == months:
+            return plan
+    return {"code": "", "months": months}
+
+
 def clean_promo_until(value) -> str:
     """Дата окончания продвижения из формы админки.
 
@@ -2496,7 +2573,8 @@ def provider_form_data(
 
 
 @app.get("/admin/providers/new", response_class=HTMLResponse)
-def admin_provider_new(request: Request, from_application: str = ""):
+def admin_provider_new(request: Request, from_application: str = "",
+                       error_amount: str = ""):
     if guard := require_admin(request):
         return guard
     application_id = parse_int(from_application)
@@ -2526,6 +2604,7 @@ def admin_provider_new(request: Request, from_application: str = ""):
             "paid_until": paid_until,
             "methods": methods,
             "selected_methods": selected,
+            "error_amount": bool(error_amount),
             "title": "Новое место занятий",
         },
     )
@@ -2550,6 +2629,19 @@ async def admin_provider_create(request: Request):
     # Значит, оплата пишется в журнал сама, а срок в форме не вводится.
     paid_plan = application_promo_plan(application)
 
+    # Без суммы карточку с оплаченным сроком не сохраняем: ни по заявке с
+    # продвижением, ни со сроком, поставленным руками. Проверка стоит до
+    # сохранения фото, чтобы отказ ничего за собой не оставлял.
+    amount = parse_amount(form.get("promo_amount", ""))
+    manual_start = None
+    if not paid_plan:
+        manual_start = manual_promo_need("", clean_promo_until(form.get("promo_until", "")))
+    if (paid_plan or manual_start) and amount is None:
+        back = "/admin/providers/new?error_amount=1"
+        if application_id is not None:
+            back += f"&from_application={application_id}"
+        return RedirectResponse(back, status_code=REDIRECT)
+
     logo_path = await save_logo(form.get("logo"), base_logo)
     data, method_ids = provider_form_data(
         _form_defaults(form), form.getlist("methods"), logo_path
@@ -2563,6 +2655,9 @@ async def admin_provider_create(request: Request):
         data["promo_until"] = ""
     with db_session() as conn:
         provider_id = crud.create_provider(conn, data, method_ids)
+        if manual_start:
+            record_manual_promo(conn, provider_id, "", data["promo_until"],
+                                manual_start, amount)
         if application_id is not None and crud.get_application(conn, application_id):
             crud.link_application_to_provider(conn, application_id, provider_id)
             back = f"/admin/applications/{application_id}?saved=1"
@@ -2572,7 +2667,7 @@ async def admin_provider_create(request: Request):
                     crud.get_provider(conn, provider_id),
                     paid_plan,
                     payments.today_iso(),
-                    paid_plan["price"],
+                    amount,
                     f"по заявке № {application_id}",
                 )
                 back += f"&paid={payment_id}"
@@ -2581,7 +2676,7 @@ async def admin_provider_create(request: Request):
 
 
 @app.get("/admin/providers/{provider_id}/edit", response_class=HTMLResponse)
-def admin_provider_edit(request: Request, provider_id: int):
+def admin_provider_edit(request: Request, provider_id: int, error_amount: str = ""):
     if guard := require_admin(request):
         return guard
     with db_session() as conn:
@@ -2594,6 +2689,7 @@ def admin_provider_edit(request: Request, provider_id: int):
             "prefill": None,
             "from_application": None,
             "selected_methods": crud.provider_method_ids(conn, provider_id),
+            "error_amount": bool(error_amount),
             "title": "Редактирование места занятий",
         }
     return render(request, "admin/provider_form.html", context)
@@ -2609,6 +2705,18 @@ async def admin_provider_update(request: Request, provider_id: int):
     if existing is None:
         raise HTTPException(status_code=404, detail="Запись не найдена")
 
+    # Новый или более длинный срок продвижения без суммы не сохраняем:
+    # иначе срок стоит, а в «Оплатах» ноль. Проверка до сохранения фото.
+    amount = parse_amount(form.get("promo_amount", ""))
+    manual_start = manual_promo_need(
+        existing["promo_until"], clean_promo_until(form.get("promo_until", ""))
+    )
+    if manual_start and amount is None:
+        return RedirectResponse(
+            f"/admin/providers/{provider_id}/edit?error_amount=1#promo_until",
+            status_code=REDIRECT,
+        )
+
     logo_path = (
         "" if form.get("remove_logo")
         else await save_logo(form.get("logo"), existing["logo_path"] or "")
@@ -2622,6 +2730,9 @@ async def admin_provider_update(request: Request, provider_id: int):
         )
     with db_session() as conn:
         crud.update_provider(conn, provider_id, data, method_ids)
+        if manual_start:
+            record_manual_promo(conn, provider_id, existing["promo_until"],
+                                data["promo_until"], manual_start, amount)
     return RedirectResponse("/admin", status_code=REDIRECT)
 
 

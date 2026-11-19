@@ -17,6 +17,12 @@
     нажатия «Сохранить», заявка при этом станет одобренной.</p>
 {% endif %}
 
+{% if error_amount %}
+  <p class="notice notice-warn">Впишите сумму оплаты за срок продвижения:
+    без неё срок не ставится. Если в подарок, впишите 0. Ничего не
+    сохранено, изменения в форме придётся внести заново.</p>
+{% endif %}
+
 <form class="admin-form" method="post" action="{{ action }}"
       enctype="multipart/form-data">
   {% if from_application %}
@@ -206,20 +212,51 @@
   <div class="field field-wide">
     <span class="field-label">Продвижение</span>
     <p class="notice notice-ok">В заявке выбран срок «{{ paid_plan.label }}» за {{ paid_plan.price|price }} ₸.
-      При сохранении карточки эта оплата запишется в
+      При сохранении карточки оплата запишется в
       <a href="/admin/payments">«Оплаты»</a> сегодняшним числом, и карточка
       будет наверху каталога до {{ paid_until|local_date }}.</p>
+  </div>
+  <div class="field">
+    <label for="promo_amount">Сумма оплаты, ₸ *</label>
+    <p class="hint">Сколько пришло на самом деле. 0 - если в подарок.</p>
+    <input type="text" id="promo_amount" name="promo_amount" inputmode="numeric"
+           required autocomplete="off" placeholder="например, {{ paid_plan.price }}">
   </div>
   {% else %}
   <div class="field">
     <label for="promo_until">Продвижение оплачено до</label>
     <input type="date" id="promo_until" name="promo_until"
-           value="{{ fd.promo_until if fd and fd.promo_until else '' }}">
+           value="{{ fd.promo_until if fd and fd.promo_until else '' }}"
+           data-initial="{{ provider.promo_until if provider and provider.promo_until else '' }}">
     <p class="hint">Пусто - продвижения нет. Карточка в блоке стоит
-      до конца этого дня включительно. Пришла оплата - запишите её на
-      странице <a href="/admin/payments">«Оплаты»</a>: срок поставится сам,
-      а сумма попадёт в журнал.</p>
+      до конца этого дня включительно.</p>
   </div>
+  <div class="field">
+    <label for="promo_amount">Сумма оплаты, ₸</label>
+    <p class="hint">Нужна, если ставите или продлеваете срок: без неё
+      карточка не сохранится, а оплата сама запишется в
+      <a href="/admin/payments">«Оплаты»</a>. 0 - если в подарок.</p>
+    <input type="text" id="promo_amount" name="promo_amount" inputmode="numeric"
+           autocomplete="off" placeholder="например, 1999">
+  </div>
+  {#- Браузер сам не даст сохранить карточку, если срок продлили, а сумму
+      не вписали, и введённое в форме не пропадёт. Сервер проверяет то же
+      самое: эта подсказка только экономит время. #}
+  <script>
+    (function () {
+      var until = document.getElementById('promo_until');
+      var amount = document.getElementById('promo_amount');
+      if (!until || !amount) return;
+      function sync() {
+        var value = until.value, initial = until.dataset.initial || '';
+        var today = new Date().toISOString().slice(0, 10);
+        amount.required = !!value && value >= today && (!initial || value > initial);
+      }
+      until.addEventListener('change', sync);
+      until.addEventListener('input', sync);
+      sync();
+    })();
+  </script>
   {% endif %}
 
   <div class="field field-wide logo-field">
