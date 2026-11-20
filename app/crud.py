@@ -218,8 +218,8 @@ def create_provider(conn: sqlite3.Connection, data: dict, method_ids: list[int])
     columns = ", ".join(PROVIDER_FIELDS)
     placeholders = ", ".join(f":{name}" for name in PROVIDER_FIELDS)
     cur = conn.execute(
-        f"INSERT INTO providers ({columns}, created_at)"
-        f" VALUES ({placeholders}, :created_at)",
+        f"INSERT INTO providers ({columns}, created_at, updated_at)"
+        f" VALUES ({placeholders}, :created_at, :created_at)",
         {**data, "created_at": now_iso()},
     )
     provider_id = int(cur.lastrowid)
@@ -232,8 +232,9 @@ def update_provider(
 ) -> None:
     assignments = ", ".join(f"{name} = :{name}" for name in PROVIDER_FIELDS)
     conn.execute(
-        f"UPDATE providers SET {assignments} WHERE id = :id",
-        {**data, "id": provider_id},
+        f"UPDATE providers SET {assignments}, updated_at = :updated_at"
+        " WHERE id = :id",
+        {**data, "id": provider_id, "updated_at": now_iso()},
     )
     set_provider_methods(conn, provider_id, method_ids)
 
@@ -243,6 +244,19 @@ def delete_provider(conn: sqlite3.Connection, provider_id: int) -> None:
 
 
 # --- Отзывы -----------------------------------------------------------------
+
+def last_review_dates(conn: sqlite3.Connection) -> dict[int, str]:
+    """Дата самого свежего опубликованного отзыва по каждой карточке.
+
+    Нужна карте сайта: новый отзыв меняет страницу карточки, и поисковику
+    стоит её перечитать.
+    """
+    rows = conn.execute(
+        "SELECT provider_id, MAX(created_at) AS last FROM reviews"
+        " WHERE status = 'published' GROUP BY provider_id"
+    ).fetchall()
+    return {row["provider_id"]: row["last"] for row in rows}
+
 
 def published_reviews(
     conn: sqlite3.Connection, provider_id: int

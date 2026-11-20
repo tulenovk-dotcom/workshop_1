@@ -30,6 +30,10 @@
   <link rel="alternate" hreflang="kk" href="{{ alt_urls.kk }}">
   <link rel="alternate" hreflang="x-default" href="{{ alt_urls.ru }}">
 
+  {# Разметка schema.org для поисковика: что за страница, где место, путь к
+     нему. Собирается в app/main.py (функции *_ld), здесь только вывод. #}
+  {% if structured_data %}<script type="application/ld+json">{{ structured_data }}</script>{% endif %}
+
   {# Open Graph: заголовок и описание берём из тех же блоков, что и мета-теги,
      чтобы ссылка в мессенджере показывала ровно то же, что и страница.
      Язык здесь тот, на котором страница открыта. #}

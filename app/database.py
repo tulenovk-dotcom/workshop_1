@@ -65,7 +65,11 @@ CREATE TABLE IF NOT EXISTS providers (
     promo_notified_at TEXT NOT NULL DEFAULT '',
     lat REAL,
     lng REAL,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    -- Когда карточку последний раз правили в админке. Нужно для lastmod
+    -- в карте сайта: поисковик по нему понимает, что карточку пора
+    -- перечитать. У записей, заведённых до столбца, пусто.
+    updated_at TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS provider_methods (
@@ -441,6 +445,12 @@ def migrate_provider_columns(conn: sqlite3.Connection) -> None:
             conn.execute(
                 f"ALTER TABLE providers ADD COLUMN {name} TEXT NOT NULL DEFAULT ''"
             )
+    # Дата последней правки карточки - для lastmod в карте сайта. У старых
+    # записей пустая: тогда карта берёт дату создания.
+    if "updated_at" not in columns:
+        conn.execute(
+            "ALTER TABLE providers ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''"
+        )
 
 
 def init_db() -> None:

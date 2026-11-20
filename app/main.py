@@ -21,6 +21,7 @@ from fastapi.responses import (
 )
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from markupsafe import Markup
 from starlette.middleware.sessions import SessionMiddleware
 
 from . import crud, growth, payments, promo, geo
@@ -277,6 +278,19 @@ async def language_prefix(request: Request, call_next):
     они видят адрес без префикса и не знают про языки вовсе.
     """
     path = request.scope["path"]
+
+    # Адреса прежнего сайта на этом домене. Поисковик их помнит и ходит
+    # проверять; отвечаем «удалено навсегда», чтобы он забыл их насовсем.
+    if path in GONE_PATHS or path.startswith(GONE_PREFIXES):
+        return PlainTextResponse("Страница удалена", status_code=410)
+
+    # Русской версии с префиксом /ru не бывает: русская живёт без префикса.
+    # Ссылки на /ru/ где-то встречаются, поэтому уводим на настоящий адрес.
+    if path == RU_PREFIX or path.startswith(RU_PREFIX + "/"):
+        target = path[len(RU_PREFIX):] or "/"
+        if request.url.query:
+            target += "?" + request.url.query
+        return RedirectResponse(target, status_code=301)
 
     # Старый способ выбора языка - параметр ?lang=kk. Он успел побывать на
     # боевом сайте, поэтому уводим с него постоянным редиректом, а не просто
@@ -710,6 +724,16 @@ def city_from_form(form) -> str:
 # видел бы одну версию вместо двух, а посетитель по ссылке попадал бы не на
 # тот язык, на который ему дали ссылку.
 KK_PREFIX = "/kk"
+RU_PREFIX = "/ru"
+
+# Адреса, которые остались от прежнего сайта на домене erekshe.kz (вход,
+# личный кабинет, сделки, курсы валют). У каталога таких страниц нет и не
+# будет, поэтому на них отвечаем 410 «удалено навсегда», а не 404.
+GONE_PATHS = frozenset((
+    "/login.html", "/forgot-password.html", "/settings.html", "/settings",
+    "/dashboard", "/dashboard.html", "/offer.html", "/trades",
+))
+GONE_PREFIXES = ("/api/", "/settings/", "/dashboard/", "/trades/")
 
 # Что под префиксом не живёт: админка, статика и служебные файлы. Они одни
 # на весь сайт, и второй их копии на казахском быть не должно.
@@ -891,6 +915,7 @@ def index(
                 "proven_only": bool(proven_only),
             },
         }
+    context["structured_data"] = site_ld(request)
     return render(request, "index.html", context)
 
 
@@ -957,6 +982,133 @@ def podbor(
     return render(request, "podbor.html", context)
 
 
+# --- Разметка schema.org ------------------------------------------------------
+#
+# Сведения для поисковика в формате JSON-LD: что это за место, где оно и как
+# устроена навигация. Посетитель её не видит, поисковик по ней строит
+# расширенный сниппет: хлебные крошки, адрес, звёзды отзывов.
+
+
+def json_ld(data: dict) -> Markup:
+    """JSON-LD для вставки в <script>.
+
+    «</» экранируем, чтобы текст из базы (название, описание) не мог
+    закрыть тег script раньше времени.
+    """
+    text = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    return Markup(text.replace("</", "<\\/"))
+
+
+def breadcrumbs_ld(items: list[tuple[str, str]]) -> dict:
+    """Хлебные крошки: список пар (название, полный адрес)."""
+    return {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": n, "name": name, "item": link}
+            for n, (name, link) in enumerate(items, start=1)
+        ],
+    }
+
+
+def site_ld(request: Request) -> Markup:
+    """Главная: сайт и тот, кто его ведёт."""
+    lang = request_lang(request)
+    home = SITE_URL + local_path(request, "/")
+    return json_ld({
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "WebSite",
+                "@id": f"{SITE_URL}/#website",
+                "url": home,
+                "name": "Erekshe",
+                "inLanguage": "kk" if lang == "kk" else "ru",
+                # Та же строка, что в описании главной: перевод уже есть.
+                "description": translate(
+                    "Каталог мест, где помогают детям с аутизмом (РАС)"
+                    " в Казахстане: центры, клиники, специалисты, сады и"
+                    " школы. Поиск по городу, методу и возрасту.", lang,
+                ),
+            },
+            {
+                "@type": "Organization",
+                "@id": f"{SITE_URL}/#organization",
+                "name": "Erekshe",
+                "url": SITE_URL + "/",
+                "logo": SITE_URL + static_url("logo.webp"),
+            },
+        ],
+    })
+
+
+def city_ld(request: Request, label: str) -> Markup:
+    lang = request_lang(request)
+    return json_ld({
+        "@context": "https://schema.org",
+        **breadcrumbs_ld([
+            (translate("Каталог", lang), SITE_URL + local_path(request, "/")),
+            (label, SITE_URL + local_path(request, request.url.path)),
+        ]),
+    })
+
+
+def provider_ld(request: Request, provider, city_slug: str | None) -> Markup:
+    """Карточка: место занятий как LocalBusiness и путь к нему.
+
+    Телефон в разметку не кладём: на странице он открывается по кнопке,
+    и выкладывать его роботам целиком было бы против этого решения.
+    """
+    lang = request_lang(request)
+    page = SITE_URL + local_path(request, request.url.path)
+    city_label = city_title(provider["city"], lang)
+    place: dict = {
+        "@type": "LocalBusiness",
+        "@id": page + "#place",
+        "name": provider["name"],
+        "url": page,
+        "address": {
+            "@type": "PostalAddress",
+            "addressLocality": city_label,
+            "addressCountry": "KZ",
+        },
+    }
+    if provider["address"]:
+        place["address"]["streetAddress"] = provider["address"]
+    if provider["description"]:
+        place["description"] = provider["description"]
+    if provider["logo_path"]:
+        place["image"] = SITE_URL + provider["logo_path"]
+    if provider["lat"] is not None and provider["lng"] is not None:
+        place["geo"] = {
+            "@type": "GeoCoordinates",
+            "latitude": provider["lat"],
+            "longitude": provider["lng"],
+        }
+    links = [provider["website"], provider["instagram"]]
+    same_as = [
+        link for link in links
+        if link and link.startswith(("http://", "https://"))
+    ]
+    if same_as:
+        place["sameAs"] = same_as
+    if provider["reviews_count"]:
+        place["aggregateRating"] = {
+            "@type": "AggregateRating",
+            "ratingValue": provider["rating_avg"],
+            "reviewCount": provider["reviews_count"],
+            "bestRating": 5,
+            "worstRating": 1,
+        }
+    crumbs = [(translate("Каталог", lang), SITE_URL + local_path(request, "/"))]
+    if city_slug:
+        crumbs.append((city_label, SITE_URL + local_path(request, f"/{city_slug}")))
+    crumbs.append((provider["name"], page))
+    return json_ld({
+        "@context": "https://schema.org",
+        "@graph": [place, breadcrumbs_ld(crumbs)],
+    })
+
+
 @app.get("/providers/{provider_id}", response_class=HTMLResponse)
 def provider_detail(request: Request, provider_id: int, review: str = ""):
     with db_session() as conn:
@@ -973,6 +1125,9 @@ def provider_detail(request: Request, provider_id: int, review: str = ""):
             # Город в карточке ведёт на страницу города, если она есть.
             "city_slug": CITY_PAGES.get(provider["city"], {}).get("slug"),
         }
+        context["structured_data"] = provider_ld(
+            request, provider, context["city_slug"]
+        )
     return render(request, "provider.html", context)
 
 
@@ -1333,6 +1488,7 @@ def sitemap() -> Response:
     валидным XML, а приглашать робота на закрытые страницы незачем.
     """
     paths = []
+    lastmod: dict[str, str] = {}
     if not NOINDEX:
         paths = list(SITEMAP_PAGES)
         with db_session() as conn:
@@ -1342,6 +1498,22 @@ def sitemap() -> Response:
                 row for row in crud.list_providers_admin(conn)
                 if not row["is_test"]
             ]
+            reviewed = crud.last_review_dates(conn)
+            # Дата для lastmod: последняя правка карточки или последний
+            # опубликованный отзыв, что свежее. У постоянных страниц даты
+            # нет - честной даты их правки сайт не знает, а выдумывать
+            # её незачем: поисковик тогда перестаёт верить всем датам.
+            for row in real:
+                stamps = [
+                    row["updated_at"] or row["created_at"],
+                    reviewed.get(row["id"], ""),
+                ]
+                day = max(stamps)[:10]
+                lastmod[f"/providers/{row['id']}"] = day
+                city_path = CITY_PAGES.get(row["city"], {}).get("slug")
+                if city_path:
+                    key = f"/{city_path}"
+                    lastmod[key] = max(lastmod.get(key, ""), day)
             # Страницы городов - только там, где есть настоящие карточки:
             # пустую страницу города поисковику не показываем.
             paths += [
@@ -1365,8 +1537,11 @@ def sitemap() -> Response:
             '<xhtml:link rel="alternate" hreflang="x-default"'
             f' href="{escape(alt["ru"])}"/>'
         )
+        stamp = (
+            f"<lastmod>{lastmod[path]}</lastmod>" if lastmod.get(path) else ""
+        )
         for url in (alt["ru"], alt["kk"]):
-            body.append(f"<url><loc>{escape(url)}</loc>{links}</url>")
+            body.append(f"<url><loc>{escape(url)}</loc>{stamp}{links}</url>")
 
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>'
@@ -3135,5 +3310,6 @@ def city_page(request: Request, city_slug: str):
         "promoted": promoted,
         "methods_map": methods_map,
         "other_cities": others,
+        "structured_data": city_ld(request, city_title(name, lang)),
     }
     return render(request, "city.html", context)
