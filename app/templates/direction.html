@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% import "_macros.html" as ui with context %}
+
+{#- Страница «город + направление»: вход из поиска по запросу «логопед
+    Алматы аутизм». Устроена как страница города - крошки, заголовок, одна
+    строка и сразу карточки, - но в выборке только одно направление.
+    Фильтры остаются на главной, сюда их не дублируем. Внизу два списка
+    ссылок: то же направление в других городах и другие направления в
+    этом городе. -#}
+{% block title %}{{ t('%(what)s для ребёнка с аутизмом %(city)s: %(count)s, цены, отзывы')|format(what=direction_one, city=city_in, count=count_specialists) }}{% endblock %}
+{% block description %}{{ t('%(what)s %(city)s для детей с аутизмом (РАС): %(count)s с ценами, возрастом детей и отзывами родителей. Связаться можно прямо из карточки.')|format(what=direction_phrase, city=city_in, count=count_specialists) }}{% endblock %}
+
+{% block content %}
+<p class="breadcrumbs"><a href="{{ url('/') }}">{{ t('Каталог') }}</a> › <a href="{{ url('/' ~ city_slug) }}">{{ city_label }}</a> › {{ direction_label }}</p>
+
+<section class="city-head">
+  <h1>{{ t('%(what)s %(city)s')|format(what=direction_phrase, city=city_in) }}</h1>
+  <p class="home-lead">{{ t('%(count)s %(city)s. Связаться можно прямо из карточки.')|format(count=count_text, city=city_in) }}</p>
+</section>
+
+{% if promoted %}
+<div class="promo-block">
+  <p class="promo-head"><strong>{{ t('Продвижение') }}</strong></p>
+  <div class="cards">
+    {% for p in promoted %}
+      {{ ui.provider_card(p, methods_map.get(p.id, [])) }}
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="cards" data-catalog-list data-page-size="10">
+  {% for p in providers %}
+    {{ ui.provider_card(p, methods_map.get(p.id, [])) }}
+  {% endfor %}
+</div>
+
+<div class="more-wrap" data-more hidden>
+  <button type="button" class="btn" data-show-more data-label="{{ t('Показать ещё') }}">{{ t('Показать ещё') }}</button>
+</div>
+
+{% if other_cities %}
+<nav class="city-others" aria-labelledby="direction-cities-title">
+  <h2 id="direction-cities-title">{{ t('%(what)s в других городах')|format(what=direction_phrase) }}</h2>
+  <ul class="city-links">
+    {% for c in other_cities %}
+      <li><a class="city-link" href="{{ url('/' ~ c.slug ~ '/' ~ direction_slug) }}">{{ c.name }} <span>{{ c.count }}</span></a></li>
+    {% endfor %}
+  </ul>
+</nav>
+{% endif %}
+
+{% if other_directions %}
+<nav class="city-others" aria-labelledby="direction-others-title">
+  <h2 id="direction-others-title">{{ t('Другие специалисты %(city)s')|format(city=city_in) }}</h2>
+  <ul class="city-links">
+    {% for d in other_directions %}
+      <li><a class="city-link" href="{{ url('/' ~ city_slug ~ '/' ~ d.slug) }}">{{ d.name }} <span>{{ d.count }}</span></a></li>
+    {% endfor %}
+  </ul>
+</nav>
+{% endif %}
+
+<script src="{{ static_url('catalog-more.js') }}" defer></script>
+{% endblock %}

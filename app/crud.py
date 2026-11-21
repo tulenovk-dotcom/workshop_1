@@ -137,6 +137,23 @@ def city_counts(conn: sqlite3.Connection) -> dict:
     return {row["city"]: row["n"] for row in rows}
 
 
+def provider_directions(conn: sqlite3.Connection) -> list[sqlite3.Row]:
+    """Город, специальность и код метода у каждой карточки.
+
+    Одна карточка даёт столько строк, сколько у неё методов, и одну строку
+    без кода, если методов нет. Из этого собираются счётчики страниц
+    «город + направление»: отдельный запрос на каждую пару города и
+    направления - это больше сотни запросов на одну карту сайта.
+    """
+    return conn.execute(
+        "SELECT p.id, p.city, p.specialty, p.is_test, m.code AS method_code"
+        " FROM providers p"
+        " LEFT JOIN provider_methods pm ON pm.provider_id = p.id"
+        " LEFT JOIN methods m ON m.id = pm.method_id"
+        " WHERE p.city <> ''"
+    ).fetchall()
+
+
 def specialties_in_use(conn: sqlite3.Connection) -> list[str]:
     rows = conn.execute(
         "SELECT DISTINCT specialty FROM providers"

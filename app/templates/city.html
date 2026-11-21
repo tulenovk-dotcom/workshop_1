@@ -36,6 +36,17 @@
   <button type="button" class="btn" data-show-more data-label="{{ t('Показать ещё') }}">{{ t('Показать ещё') }}</button>
 </div>
 
+{% if directions %}
+<nav class="city-others" aria-labelledby="city-directions-title">
+  <h2 id="city-directions-title">{{ t('Специалисты по направлениям %(city)s')|format(city=city_in) }}</h2>
+  <ul class="city-links">
+    {% for d in directions %}
+      <li><a class="city-link" href="{{ url('/' ~ city_slug ~ '/' ~ d.slug) }}">{{ d.name }} <span>{{ d.count }}</span></a></li>
+    {% endfor %}
+  </ul>
+</nav>
+{% endif %}
+
 {% if other_cities %}
 <nav class="city-others" aria-labelledby="city-others-title">
   <h2 id="city-others-title">{{ t('Другие города') }}</h2>

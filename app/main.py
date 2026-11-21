@@ -65,6 +65,9 @@ from .reference import (
     CITY_PAGES,
     CONCERN_CODES,
     CONCERNS,
+    DIRECTION_MIN_CARDS,
+    DIRECTION_PAGES,
+    direction_matches,
     EVIDENCE_LEVELS,
     MEDICAL_SPECIALTIES,
     OFFERED_EVIDENCE_LEVELS,
@@ -1052,6 +1055,25 @@ def city_ld(request: Request, label: str) -> Markup:
     })
 
 
+def direction_ld(
+    request: Request, city_label: str, city_slug: str, label: str
+) -> Markup:
+    """Страница направления: крошки «Каталог › город › направление».
+
+    Те же три уровня, что видны на самой странице: разметка и страница
+    должны говорить одно и то же.
+    """
+    lang = request_lang(request)
+    return json_ld({
+        "@context": "https://schema.org",
+        **breadcrumbs_ld([
+            (translate("Каталог", lang), SITE_URL + local_path(request, "/")),
+            (city_label, SITE_URL + local_path(request, f"/{city_slug}")),
+            (label, SITE_URL + local_path(request, request.url.path)),
+        ]),
+    })
+
+
 def provider_ld(request: Request, provider, city_slug: str | None) -> Markup:
     """Карточка: место занятий как LocalBusiness и путь к нему.
 
@@ -1520,6 +1542,16 @@ def sitemap() -> Response:
                 f"/{CITY_PAGES[name]['slug']}"
                 for name in sorted({row["city"] for row in real})
                 if name in CITY_PAGES
+            ]
+            # Страницы «город + направление» - только там, где настоящих
+            # карточек хватает на страницу. Список собирается из базы, и
+            # новая карточка добавляет адрес в карту сама.
+            paths += [
+                f"/{CITY_PAGES[city]['slug']}/{slug}"
+                for (city, slug), n in sorted(
+                    direction_counts(conn, with_test=False).items()
+                )
+                if n >= DIRECTION_MIN_CARDS
             ]
             paths += [f"/providers/{row['id']}" for row in real]
 
@@ -3288,6 +3320,7 @@ def city_page(request: Request, city_slug: str):
             ).items()
         }
         counts = crud.city_counts(conn)
+        by_direction = direction_counts(conn)
     page = CITY_PAGES[name]
     others = sorted(
         (
@@ -3304,6 +3337,7 @@ def city_page(request: Request, city_slug: str):
     context = {
         "city_name": name,
         "city_label": city_title(name, lang),
+        "city_slug": city_slug,
         "city_in": page["in_kk"] if lang == "kk" else page["in_ru"],
         "count_text": places_count(len(found), lang),
         "providers": providers,
@@ -3311,5 +3345,155 @@ def city_page(request: Request, city_slug: str):
         "methods_map": methods_map,
         "other_cities": others,
         "structured_data": city_ld(request, city_title(name, lang)),
+        "directions": city_directions(by_direction, name, lang),
     }
     return render(request, "city.html", context)
+
+
+# --- Страницы «город + направление» ------------------------------------------
+
+def specialists_count(count: int, lang: str) -> str:
+    """«3 специалиста и центра», «7 специалистов и центров»;
+    по-казахски «7 маман және орталық»."""
+    if lang == "kk":
+        return f"{count} маман және орталық"
+    if count % 10 == 1 and count % 100 != 11:
+        words = "специалист и центр"
+    elif count % 10 in (2, 3, 4) and count % 100 not in (12, 13, 14):
+        words = "специалиста и центра"
+    else:
+        words = "специалистов и центров"
+    return f"{count} {words}"
+
+
+def direction_word(slug: str, lang: str, form: str = "label") -> str:
+    """Название направления в нужной форме.
+
+    Формы описаны у DIRECTION_PAGES: `label` - подпись ссылки и крошка,
+    `phrase` - форма внутри фразы после города, `one` - единственное число
+    для title. По-русски label и phrase совпадают.
+    """
+    page = DIRECTION_PAGES[slug]
+    if lang == "kk":
+        return page[f"{form}_kk"]
+    return page["one_ru"] if form == "one" else page["label_ru"]
+
+
+def direction_counts(conn, with_test: bool = True) -> dict:
+    """Сколько карточек на каждой странице «город + направление».
+
+    Ключ - пара «название города, адрес направления». Карточка, у которой
+    подошли и специальность, и метод, считается один раз. Города не из
+    CITY_PAGES пропускаются: без страницы города адреса у направления нет.
+    """
+    found: dict = {}
+    for row in crud.provider_directions(conn):
+        if not with_test and row["is_test"]:
+            continue
+        city = row["city"]
+        if city not in CITY_PAGES:
+            continue
+        code = row["method_code"] or ""
+        for slug, page in DIRECTION_PAGES.items():
+            if direction_matches(page, row["specialty"] or "", (code,)):
+                found.setdefault((city, slug), set()).add(row["id"])
+    return {key: len(ids) for key, ids in found.items()}
+
+
+def city_directions(counts: dict, city: str, lang: str, skip: str = "") -> list:
+    """Направления этого города, у которых хватает карточек на страницу.
+
+    Порядок - по убыванию числа карточек: сверху то, где выбор больше.
+    """
+    return sorted(
+        (
+            {
+                "slug": slug,
+                "name": direction_word(slug, lang),
+                "count": counts[(city, slug)],
+            }
+            for slug in DIRECTION_PAGES
+            if slug != skip
+            and counts.get((city, slug), 0) >= DIRECTION_MIN_CARDS
+        ),
+        key=lambda d: (-d["count"], d["name"]),
+    )
+
+
+# Маршрут объявлен последним по той же причине, что и страница города: два
+# слова в адресе не должны перехватить чужую страницу. Незнакомый город или
+# направление - «не найдено».
+@app.get("/{city_slug}/{direction_slug}", response_class=HTMLResponse)
+def direction_page(request: Request, city_slug: str, direction_slug: str):
+    name = CITY_BY_SLUG.get(city_slug)
+    page = DIRECTION_PAGES.get(direction_slug)
+    if name is None or page is None:
+        raise HTTPException(status_code=404, detail="Страница не найдена")
+    lang = request_lang(request)
+    with db_session() as conn:
+        in_city = crud.search_providers(conn, {"city": name})
+        # Методы берём все, без отбора по доказательности: по ним ищем
+        # совпадение с направлением. В карточке показывается отобранный
+        # набор - тот же, что и в остальном каталоге.
+        all_methods = crud.methods_for_providers(
+            conn, [p["id"] for p in in_city]
+        )
+        found = [
+            p for p in in_city
+            if direction_matches(
+                page,
+                p["specialty"] or "",
+                {m["code"] for m in all_methods.get(p["id"], [])},
+            )
+        ]
+        # Мало карточек - страницы нет совсем: см. DIRECTION_MIN_CARDS.
+        if len(found) < DIRECTION_MIN_CARDS:
+            raise HTTPException(status_code=404, detail="Страница не найдена")
+        promoted, providers = promo.split(found)
+        count_promo_views(conn, request, promoted)
+        methods_map = {
+            p["id"]: offered_methods(all_methods.get(p["id"], []))
+            for p in found
+        }
+        counts = direction_counts(conn)
+    city = CITY_PAGES[name]
+    others = sorted(
+        (
+            {
+                "name": city_title(other, lang),
+                "slug": CITY_PAGES[other]["slug"],
+                "count": n,
+            }
+            for (other, slug), n in counts.items()
+            if slug == direction_slug
+            and other != name
+            and n >= DIRECTION_MIN_CARDS
+        ),
+        key=lambda c: (-c["count"], c["name"]),
+    )
+    context = {
+        "city_name": name,
+        "city_label": city_title(name, lang),
+        "city_slug": city_slug,
+        "direction_slug": direction_slug,
+        "city_in": city["in_kk"] if lang == "kk" else city["in_ru"],
+        "direction_label": direction_word(direction_slug, lang),
+        "structured_data": direction_ld(
+            request,
+            city_title(name, lang),
+            city_slug,
+            direction_word(direction_slug, lang),
+        ),
+        "direction_phrase": direction_word(direction_slug, lang, "phrase"),
+        "direction_one": direction_word(direction_slug, lang, "one"),
+        "count_text": places_count(len(found), lang),
+        "count_specialists": specialists_count(len(found), lang),
+        "providers": providers,
+        "promoted": promoted,
+        "methods_map": methods_map,
+        "other_cities": others,
+        "other_directions": city_directions(
+            counts, name, lang, skip=direction_slug
+        ),
+    }
+    return render(request, "direction.html", context)
