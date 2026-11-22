@@ -2612,6 +2612,10 @@ tr[hidden] { display: none; }
      «Админка» и «Выйти» уезжали за край экрана вместе со всей страницей. */
   .header-auth { width: 100%; flex-wrap: wrap; }
   .btn-outline { width: 100%; text-align: center; }
+  /* Родители - основная аудитория: на телефоне кнопка «Разместиться в каталоге»
+     компактная, по ширине текста, в одной строке с переключателем РУС/ҚАЗ. */
+  .header-auth .btn-outline { width: auto; padding: 6px 14px; font-size: 14px; }
+  .header-auth { gap: 10px; }
   .btn-cta { width: 100%; }
   .pc-more { margin: 0; }
   .site-nav { font-size: 0.9rem; }
