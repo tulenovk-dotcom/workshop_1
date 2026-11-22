@@ -836,8 +836,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
 
         # Картинка рекламодателя: подпись для незрячих и текст письма,
         # который подставляется в WhatsApp при нажатии.
-        'Реклама: премиальные нутрицевтики для здоровья, энергии и долголетия. Бренды Designs for Health, Double Wood, Metabolic, Microbiome Labs. Нажмите, чтобы написать в WhatsApp.':
-            'Жарнама: денсаулық, қуат және ұзақ өмір үшін премиум нутрицевтиктер. Designs for Health, Double Wood, Metabolic, Microbiome Labs брендтері. WhatsApp арқылы жазу үшін басыңыз.',
+        'Премиальные нутрицевтики для здоровья, энергии и долголетия. Бренды Designs for Health, Double Wood, Metabolic, Microbiome Labs. Нажмите, чтобы написать в WhatsApp.':
+            'Денсаулық, қуат және ұзақ өмір үшін премиум нутрицевтиктер. Designs for Health, Double Wood, Metabolic, Microbiome Labs брендтері. WhatsApp арқылы жазу үшін басыңыз.',
         'Здравствуйте! Пишу с сайта erekshe.kz. Хочу узнать про витамины и добавки.':
             'Сәлеметсіз бе! erekshe.kz сайтынан жазып отырмын. Витаминдер мен қоспалар туралы білгім келеді.',
 
