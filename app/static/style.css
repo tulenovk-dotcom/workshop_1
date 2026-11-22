@@ -2619,6 +2619,10 @@ tr[hidden] { display: none; }
   .btn-cta { width: 100%; }
   .pc-more { margin: 0; }
   .site-nav { font-size: 0.9rem; }
+  /* Три пункта меню в одну строку на iPhone 15 и шире (393px+):
+     поля шапки 12px вместо 16px, промежуток между пунктами 10px. */
+  .header-inner { padding-left: 12px; padding-right: 12px; }
+  .site-nav { column-gap: 10px; }
   .logo { gap: 9px; }
   .logo-mark { height: 40px; }
   /* Под палец: половинки по 38 пикселей, плашка целиком - 44. */
