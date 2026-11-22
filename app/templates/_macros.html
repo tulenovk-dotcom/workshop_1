@@ -144,3 +144,35 @@
     </div>
   </article>
 {% endmacro %}
+
+{#- Рекламное место.
+
+    Одно и то же содержимое стоит на странице в двух положениях, и видно
+    всегда только одно: полосой под шапкой (place='strip') и карточкой
+    внутри приветствия главной (place='card', только на телефоне).
+    Разметка одна на оба положения, иначе текст и кнопка со временем
+    разъедутся. Какое положение показать, решает CSS по ширине экрана:
+    перенести готовый блок из-под шапки внутрь приветствия стилями нельзя,
+    это разные части страницы.
+
+    `sponsored` - для ссылки настоящего рекламодателя. Платную ссылку
+    положено помечать rel="sponsored", иначе поисковик считает её обычной
+    рекомендацией сайта. Приглашение в наш же WhatsApp - не реклама чужого,
+    и помечать его не нужно. -#}
+{% macro ad_banner(place='strip', home=false, sponsored=false) %}
+<aside class="ad-banner ad-banner-{{ place }}{% if home %} ad-banner-home{% endif %}"
+       aria-label="{{ t('Реклама') }}">
+  <div class="{% if place == 'strip' %}container {% endif %}ad-banner-inner">
+    <span class="ad-banner-logo ad-banner-slot" aria-hidden="true">{{ t('ваш логотип') }}</span>
+
+    <div class="ad-banner-body">
+      <p class="ad-banner-title">{{ t('Здесь может быть ваша реклама') }}</p>
+    </div>
+
+    <a class="btn-outline ad-banner-cta"
+       href="{{ ADMIN_PHONE|wa_link }}?text={{ t('Здравствуйте! Хочу разместить рекламу на erekshe.kz.')|urlencode }}"
+       target="_blank"
+       rel="{{ 'sponsored noopener' if sponsored else 'noopener' }}">{{ t('Узнать условия') }}</a>
+  </div>
+</aside>
+{% endmacro %}

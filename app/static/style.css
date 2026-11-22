@@ -201,12 +201,20 @@ a { color: var(--accent); }
 .ad-banner {
   background: var(--ad-bg);
 }
+/* Карточка внутри приветствия главной показывается только на телефоне:
+   на большом экране место работает полосой под шапкой. */
+.ad-banner-card { display: none; }
+
 .ad-banner-inner {
   display: flex;
   align-items: center;
   gap: 16px;
   padding-top: 14px;
   padding-bottom: 14px;
+  /* Высота задана заранее. Пока не подгрузился шрифт заголовка, место
+     должно занимать те же пиксели: иначе страница дёргается под пальцем
+     уже после того, как человек начал читать. */
+  min-height: 76px;
 }
 /* Знак рекламодателя в своём квадрате. Квадрат держит чужие цвета внутри
    себя и не даёт им разойтись по странице. */
@@ -301,6 +309,27 @@ a { color: var(--accent); }
     padding-top: 10px;
     padding-bottom: 10px;
   }
+  .ad-banner-inner { min-height: 116px; }
+}
+
+/* Телефон: на главной место стоит карточкой внутри приветствия, ниже
+   входа в помощник. Скругление 16px - чуть меньше, чем у плашки помощника
+   рядом (20px): реклама не должна выглядеть главнее того, зачем человек
+   пришёл. Полей у карточки 14px, как у остальных плит на телефоне. */
+@media (max-width: 640px) {
+  .ad-banner-card {
+    display: block;
+    padding: 14px;
+    margin: 14px 0 18px;
+    border-radius: 16px;
+  }
+  .ad-banner-card .ad-banner-inner {
+    padding: 0;
+    min-height: 92px;
+  }
+  /* Полоса под шапкой уступает место карточке - иначе место было бы два
+     раза на одной странице. */
+  .ad-banner-home { display: none; }
 }
 
 .header-inner {
@@ -1175,6 +1204,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 @media (max-width: 640px) {
+  .home-top { margin-top: 0; }
   .home-intro h1 { margin-top: 0; }
   .filters.quick-filters { padding: 18px; }
   .home-bands { grid-template-columns: 1fr; }
@@ -2627,6 +2657,9 @@ tr[hidden] { display: none; }
      были видны на первом экране. */
   .home-intro h1 { font-size: 22px; line-height: 1.25; margin-bottom: 8px; max-width: none; }
   .home-intro .home-lead { font-size: 15px; line-height: 1.45; }
+  /* Над содержимым страницы отступ меньше: на телефоне каждый лишний
+     десяток пикселей сверху - это строка, которую не видно без прокрутки. */
+  main.container { padding-top: 14px; }
   .logo { gap: 9px; }
   .logo-mark { height: 40px; }
   /* Под палец: половинки по 38 пикселей, плашка целиком - 44. */
