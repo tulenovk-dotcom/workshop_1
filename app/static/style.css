@@ -205,6 +205,31 @@ a { color: var(--accent); }
    на большом экране место работает полосой под шапкой. */
 .ad-banner-card { display: none; }
 
+/* Место с готовой картинкой рекламодателя. Заливки у блока нет: картинка
+   нарисована со своим фоном, и наш тёмный индиго проступал бы по краям
+   чужим кантом. Полей сверху и снизу ровно столько, чтобы картинка не
+   слипалась с шапкой и с содержимым страницы. */
+.ad-banner-picture { background: none; }
+.ad-banner-picture .ad-banner-inner {
+  display: block;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  min-height: 0;
+}
+.ad-banner-link { display: block; line-height: 0; }
+.ad-banner-link:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+/* Ширина и высота заданы в разметке числами, поэтому место под картинку
+   браузер держит заранее и страница при загрузке не прыгает. */
+.ad-banner-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--r-control);
+}
+
 .ad-banner-inner {
   display: flex;
   align-items: center;
@@ -323,6 +348,16 @@ a { color: var(--accent); }
     margin: 14px 0 18px;
     border-radius: 16px;
   }
+  /* Карточка с картинкой - сама картинка: полей внутри нет, скругление
+     режет её углы. */
+  .ad-banner-card.ad-banner-picture {
+    padding: 0;
+    overflow: hidden;
+  }
+  .ad-banner-card.ad-banner-picture .ad-banner-inner {
+    padding: 0;
+  }
+  .ad-banner-card .ad-banner-image { border-radius: 0; }
   .ad-banner-card .ad-banner-inner {
     padding: 0;
     /* 96 пикселей - высота карточки с заголовком в две строки, как он
