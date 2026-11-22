@@ -2623,6 +2623,10 @@ tr[hidden] { display: none; }
      поля шапки 12px вместо 16px, промежуток между пунктами 10px. */
   .header-inner { padding-left: 12px; padding-right: 12px; }
   .site-nav { column-gap: 10px; }
+  /* Главная: заголовок и описание компактнее, чтобы помощник и фильтры
+     были видны на первом экране. */
+  .home-intro h1 { font-size: 22px; line-height: 1.25; margin-bottom: 8px; max-width: none; }
+  .home-intro .home-lead { font-size: 15px; line-height: 1.45; }
   .logo { gap: 9px; }
   .logo-mark { height: 40px; }
   /* Под палец: половинки по 38 пикселей, плашка целиком - 44. */
