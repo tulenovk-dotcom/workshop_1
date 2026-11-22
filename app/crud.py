@@ -1179,6 +1179,52 @@ def record_contact_click(
     )
 
 
+AD_PLACES = ("strip", "card")
+
+
+def record_ad_click(
+    conn: sqlite3.Connection, ad: str, place: str = "strip", is_bot: bool = False
+) -> None:
+    """Отметить нажатие на рекламный баннер.
+
+    Как и у переходов к местам занятий, персональных данных нет: только
+    время, баннер и положение, в котором он стоял.
+    """
+    conn.execute(
+        "INSERT INTO ad_clicks (ad, place, created_at, is_bot) VALUES (?, ?, ?, ?)",
+        (ad, place if place in AD_PLACES else "strip", now_iso(), int(is_bot)),
+    )
+
+
+def ad_clicks_summary(conn: sqlite3.Connection, ad: str) -> dict:
+    """Нажатия на баннер: за сегодня, 7 и 30 дней, всего, и по положениям
+    за 30 дней. Роботы не считаются. `since` - день первого нажатия."""
+    def count(days: int | None, place: str | None = None) -> int:
+        sql = "SELECT COUNT(*) AS n FROM ad_clicks WHERE ad = ? AND is_bot = 0"
+        args: list = [ad]
+        if days is not None:
+            sql += " AND created_at >= ?"
+            args.append(visit_log_since(days))
+        if place is not None:
+            sql += " AND place = ?"
+            args.append(place)
+        return int(conn.execute(sql, args).fetchone()["n"])
+
+    first = conn.execute(
+        "SELECT MIN(created_at) AS t FROM ad_clicks WHERE ad = ? AND is_bot = 0",
+        (ad,),
+    ).fetchone()
+    return {
+        "today": count(1),
+        "week": count(7),
+        "month": count(30),
+        "total": count(None),
+        "month_strip": count(30, "strip"),
+        "month_card": count(30, "card"),
+        "since": (first["t"] or "") if first else "",
+    }
+
+
 def contact_clicks_by_provider(
     conn: sqlite3.Connection, days: int
 ) -> list[sqlite3.Row]:

@@ -345,6 +345,10 @@ git log --oneline origin/test..origin/main
   занижать числа. Фильтры `wa_link`, `site_link` и `instagram_link` остались,
   но теперь их зовёт только обработчик `/go`. Новая кнопка связи - значит и
   новая строка в `CLICK_TARGETS` в `app/main.py`.
+- **Рекламный баннер ведёт через `/ad/{ключ}`, а не прямо в WhatsApp.**
+  Нажатия лежат в таблице `ad_clicks` и видны на `/admin/payments`. Новый
+  баннер - новая строка в `AD_TARGETS` в `app/main.py` и ссылка
+  `{{ url('/ad/ключ?place=' ~ place) }}` в макросе `ad_banner`.
 - **Время в базе по Гринвичу, на экране по Казахстану.** Записывается через
   `crud.now_iso()`, показывается через фильтры `|local_time` и `|local_date`
   (модуль `app/timeutil.py`, пояс `Asia/Almaty`). Срез строки вроде

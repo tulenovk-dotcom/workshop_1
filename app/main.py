@@ -1327,6 +1327,41 @@ def go_to_contact(request: Request, kind: str, provider_id: int, src: str = "car
     return RedirectResponse(target, status_code=302)
 
 
+# Рекламные баннеры: ключ из адреса /ad/<ключ> -> готовый текст письма в
+# WhatsApp администратора. Новый баннер - новая строка здесь и ссылка на
+# /ad/<ключ> в макросе ad_banner.
+AD_TARGETS = {
+    "vitamins": "Здравствуйте! Пишу с сайта erekshe.kz. Хочу узнать про витамины и добавки.",
+}
+
+
+@app.get("/ad/{ad}")
+def go_to_ad(request: Request, ad: str, place: str = "strip"):
+    """Отметить нажатие на рекламный баннер и отправить человека дальше.
+
+    Устроено как /go у кнопок связи: единица в счётчик и сразу
+    перенаправление. Если запись не удалась, человек всё равно уходит.
+    """
+    if not contact_limiter.allow(request_ip(request)):
+        return PlainTextResponse(
+            translate("Слишком много запросов. Попробуйте через минуту.", request_lang(request)),
+            status_code=429,
+        )
+    text = AD_TARGETS.get(ad)
+    target = wa_link(ADMIN_PHONE) if text else ""
+    if not target:
+        raise HTTPException(status_code=404, detail="Ссылка не найдена")
+    try:
+        is_bot = looks_like_bot(user_agent(request)) or geo.hosting(request_ip(request))
+        with db_session() as conn:
+            crud.record_ad_click(conn, ad, place, is_bot)
+    except Exception:
+        log.warning("Не удалось записать нажатие на баннер", exc_info=True)
+    return RedirectResponse(
+        f"{target}?text={quote(translate(text, request_lang(request)))}", status_code=302
+    )
+
+
 @app.get("/methods", response_class=HTMLResponse)
 def methods_page(request: Request):
     with db_session() as conn:
@@ -1484,6 +1519,9 @@ def robots() -> str:
         # всех, поэтому проще туда не звать.
         "Disallow: /go\n"
         "Disallow: /kk/go\n"
+        # Нажатия на рекламный баннер - по той же причине.
+        "Disallow: /ad\n"
+        "Disallow: /kk/ad\n"
         f"Sitemap: {SITE_URL}/sitemap.xml\n"
     )
 
@@ -2403,6 +2441,7 @@ def admin_payments(request: Request, saved: int = 0, removed: int = 0,
         clicks = crud.contact_clicks_counts(conn, payoff_days)
         shows_from = crud.promo_views_first_day(conn)
         starts = crud.provider_start_days(conn)
+        ad_clicks = crud.ad_clicks_summary(conn, "vitamins")
 
     # Идущие сроки - по близости конца, кончившиеся - свежие сверху, без
     # срока (оплаты есть, срок стёрли руками) - в самом конце.
@@ -2462,6 +2501,7 @@ def admin_payments(request: Request, saved: int = 0, removed: int = 0,
         "payoff_days": payoff_days,
         "shows_from": shows_from,
         "usual_cards": len(free_ids),
+        "ad_clicks": ad_clicks,
     }
     return render(request, "admin/payments.html", context)
 

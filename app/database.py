@@ -200,6 +200,21 @@ CREATE TABLE IF NOT EXISTS contact_clicks (
     is_bot INTEGER NOT NULL DEFAULT 0
 );
 
+-- Нажатия на рекламный баннер: сколько раз с сайта ушли к рекламодателю.
+--
+-- Как и в переходах к местам занятий, о человеке не хранится ничего: ни
+-- адреса, ни подписи браузера - только время, какой баннер и в каком
+-- положении он стоял. Роботы помечаются, а не выбрасываются.
+CREATE TABLE IF NOT EXISTS ad_clicks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    -- Какой баннер: ключ из AD_TARGETS в app/main.py, например vitamins.
+    ad TEXT NOT NULL,
+    -- strip - полоса под шапкой, card - карточка в приветствии главной.
+    place TEXT NOT NULL DEFAULT 'strip',
+    created_at TEXT NOT NULL,
+    is_bot INTEGER NOT NULL DEFAULT 0
+);
+
 -- Оплаты продвижения: по строке на каждую полученную оплату.
 --
 -- Строки не переписываются: продление добавляет новую, и видно всю
@@ -272,6 +287,7 @@ CREATE INDEX IF NOT EXISTS idx_visit_log_ip ON visit_log(ip, created_at);
 CREATE INDEX IF NOT EXISTS idx_visit_log_people ON visit_log(is_bot, created_at);
 CREATE INDEX IF NOT EXISTS idx_clicks_provider ON contact_clicks(provider_id, is_bot);
 CREATE INDEX IF NOT EXISTS idx_clicks_time ON contact_clicks(created_at, is_bot);
+CREATE INDEX IF NOT EXISTS idx_ad_clicks_time ON ad_clicks(ad, created_at, is_bot);
 CREATE INDEX IF NOT EXISTS idx_promo_payments_provider ON promo_payments(provider_id, paid_on);
 CREATE INDEX IF NOT EXISTS idx_promo_payments_day ON promo_payments(paid_on);
 CREATE INDEX IF NOT EXISTS idx_promo_views_provider ON promo_views(provider_id, day);
