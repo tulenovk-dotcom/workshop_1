@@ -99,8 +99,23 @@
     wrap.appendChild(name);
     var city = card.querySelector(".pc-city");
     if (city) {
+      // Город и район лежат в одном абзаце, но район - в своём <span>, и на
+      // карточке их разводит вёрстка: район стоит отдельной строкой. В
+      // подписи к точке вёрстки нет, и взятый целиком текст слипался в
+      // «АлматыАлмалинский». Поэтому строку собираем сами, через запятую.
+      var district = city.querySelector("span");
+      var parts = [];
+      Array.prototype.forEach.call(city.childNodes, function (node) {
+        if (node === district) { return; }
+        var piece = (node.textContent || "").replace(/\s+/g, " ").trim();
+        if (piece) { parts.push(piece); }
+      });
+      if (district) {
+        var districtText = district.textContent.replace(/\s+/g, " ").trim();
+        if (districtText) { parts.push(districtText); }
+      }
       var line = document.createElement("div");
-      line.textContent = city.textContent.replace(/\s+/g, " ").trim();
+      line.textContent = parts.join(", ");
       wrap.appendChild(line);
     }
     if (link) {
