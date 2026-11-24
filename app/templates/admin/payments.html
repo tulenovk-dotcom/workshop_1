@@ -294,41 +294,6 @@
   {% endif %}
 </section>
 
-{#- Рекламный баннер - отдельный от продвижения карточек источник денег,
-    поэтому и блок отдельный. Полоса чисел та же, что вверху страницы:
-    короткий ответ рекламодателю, сколько людей до него дошло. #}
-<section id="ad" class="pay-section">
-  <h2>Нажатия на рекламный баннер</h2>
-  <p class="hint">Баннер «Витамины и добавки»: нажатие открывает WhatsApp
-    администратора.</p>
-  <div class="stat-strip">
-    <p class="stat-figure">
-      <span class="stat-num">{{ ad_clicks.today }}</span>
-      <span class="stat-label">сегодня</span>
-    </p>
-    <p class="stat-figure">
-      <span class="stat-num">{{ ad_clicks.week }}</span>
-      <span class="stat-label">за 7 дней</span>
-    </p>
-    <p class="stat-figure">
-      <span class="stat-num">{{ ad_clicks.month }}</span>
-      <span class="stat-label">за 30 дней</span>
-    </p>
-    <p class="stat-figure">
-      <span class="stat-num">{{ ad_clicks.total }}</span>
-      <span class="stat-label">всего</span>
-    </p>
-  </div>
-  {% if ad_clicks.total %}
-    <p class="hint">За 30 дней: из полосы под шапкой - {{ ad_clicks.month_strip }},
-      из карточки на главной (только на телефоне) - {{ ad_clicks.month_card }}.
-      Считается с {{ ad_clicks.since|local_date }}, роботы не входят.</p>
-  {% else %}
-    <p class="hint">Нажатий пока не было. Счёт идёт с этого обновления сайта,
-      роботы не входят.</p>
-  {% endif %}
-</section>
-
 {#- Отдача продвижения. Внизу страницы и отдельной таблицей: в «Сроках»
     речь о деньгах и датах, а здесь о том, что центр за эти деньги получил.
     Три числа в ряд, без долей и процентов: доли считаются на странице

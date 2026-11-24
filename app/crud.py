@@ -1198,7 +1198,12 @@ def record_ad_click(
 
 def ad_clicks_summary(conn: sqlite3.Connection, ad: str) -> dict:
     """Нажатия на баннер: за сегодня, 7 и 30 дней, всего, и по положениям
-    за 30 дней. Роботы не считаются. `since` - день первого нажатия."""
+    за 30 дней. Роботы не считаются. `since` - день первого нажатия.
+
+    С 24.11.2026 никто не зовёт: баннер убран с сайта, и блок с этими
+    числами убран со страницы «Оплаты». Записи в `ad_clicks` остались,
+    так что вернуть блок - значит снова позвать эту функцию.
+    """
     def count(days: int | None, place: str | None = None) -> int:
         sql = "SELECT COUNT(*) AS n FROM ad_clicks WHERE ad = ? AND is_bot = 0"
         args: list = [ad]

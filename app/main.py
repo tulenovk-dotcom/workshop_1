@@ -1330,6 +1330,10 @@ def go_to_contact(request: Request, kind: str, provider_id: int, src: str = "car
 # Рекламные баннеры: ключ из адреса /ad/<ключ> -> готовый текст письма в
 # WhatsApp администратора. Новый баннер - новая строка здесь и ссылка на
 # /ad/<ключ> в макросе ad_banner.
+#
+# С 24.11.2026 баннера на сайте нет, и своих чисел он больше нигде не
+# показывает. Адрес оставлен рабочим: по старой ссылке человек всё равно
+# попадёт в WhatsApp, а нажатие ляжет в ad_clicks.
 AD_TARGETS = {
     "vitamins": "Здравствуйте! Пишу с сайта erekshe.kz. Хочу узнать про витамины и добавки.",
 }
@@ -2441,7 +2445,6 @@ def admin_payments(request: Request, saved: int = 0, removed: int = 0,
         clicks = crud.contact_clicks_counts(conn, payoff_days)
         shows_from = crud.promo_views_first_day(conn)
         starts = crud.provider_start_days(conn)
-        ad_clicks = crud.ad_clicks_summary(conn, "vitamins")
 
     # Идущие сроки - по близости конца, кончившиеся - свежие сверху, без
     # срока (оплаты есть, срок стёрли руками) - в самом конце.
@@ -2501,7 +2504,6 @@ def admin_payments(request: Request, saved: int = 0, removed: int = 0,
         "payoff_days": payoff_days,
         "shows_from": shows_from,
         "usual_cards": len(free_ids),
-        "ad_clicks": ad_clicks,
     }
     return render(request, "admin/payments.html", context)
 
