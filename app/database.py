@@ -258,6 +258,22 @@ CREATE TABLE IF NOT EXISTS promo_views (
     PRIMARY KEY (day, provider_id)
 );
 
+-- Свод открытий карточек по дням: сколько раз за день открывали страницу
+-- каждого места занятий. Считается из журнала посещений раз в сутки, по
+-- уже завершённым дням.
+--
+-- Нужен затем, что сам журнал живёт тридцать дней: в нём настоящие адреса
+-- посетителей, и держать их дольше нельзя. А «сколько раз открыли карточку»
+-- - это просто число: ни адреса, ни подписи браузера, ни времени с точностью
+-- до секунды. Поэтому у свода срока хранения нет, и страница «Переходы»
+-- показывает открытия и долю за любой срок, а не только за месяц.
+CREATE TABLE IF NOT EXISTS card_views_daily (
+    day TEXT NOT NULL,
+    provider_id INTEGER NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
+    views INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, provider_id)
+);
+
 CREATE TABLE IF NOT EXISTS requests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -291,6 +307,7 @@ CREATE INDEX IF NOT EXISTS idx_ad_clicks_time ON ad_clicks(ad, created_at, is_bo
 CREATE INDEX IF NOT EXISTS idx_promo_payments_provider ON promo_payments(provider_id, paid_on);
 CREATE INDEX IF NOT EXISTS idx_promo_payments_day ON promo_payments(paid_on);
 CREATE INDEX IF NOT EXISTS idx_promo_views_provider ON promo_views(provider_id, day);
+CREATE INDEX IF NOT EXISTS idx_card_views_provider ON card_views_daily(provider_id, day);
 """
 
 

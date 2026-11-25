@@ -1310,6 +1310,94 @@ def provider_card_views(conn: sqlite3.Connection, days: int) -> dict[int, int]:
     return {int(row["provider_id"]): int(row["views"]) for row in rows if row["provider_id"]}
 
 
+# --- Свод открытий карточек по дням -----------------------------------------
+#
+# Журнал посещений живёт VISIT_LOG_DAYS дней: в нём настоящие адреса, и
+# держать их дольше нельзя. А «сколько раз открыли карточку» - это просто
+# число, и хранить его можно сколько угодно. Поэтому завершённые дни раз в
+# сутки сворачиваются в card_views_daily, и страница «Переходы» показывает
+# открытия и долю за любой срок, а не только за последний месяц.
+
+
+def period_first_day(days: int) -> str:
+    """Первый день периода по времени Казахстана, «ГГГГ-ММ-ДД».
+
+    Отсчёт тот же, что у visit_log_since: «7 дней» - это сегодня и шесть
+    предыдущих суток. Брать первые десять знаков у самой visit_log_since
+    нельзя: там время по Гринвичу, а полночь в Казахстане приходится ещё
+    на вчерашний гринвичский день - период вышел бы на сутки длиннее.
+    """
+    now = datetime.now(KZ_TIME)
+    start = now if days <= 1 else now - timedelta(days=days - 1)
+    return start.strftime("%Y-%m-%d")
+
+
+def rollup_card_views(conn: sqlite3.Connection, today: str | None = None) -> int:
+    """Досчитать свод открытий по завершённым дням. Сколько строк добавлено.
+
+    Сегодняшний день не берём: он ещё идёт, и число к вечеру поменяется.
+    Дни, которые в своде уже есть, не трогаем - поэтому запуск дважды
+    подряд ничего не удваивает и не портит.
+
+    Сдвиг «+5 часов» - это пояс Казахстана (KZ_TIME): в журнале время по
+    Гринвичу, а день считается по местному, иначе вечерние открытия
+    уезжали бы в предыдущие сутки.
+
+    Карточки, которых уже нет, пропускаем: иначе запись упёрлась бы во
+    внешний ключ и свод не досчитался бы целиком.
+    """
+    cursor = conn.execute(
+        """
+        INSERT INTO card_views_daily (day, provider_id, views)
+        SELECT substr(datetime(v.created_at, '+5 hours'), 1, 10) AS day,
+               CAST(REPLACE(REPLACE(v.path, '/kk/providers/', ''),
+                            '/providers/', '') AS INTEGER) AS provider_id,
+               COUNT(*) AS views
+          FROM visit_log v
+         WHERE v.is_bot = 0
+           AND (v.path LIKE '/providers/%' OR v.path LIKE '/kk/providers/%')
+         GROUP BY day, provider_id
+        HAVING day < ?
+           AND provider_id IN (SELECT id FROM providers)
+        ON CONFLICT(day, provider_id) DO NOTHING
+        """,
+        (today or visit_day(),),
+    )
+    return cursor.rowcount or 0
+
+
+def card_views_first_day(conn: sqlite3.Connection) -> str:
+    """Первый день, за который есть свод. Пусто - свода ещё нет.
+
+    Нужен подписи под таблицей: за более ранние дни открытий не знает
+    никто, и без этой даты числа выглядели бы заниженными без объяснения.
+    """
+    row = conn.execute("SELECT MIN(day) AS day FROM card_views_daily").fetchone()
+    return (row["day"] or "") if row else ""
+
+
+def card_views_rolled(conn: sqlite3.Connection, days: int | None) -> dict[int, int]:
+    """Открытия карточек за период: свод по дням плюс сегодняшний день.
+
+    Свод знает только завершённые дни, поэтому сегодня досчитывается по
+    журналу посещений - за сегодня он есть всегда. `days = None` - за всё
+    время, сколько есть в своде.
+    """
+    sql = "SELECT provider_id, SUM(views) AS views FROM card_views_daily WHERE day < ?"
+    args: list = [visit_day()]
+    if days is not None:
+        sql += " AND day >= ?"
+        args.append(period_first_day(days))
+    sql += " GROUP BY provider_id"
+    totals = {
+        int(row["provider_id"]): int(row["views"] or 0)
+        for row in conn.execute(sql, args)
+    }
+    for provider_id, views in provider_card_views(conn, 1).items():
+        totals[provider_id] = totals.get(provider_id, 0) + views
+    return totals
+
+
 def record_promo_views(conn: sqlite3.Connection, provider_ids, day: str) -> None:
     """Отметить, что эти карточки показались в блоке продвижения.
 

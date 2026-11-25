@@ -369,6 +369,12 @@ async def count_visit(request: Request, call_next):
             # сайта срок хранения не выдержит: сервер работает неделями.
             if day != _visit_cleanup_day:
                 _visit_cleanup_day = day
+                # Сначала свод открытий по вчерашний день включительно,
+                # потом чистка: иначе удалённые записи унесли бы с собой
+                # дни, которых в своде ещё нет.
+                rolled = crud.rollup_card_views(conn, day)
+                if rolled:
+                    log.info("Дней в своде открытий прибавилось: %s", rolled)
                 removed = crud.cleanup_visit_log(conn)
                 if removed:
                     log.info("Удалено записей журнала посещений: %s", removed)
@@ -660,6 +666,9 @@ def on_startup() -> None:
     # проекте нет, а сервис на хостинге и так перезапускается регулярно.
     with db_session() as conn:
         cleaned = crud.cleanup_personal_data(conn)
+        # Свод открытий считается до чистки: журнал сейчас поредеет, а свод
+        # должен успеть забрать из него завершённые дни.
+        rolled = crud.rollup_card_views(conn)
         # Журнал посещений чистится и при запуске, и раз в сутки из счётчика:
         # если сайт долго не перезапускали, срок хранения всё равно соблюдён.
         removed = crud.cleanup_visit_log(conn)
@@ -667,6 +676,8 @@ def on_startup() -> None:
         log.info("Обезличено записей по истечении срока хранения: %s", cleaned)
     if removed:
         log.info("Удалено записей журнала посещений: %s", removed)
+    if rolled:
+        log.info("Дней в своде открытий прибавилось: %s", rolled)
     # Справочник местоположений сайт обновляет сам, в фоне: см. geo_update.
     from . import geo_update
 
@@ -2358,12 +2369,21 @@ def admin_clicks(
         days = 30
     # 0 в адресе - «всё время»: запросу это передаётся как None.
     period = None if days == 0 else days
-    # Открытия карточек известны только за срок жизни журнала посещений.
-    # За более долгий срок их не показываем вовсе: ноль читался бы как
-    # «карточку не открывали», а на деле открытия просто не сохранились.
-    views_known = period is not None and period <= crud.VISIT_LOG_DAYS
+    # Короткие сроки считаются прямо по журналу посещений - он точен, но
+    # живёт VISIT_LOG_DAYS дней. Длинные берутся из дневного свода, где
+    # лежат только числа. Пока свод пуст (первый день после его появления),
+    # показываем прочерк: ноль читался бы как «карточку не открывали», а на
+    # деле открытий этих дней уже никто не знает.
+    short_period = period is not None and period <= crud.VISIT_LOG_DAYS
     with db_session() as conn:
-        views = crud.provider_card_views(conn, period) if views_known else {}
+        views_from = "" if short_period else crud.card_views_first_day(conn)
+        views_known = short_period or bool(views_from)
+        if short_period:
+            views = crud.provider_card_views(conn, period)
+        elif views_known:
+            views = crud.card_views_rolled(conn, period)
+        else:
+            views = {}
         rows = []
         for row in crud.contact_clicks_by_provider(conn, period):
             seen = views.get(int(row["id"]), 0) if views_known else None
@@ -2403,6 +2423,7 @@ def admin_clicks(
             "period_label": dict(CLICK_PERIODS)[days],
             "periods": CLICK_PERIODS,
             "views_known": views_known,
+            "views_from": views_from,
             "retention_days": crud.VISIT_LOG_DAYS,
             "rows": rows,
             "clicks_total": sum(int(row["total"]) for row in rows),
