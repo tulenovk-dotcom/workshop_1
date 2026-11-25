@@ -2321,11 +2321,19 @@ def parse_visit_day(value: str, oldest: date, newest: date) -> date | None:
     return day if oldest <= day <= newest else None
 
 
-# Сроки, за которые можно смотреть переходы. Дольше тридцати дней нет
-# смысла: открытия карточек берутся из журнала посещений, а он живёт
-# VISIT_LOG_DAYS дней, и без них не посчитать долю. Общее число переходов
-# за всё время в таблице есть отдельной колонкой - оно не стареет.
-CLICK_PERIODS = ((7, "7 дней"), (30, "30 дней"))
+# Сроки, за которые можно смотреть переходы. Сами переходы не стареют,
+# поэтому сроки любые, вплоть до «всё время» (это 0 в адресе страницы).
+# А вот открытия карточек берутся из журнала посещений, а он живёт
+# VISIT_LOG_DAYS дней: за больший срок в колонках «Карточку открыли» и
+# «Доля» стоит прочерк - не ноль, потому что это «не знаем», а не «ни
+# разу».
+CLICK_PERIODS = (
+    (7, "7 дней"),
+    (30, "30 дней"),
+    (90, "90 дней"),
+    (365, "год"),
+    (0, "всё время"),
+)
 
 # По каким колонкам таблицы переходов можно сортировать. По умолчанию -
 # по возрастанию «Всего за период»: сверху те, к кому почти не переходят.
@@ -2348,11 +2356,17 @@ def admin_clicks(
         return guard
     if days not in {period for period, _ in CLICK_PERIODS}:
         days = 30
+    # 0 в адресе - «всё время»: запросу это передаётся как None.
+    period = None if days == 0 else days
+    # Открытия карточек известны только за срок жизни журнала посещений.
+    # За более долгий срок их не показываем вовсе: ноль читался бы как
+    # «карточку не открывали», а на деле открытия просто не сохранились.
+    views_known = period is not None and period <= crud.VISIT_LOG_DAYS
     with db_session() as conn:
-        views = crud.provider_card_views(conn, days)
+        views = crud.provider_card_views(conn, period) if views_known else {}
         rows = []
-        for row in crud.contact_clicks_by_provider(conn, days):
-            seen = views.get(int(row["id"]), 0)
+        for row in crud.contact_clicks_by_provider(conn, period):
+            seen = views.get(int(row["id"]), 0) if views_known else None
             total = int(row["total"])
             rows.append({
                 **dict(row),
@@ -2386,14 +2400,18 @@ def admin_clicks(
             "sort": sort,
             "order": order,
             "days": days,
+            "period_label": dict(CLICK_PERIODS)[days],
             "periods": CLICK_PERIODS,
+            "views_known": views_known,
             "retention_days": crud.VISIT_LOG_DAYS,
             "rows": rows,
             "clicks_total": sum(int(row["total"]) for row in rows),
             "whatsapp_total": sum(int(row["whatsapp"]) for row in rows),
             "phone_total": sum(int(row["phone"]) for row in rows),
             "from_list_total": sum(int(row["from_list"]) for row in rows),
-            "views_total": sum(int(row["views"]) for row in rows),
+            "views_total": (
+                sum(int(row["views"]) for row in rows) if views_known else None
+            ),
             "all_time_total": crud.contact_clicks_total(conn),
         }
     return render(request, "admin/clicks.html", context)

@@ -32,7 +32,7 @@
 <section class="stat-strip">
   <p class="stat-figure">
     <span class="stat-num">{{ clicks_total }}</span>
-    <span class="stat-label">переходов за {{ days }} дней</span>
+    <span class="stat-label">переходов за {{ period_label }}</span>
   </p>
   <p class="stat-figure">
     <span class="stat-num">{{ phone_total }}</span>
@@ -42,14 +42,19 @@
     <span class="stat-num">{{ whatsapp_total }}</span>
     <span class="stat-label">из них в WhatsApp</span>
   </p>
+  {#- Открытия известны только за срок жизни журнала посещений. За более
+      долгий срок вместо числа прочерк: ноль читался бы как «не открывали». -#}
   <p class="stat-figure">
-    <span class="stat-num">{{ views_total }}</span>
+    <span class="stat-num">{% if views_total is none %}—{% else %}{{ views_total }}{% endif %}</span>
     <span class="stat-label">открытий карточек</span>
   </p>
-  <p class="stat-figure">
-    <span class="stat-num">{{ all_time_total }}</span>
-    <span class="stat-label">переходов за всё время</span>
-  </p>
+  {#- Когда выбрано «всё время», это же число стоит первым в полосе. -#}
+  {% if days != 0 %}
+    <p class="stat-figure">
+      <span class="stat-num">{{ all_time_total }}</span>
+      <span class="stat-label">переходов за всё время</span>
+    </p>
+  {% endif %}
 </section>
 
 {% if rows %}
@@ -86,7 +91,9 @@
               {% if row.is_test %}<span class="chip chip-test">тест</span>{% endif %}
               <div class="muted">{{ row.city }}</div>
             </td>
-            <td class="stat-col-num">{{ row.views }}</td>
+            <td class="stat-col-num">
+              {% if row.views is none %}—{% else %}{{ row.views }}{% endif %}
+            </td>
             <td class="stat-col-num">{{ row.phone }}</td>
             <td class="stat-col-num">{{ row.whatsapp }}</td>
             <td class="stat-col-num">{{ row.website }}</td>
@@ -114,9 +121,17 @@
     WhatsApp» (а у кого нет WhatsApp - кнопка телефона) стоит и в списке каталога, поэтому часть людей пишет, не
     открывая карточку. Таких переходов за этот срок {{ from_list_total }}.</p>
 
-  <p class="hint">Открытия карточек известны за {{ retention_days }} дней -
-    столько живёт журнал посещений. Сами переходы не стареют: их общее число
-    в последней колонке считается за всё время.</p>
+  {% if views_known %}
+    <p class="hint">Открытия карточек известны за {{ retention_days }} дней -
+      столько живёт журнал посещений. Сами переходы не стареют: их общее число
+      в последней колонке считается за всё время.</p>
+  {% else %}
+    <p class="hint">За такой срок открытий карточек нет: журнал посещений
+      живёт {{ retention_days }} дней, и за всё, что раньше, открытия не
+      сохранились. Поэтому в колонках «Карточку открыли» и «Доля» стоит
+      прочерк - это «не знаем», а не «ни разу». Сами переходы не стареют,
+      их видно за любой срок.</p>
+  {% endif %}
 
   <p class="hint">Колонка «Телефон» - сколько раз нажали «Позвонить» или
     «Показать номер». Сколько из них действительно дозвонились, сайт не

@@ -1231,12 +1231,16 @@ def ad_clicks_summary(conn: sqlite3.Connection, ad: str) -> dict:
 
 
 def contact_clicks_by_provider(
-    conn: sqlite3.Connection, days: int
+    conn: sqlite3.Connection, days: int | None
 ) -> list[sqlite3.Row]:
     """Переходы за период, по строке на каждое место занятий.
 
     В выборку попадают и те, к кому не перешли ни разу: нулевая строка -
     такой же ответ, как и большая. Роботы не считаются.
+
+    `days = None` - за всё время. Порог тогда пустая строка: любая дата
+    больше неё, и условие пропускает все записи. Так запрос остаётся
+    одним на оба случая.
     """
     return conn.execute(
         """
@@ -1255,7 +1259,7 @@ def contact_clicks_by_provider(
          GROUP BY p.id
          ORDER BY total DESC, p.name
         """,
-        (visit_log_since(days),),
+        ("" if days is None else visit_log_since(days),),
     ).fetchall()
 
 
