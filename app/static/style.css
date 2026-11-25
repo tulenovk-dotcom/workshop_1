@@ -2030,6 +2030,11 @@ tr[hidden] { display: none; }
 
 .admin-table th { background: #eceeed; font-size: 0.85rem; }
 
+/* Кнопки действий в строке таблицы. Flex стоит на вложенном блоке, а не
+   на самой ячейке: ячейка с display:flex перестаёт быть ячейкой, её
+   нижняя граница рисуется по высоте кнопок, и линия между строками
+   съезжает. На странице оплат это было хорошо видно в «Сроках»:
+   у высоких строк черта в последнем столбце шла выше остальных. */
 .row-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
 .row-actions form { margin: 0; }
 

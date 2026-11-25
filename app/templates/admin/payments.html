@@ -122,15 +122,17 @@
               </td>
               <td class="stat-col-num">{{ r.payments }}</td>
               <td class="stat-col-num">{{ r.paid_total|price }} ₸</td>
-              <td class="row-actions">
-                <a class="btn btn-small"
-                   href="/admin/payments?provider={{ r.id }}#pay-form">Продлить</a>
-                {% if r.notified %}
-                  <form method="post" action="/admin/payments/notified/{{ r.id }}">
-                    <input type="hidden" name="undo" value="1">
-                    <button type="submit" class="btn btn-small btn-ghost">Снять отметку</button>
-                  </form>
-                {% endif %}
+              <td>
+                <div class="row-actions">
+                  <a class="btn btn-small"
+                     href="/admin/payments?provider={{ r.id }}#pay-form">Продлить</a>
+                  {% if r.notified %}
+                    <form method="post" action="/admin/payments/notified/{{ r.id }}">
+                      <input type="hidden" name="undo" value="1">
+                      <button type="submit" class="btn btn-small btn-ghost">Снять отметку</button>
+                    </form>
+                  {% endif %}
+                </div>
               </td>
             </tr>
           {% endfor %}

@@ -30,17 +30,19 @@
               <div><span class="chip chip-flag">нет перевода</span></div>
             {% endif %}</td>
           <td><span class="badge {{ EVIDENCE_LEVELS[m.evidence_level].css }}">{{ EVIDENCE_LEVELS[m.evidence_level].label }}</span></td>
-          <td class="row-actions">
-            {% if editing %}
-              <a class="btn btn-small btn-ghost" href="#method-form">К форме</a>
-            {% else %}
-              <a class="btn btn-small"
-                 href="/admin/methods/{{ m.id }}/edit#method-form">Изменить</a>
-            {% endif %}
-            <form method="post" action="/admin/methods/{{ m.id }}/delete"
-                  onsubmit="return confirm('Удалить метод «{{ m.name }}» из справочника?');">
-              <button type="submit" class="btn btn-small btn-danger">Удалить</button>
-            </form>
+          <td>
+            <div class="row-actions">
+              {% if editing %}
+                <a class="btn btn-small btn-ghost" href="#method-form">К форме</a>
+              {% else %}
+                <a class="btn btn-small"
+                   href="/admin/methods/{{ m.id }}/edit#method-form">Изменить</a>
+              {% endif %}
+              <form method="post" action="/admin/methods/{{ m.id }}/delete"
+                    onsubmit="return confirm('Удалить метод «{{ m.name }}» из справочника?');">
+                <button type="submit" class="btn btn-small btn-danger">Удалить</button>
+              </form>
+            </div>
           </td>
         </tr>
       {% endfor %}

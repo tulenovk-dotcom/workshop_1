@@ -52,8 +52,10 @@
             </td>
             <td>{{ r.message|truncate(90) if r.message else '' }}</td>
             <td><span class="chip status-{{ r.status }}">{{ REQUEST_STATUSES.get(r.status, r.status) }}</span></td>
-            <td class="row-actions">
-              <a class="btn btn-small" href="/admin/requests/{{ r.id }}">Открыть</a>
+            <td>
+              <div class="row-actions">
+                <a class="btn btn-small" href="/admin/requests/{{ r.id }}">Открыть</a>
+              </div>
             </td>
           </tr>
         {% endfor %}

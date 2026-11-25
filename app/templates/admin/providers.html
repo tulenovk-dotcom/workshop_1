@@ -157,12 +157,14 @@
           <td>{{ p.city }}</td>
           <td>{{ PRICING.get(p.pricing, p.pricing) }}</td>
           <td>{{ ui.rating(p.rating_avg, p.reviews_count) }}</td>
-          <td class="row-actions">
-            <a class="btn btn-small" href="/admin/providers/{{ p.id }}/edit">Изменить</a>
-            <form method="post" action="/admin/providers/{{ p.id }}/delete"
-                  onsubmit="return confirm('Удалить запись «{{ p.name }}»? Вместе с ней удалятся её отзывы.');">
-              <button type="submit" class="btn btn-small btn-danger">Удалить</button>
-            </form>
+          <td>
+            <div class="row-actions">
+              <a class="btn btn-small" href="/admin/providers/{{ p.id }}/edit">Изменить</a>
+              <form method="post" action="/admin/providers/{{ p.id }}/delete"
+                    onsubmit="return confirm('Удалить запись «{{ p.name }}»? Вместе с ней удалятся её отзывы.');">
+                <button type="submit" class="btn btn-small btn-danger">Удалить</button>
+              </form>
+            </div>
           </td>
         </tr>
       {% endfor %}

@@ -59,8 +59,10 @@
                 <div class="muted"><a href="/providers/{{ a.provider_id }}">карточка создана</a></div>
               {% endif %}
             </td>
-            <td class="row-actions">
-              <a class="btn btn-small" href="/admin/applications/{{ a.id }}">Открыть</a>
+            <td>
+              <div class="row-actions">
+                <a class="btn btn-small" href="/admin/applications/{{ a.id }}">Открыть</a>
+              </div>
             </td>
           </tr>
         {% endfor %}
