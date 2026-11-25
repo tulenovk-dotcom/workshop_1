@@ -7,7 +7,10 @@
  * в любом порядке: «логопед алматы» найдёт логопеда из Алматы.
  *
  * Запрос пишется в адрес страницы (?q=...), поэтому после «Изменить» и
- * возврата назад поиск остаётся на месте.
+ * возврата назад поиск остаётся на месте. Запрос дописывается и в ссылки
+ * внутри data-admin-search-keep - на странице переходов это периоды и
+ * заголовки колонок, которые ведут на ту же страницу: без этого поиск
+ * сбрасывался бы при каждой сортировке.
  */
 (function () {
   "use strict";
@@ -18,6 +21,8 @@
   var count = box.querySelector("[data-admin-search-count]");
   var empty = document.querySelector("[data-admin-search-empty]");
   var rows = Array.prototype.slice.call(document.querySelectorAll("tr[data-search]"));
+  var keepLinks = Array.prototype.slice.call(
+    document.querySelectorAll("[data-admin-search-keep] a[href]"));
 
   function norm(text) {
     return (text || "").toLowerCase().replace(/ё/g, "е");
@@ -66,10 +71,18 @@
       : "";
     if (empty) { empty.hidden = !(words.length && shown === 0); }
 
+    var typed = input.value.trim();
     var url = new URL(window.location.href);
-    if (input.value.trim()) { url.searchParams.set("q", input.value.trim()); }
+    if (typed) { url.searchParams.set("q", typed); }
     else { url.searchParams.delete("q"); }
     window.history.replaceState(null, "", url);
+
+    keepLinks.forEach(function (link) {
+      var href = new URL(link.getAttribute("href"), window.location.href);
+      if (typed) { href.searchParams.set("q", typed); }
+      else { href.searchParams.delete("q"); }
+      link.setAttribute("href", href.pathname + href.search);
+    });
   }
 
   box.hidden = false;

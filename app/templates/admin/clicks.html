@@ -17,7 +17,9 @@
   узнавали номер телефона, писали в WhatsApp, открывали сайт или Instagram. Персональных данных
   здесь нет - счётчик не знает, кто нажал, только когда и на какую кнопку.</p>
 
-<nav class="stat-periods">
+{#- data-admin-search-keep: скрипт поиска дописывает в эти ссылки ?q=,
+    иначе переключение периода или сортировки сбрасывало бы поиск. -#}
+<nav class="stat-periods" data-admin-search-keep>
   {% for period, label in periods %}
     {% if period == days %}
       <span class="stat-period stat-period-current">{{ label }}</span>
@@ -51,9 +53,19 @@
 </section>
 
 {% if rows %}
+  {#- Поиск по таблице: отсеивает строки прямо на странице, без запроса к
+      серверу. Ищет по названию и городу. Без скрипта поле спрятано, и
+      таблица просто показывается целиком. -#}
+  <div class="field admin-search" hidden data-admin-search>
+    <label for="admin-q">Поиск по местам занятий</label>
+    <input type="search" id="admin-q" autocomplete="off"
+           placeholder="Название или город">
+    <p class="hint" data-admin-search-count aria-live="polite"></p>
+  </div>
+
   <div class="table-wrap">
     <table class="admin-table stat-table">
-      <thead>
+      <thead data-admin-search-keep>
         <tr>
           {{ sort_th('name', 'Место занятий', False) }}
           {{ sort_th('views', 'Карточку открыли') }}
@@ -68,7 +80,7 @@
       </thead>
       <tbody>
         {% for row in rows %}
-          <tr>
+          <tr data-search="{{ [row.name, row.city]|select|join(' ') }}">
             <td>
               <a href="/providers/{{ row.id }}">{{ row.name }}</a>
               {% if row.is_test %}<span class="chip chip-test">тест</span>{% endif %}
@@ -90,6 +102,9 @@
     </table>
   </div>
 
+  <p class="notice" hidden data-admin-search-empty>Ничего не найдено.
+    Проверьте написание или поищите по городу.</p>
+
   <p class="hint">Нажмите на заголовок колонки, чтобы отсортировать по ней;
     повторное нажатие меняет порядок (▲ по возрастанию, ▼ по убыванию).</p>
 
@@ -106,6 +121,7 @@
   <p class="hint">Колонка «Телефон» - сколько раз нажали «Позвонить» или
     «Показать номер». Сколько из них действительно дозвонились, сайт не
     знает: сам звонок идёт уже с телефона человека. Считается с 29.10.2026.</p>
+  <script src="{{ static_url('admin-search.js') }}" defer></script>
 {% else %}
   <p class="empty">В каталоге пока нет ни одного места занятий.</p>
 {% endif %}
