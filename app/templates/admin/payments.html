@@ -166,6 +166,13 @@
   <form class="admin-form" method="post" action="/admin/payments/new">
     <div class="field field-wide">
       <label for="provider_id">Место занятий *</label>
+      {#- Поиск по списку: в каталоге больше сотни записей, и листать их
+          глазами долго. Поле оставляет в списке только подходящие строки;
+          без скрипта оно спрятано, а список работает как обычно. -#}
+      <input class="pick-search" type="search" id="provider_q" hidden
+             autocomplete="off" data-pick-search="provider_id"
+             aria-label="Поиск по списку мест занятий"
+             placeholder="Поиск: название или город">
       <select id="provider_id" name="provider_id" required>
         <option value="">Выберите из каталога</option>
         {% for c in choices %}
@@ -174,6 +181,7 @@
           </option>
         {% endfor %}
       </select>
+      <p class="hint" data-pick-search-count aria-live="polite"></p>
       <p class="hint">Если у места срок ещё идёт, новый встаёт за ним, а не
         считается со дня оплаты: оплачено до 18.11, месяц оплатили 14.11 -
         продвижение будет до 18.12. Если срок уже кончился - со дня оплаты.</p>
@@ -355,4 +363,5 @@
     <p class="empty">Платных карточек пока нет - и считать нечего.</p>
   {% endif %}
 </section>
+<script src="{{ static_url('pick-search.js') }}" defer></script>
 {% endblock %}

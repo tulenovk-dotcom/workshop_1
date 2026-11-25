@@ -1923,6 +1923,13 @@ input:focus, select:focus, textarea:focus {
    строка ввода над таблицей читается как ещё одна строка таблицы. */
 .admin-search { max-width: 460px; margin: 4px 0 14px; }
 .admin-search .hint:empty { display: none; }
+
+/* Поиск по длинному списку выбора (оплаты, «Место занятий»). Поле стоит
+   над самим списком и набрано тише него: это не значение формы, а способ
+   добраться до значения. Пустая подсказка не занимает места. */
+.pick-search { background: var(--surface-soft); }
+.pick-search::placeholder { color: var(--muted); }
+[data-pick-search-count]:empty { display: none; }
 tr[hidden] { display: none; }
 
 /* Номер выкаченной версии. Служебная строка - набрана тихо, чтобы не
