@@ -44,8 +44,15 @@
   <meta property="og:description" content="{{ self.description() }}">
   <meta property="og:url" content="{{ page_url }}">
   <meta property="og:locale" content="{{ 'kk_KZ' if lang == 'kk' else 'ru_RU' }}">
-  <meta property="og:image" content="{{ SITE_URL }}{{ static_url('logo.webp') }}">
-  <meta name="twitter:card" content="summary">
+  {# Картинка ссылки - отдельная, 1200x630: мессенджеры и соцсети берут
+     именно такой размер и показывают широкой карточкой. Логотип для этого
+     не годился - он квадратный и в webp, а webp для og:image понимают не
+     все. Ширина и высота подписаны рядом: по ним Facebook и Telegram
+     рисуют место под картинку, не дожидаясь, пока она скачается. #}
+  <meta property="og:image" content="{{ SITE_URL }}{{ static_url('og-image.png') }}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
 
   {# Значок сайта собран из того же логотипа, что стоит в шапке: квадрат
      с прозрачными полями сверху и снизу, чтобы знак не обрезало и не
